@@ -108,5 +108,4 @@ copy the SVG to `public/favicon.svg`. Do not reintroduce default Tauri, Vite or 
 ## Documentation
 
 Keep `README.md` accurate when behaviour, commands, workflows or the file layout change. Avoid
-hard-coded counts (tests, tools) that go stale. `docs/` holds dated reviews: update the status table in
-`docs/viability-review.md` when you fix or defer a finding rather than rewriting the review.
+hard-coded counts (tests, tools) that go stale.
