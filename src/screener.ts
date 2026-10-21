@@ -29,6 +29,10 @@ export type ScreenerRow = {
   cost?: number | null;
   /** The gain or loss since buy as a percent of the cost. */
   sinceBuyPct?: number | null;
+  /** Share of the total market value of the portfolio holdings, 0 to 1. */
+  weight?: number | null;
+  /** The move today in money, from the change %. */
+  today?: number | null;
   currency: string;
   keys: string[];
 };

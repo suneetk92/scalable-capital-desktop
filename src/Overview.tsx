@@ -1,22 +1,15 @@
 import { RectangleGroupIcon } from "@heroicons/react/24/outline";
-import { useEffect, useMemo, useState } from "react";
-import { useExtensionIsinLogos } from "./extensions";
-import { EmptyState, Pagination, ShareBar, SortHeader } from "./controls";
+import { useMemo } from "react";
+import { EmptyState, ShareBar } from "./controls";
 import { summarizeHoldings } from "./holdings";
-import { paginate } from "./paging";
-import { nextSort, sortItems, type SortState } from "./sorting";
 import type { SecurityGroup } from "./groups";
 import { formatChange, formatMoney, formatNumber, groupHas, type OverviewData, type ScreenerRow } from "./screener";
 import { formatPercent, pluralize } from "./format";
-import { Card, CardGrid, cx, DescriptionList, DescriptionRow, EMPTY, NAME_COLUMN, RECORD_TABLE, SCROLL_X, SecurityCell, SignGlyph, signClass, TD_NUM, btn } from "./ui";
-import type { Invoke } from "./tools";
+import { Card, CardGrid, cx, DescriptionList, DescriptionRow, EMPTY, SignGlyph, signClass, btn } from "./ui";
 
 export function OverviewPage({
   data,
-  invoke,
-  logosEnabled,
   totalCurrency,
-  pageSize,
   overviewFailed,
   groups,
   portfolioRows,
@@ -26,9 +19,6 @@ export function OverviewPage({
   onOpenGroups,
 }: {
   data: OverviewData;
-  invoke: Invoke;
-  logosEnabled: boolean;
-  pageSize: number;
   totalCurrency: string;
   overviewFailed: boolean;
   groups: SecurityGroup[];
@@ -45,16 +35,6 @@ export function OverviewPage({
   ]
     .filter(Boolean)
     .join(" · ");
-  const [positionsPage, setPositionsPage] = useState(1);
-  const [positionsSort, setPositionsSort] = useState<SortState>(null);
-  useEffect(() => setPositionsPage(1), [pageSize]);
-  const sortedPositions = useMemo(() => sortItems(holdings.positions, positionsSort, (position, key) => position[key as keyof typeof position]), [holdings.positions, positionsSort]);
-  const positions = paginate(sortedPositions, positionsPage, pageSize);
-  const positionLogos = useExtensionIsinLogos({ invoke, isins: positions.rows.map((position) => position.isin), enabled: logosEnabled });
-  const sortPositions = (column: string) => {
-    setPositionsSort((current) => nextSort(current, column));
-    setPositionsPage(1);
-  };
   const holdingsMoney = (value: number) => formatMoney(value, holdings.currency);
   const holdingsSigned = (value: number) => `${value > 0 ? "+" : ""}${holdingsMoney(value)}`;
   const groupedTotal = groups.reduce((sum, group) => {
@@ -115,58 +95,6 @@ export function OverviewPage({
             {holdings.best && <DescriptionRow label="Best position" tone="up">{`${holdings.best.name} ${formatChange((holdings.best.gainFraction ?? 0) * 100)}`}</DescriptionRow>}
             {holdings.worst && <DescriptionRow label="Worst position" tone="down">{`${holdings.worst.name} ${formatChange((holdings.worst.gainFraction ?? 0) * 100)}`}</DescriptionRow>}
           </DescriptionList>
-        </Card>
-      )}
-      {holdings.count > 0 && (
-        <Card title="Positions" hint={positionsSort === null ? "largest first" : undefined} wide>
-          <div className={SCROLL_X}>
-            <table className={RECORD_TABLE}>
-              <thead>
-                <tr>
-                  <SortHeader label="ISIN / name" column="name" sort={positionsSort} onSort={sortPositions} className={NAME_COLUMN} />
-                  <SortHeader numeric label="Quantity" column="quantity" sort={positionsSort} onSort={sortPositions} />
-                  <SortHeader numeric label="Avg price" column="avgPrice" sort={positionsSort} onSort={sortPositions} />
-                  <SortHeader numeric label="Price" column="price" sort={positionsSort} onSort={sortPositions} />
-                  <SortHeader numeric label="Cost" column="cost" sort={positionsSort} onSort={sortPositions} />
-                  <SortHeader numeric label="Value" column="value" sort={positionsSort} onSort={sortPositions} />
-                  <SortHeader numeric label="Share" column="weight" sort={positionsSort} onSort={sortPositions} />
-                  <SortHeader numeric label="Price change today" column="today" sort={positionsSort} onSort={sortPositions} />
-                  <SortHeader numeric label="Since buy" column="gain" sort={positionsSort} onSort={sortPositions} />
-                </tr>
-              </thead>
-              <tbody>
-                {positions.rows.map((position) => (
-                  <tr key={position.rowId}>
-                    <td>
-                      <SecurityCell
-                        initials={(position.name || position.isin).slice(0, 2).toUpperCase()}
-                        logo={positionLogos.get(position.isin.toUpperCase())}
-                        title={position.isin || position.name}
-                        subtitle={position.isin ? position.name : undefined}
-                      />
-                    </td>
-                    <td className={TD_NUM}>{position.quantity === null ? "—" : formatNumber(position.quantity, 0)}</td>
-                    <td className={TD_NUM}>{position.avgPrice === null ? "—" : holdingsMoney(position.avgPrice)}</td>
-                    <td className={TD_NUM}>{position.lastPrice === null ? "—" : holdingsMoney(position.lastPrice)}</td>
-                    <td className={TD_NUM}>{position.cost === null ? "—" : holdingsMoney(position.cost)}</td>
-                    <td className={TD_NUM}>{holdingsMoney(position.value)}</td>
-                    <td className={TD_NUM}>{`${formatNumber(position.weight * 100, 1, 1)}%`}</td>
-                    <td className={cx(TD_NUM, signClass(position.today))}>
-                      <SignGlyph value={position.today} />
-                      {position.today === null ? "—" : holdingsSigned(position.today)}
-                    </td>
-                    <td className={cx(TD_NUM, signClass(position.gain))}>
-                      <SignGlyph value={position.gain} />
-                      {position.gain === null ? "—" : `${holdingsSigned(position.gain)}${position.gainFraction !== null ? ` (${formatChange(position.gainFraction * 100)})` : ""}`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="-mx-[1.2rem] -mb-4 mt-3">
-            <Pagination page={positions.page} pageCount={positions.pageCount} total={holdings.positions.length} pageSize={positions.size} onPage={setPositionsPage} />
-          </div>
         </Card>
       )}
       <Card title="Your Scalable groups" wide>

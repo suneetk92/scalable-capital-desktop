@@ -29,7 +29,6 @@ export function AppRouter() {
     view,
     setView,
     transactionsOpened,
-    settings,
     searchInput,
     portfolioRows,
     watchlistRows,
@@ -75,10 +74,7 @@ export function AppRouter() {
       {view === "overview" && (
         <OverviewPage
           data={overviewData}
-          invoke={common.invoke}
-          logosEnabled={Boolean(extension.logos?.useIsinLogos)}
           totalCurrency={totalCurrency}
-          pageSize={settings.pageSize}
           overviewFailed={overviewFailed}
           groups={allGroups}
           portfolioRows={portfolioRows}

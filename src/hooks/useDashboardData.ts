@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { todayOf } from "../holdings";
 import { orderGroups, parseGroupData, ungroupedGroup, type SecurityGroup } from "../groups";
 import { dataIssueMessages, holdingRows, overviewTotal, recordsFrom, rowFromRecord, summarizeOverview, type ScreenerRow } from "../screener";
 import type { Dashboard } from "../types";
@@ -20,7 +21,13 @@ function figuresOf(rows: ScreenerRow[], reported: SecurityGroup | null) {
 export function useDashboardData(dashboard: Dashboard | null, showDiagnostics: boolean, groupOrder: readonly string[]) {
   const portfolioRows = useMemo(() => {
     if (!dashboard) return [];
-    return dashboard.portfolios.flatMap((portfolio) => holdingRows(portfolio.portfolioId, portfolio.holdings, dashboard.quotes));
+    const rows = dashboard.portfolios.flatMap((portfolio) => holdingRows(portfolio.portfolioId, portfolio.holdings, dashboard.quotes));
+    const total = rows.reduce((sum, row) => sum + (row.value !== null && row.value > 0 ? row.value : 0), 0);
+    return rows.map((row) => ({
+      ...row,
+      weight: total > 0 && row.value !== null && row.value > 0 ? row.value / total : null,
+      today: row.value !== null && row.value > 0 ? todayOf(row.value, row.change) : null,
+    }));
   }, [dashboard]);
 
   const watchlistRows = useMemo(() => {

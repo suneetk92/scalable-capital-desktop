@@ -5,7 +5,7 @@ import { columnById, marketSortValue, type MarketRecord } from "../marketColumns
 import { extension } from "../extensions";
 import { groupHas, type ChangeFilter, type ScreenerRow, type SortKey } from "../screener";
 
-type RowSortKey = "symbol" | "exchange" | "lastPrice" | "change" | "quantity" | "value" | "avgPrice" | "cost" | "sinceBuy" | "sinceBuyPct";
+type RowSortKey = "symbol" | "exchange" | "lastPrice" | "change" | "quantity" | "value" | "avgPrice" | "cost" | "sinceBuy" | "sinceBuyPct" | "weight" | "today";
 
 /** Missing numbers sort as the smallest. */
 function compareNumbers(a: number | null, b: number | null) {

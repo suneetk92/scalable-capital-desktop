@@ -43,7 +43,7 @@ type HoldingsSummary = {
 };
 
 /** Worth of a row's change today in money: the value now minus the value before a move of `change` percent. */
-function todayOf(value: number, change: number | null): number | null {
+export function todayOf(value: number, change: number | null): number | null {
   if (change === null || !Number.isFinite(change) || change <= -100) return null;
   return value - value / (1 + change / 100);
 }

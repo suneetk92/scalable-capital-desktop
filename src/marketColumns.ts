@@ -35,6 +35,8 @@ const TABLE_COLUMNS: TableColumn[] = [
   scalable("cost", "Total cost", "What the position cost you in total"),
   scalable("sinceBuy", "Gain/loss", "Gain or loss since buy in money"),
   scalable("sinceBuyPct", "Gain/loss %", "Gain or loss since buy in percent of the cost"),
+  scalable("weight", "Share", "Share of your total market value (portfolio only)"),
+  scalable("today", "Today", "Price change today in money, from the change %"),
   scalable("exchange", "Type", "Security type"),
 ];
 

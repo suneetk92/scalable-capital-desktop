@@ -159,6 +159,19 @@ export const ScreenerRowView = memo(function ScreenerRowView({
                 {formatChange(row.sinceBuyPct ?? null)}
               </td>
             );
+          case "weight":
+            return (
+              <td key={column.id} className={TD_NUM}>
+                {row.weight == null ? "—" : `${formatNumber(row.weight * 100, 1, 1)}%`}
+              </td>
+            );
+          case "today":
+            return (
+              <td key={column.id} className={cx(TD_NUM, changeTone(row.today ?? null))}>
+                <SignGlyph value={row.today} />
+                {formatSignedMoney(row.today ?? null, row.currency)}
+              </td>
+            );
           default:
             return <td key={column.id}>{row.exchange ? <Badge tone={securityTypeTone(row.exchange)}>{row.exchange}</Badge> : "—"}</td>;
         }
