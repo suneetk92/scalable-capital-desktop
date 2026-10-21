@@ -126,7 +126,7 @@ function pickColumns(records: Rec[], max = 6): RecordColumn[] {
   // The ISIN is shown under the name, so it needs no column of its own.
   const named = ordered.some(isSecurityName);
   return ordered
-    .filter((path) => !(named && path.split(".").slice(-1)[0].toLowerCase() === "isin"))
+    .filter((path) => !(named && ["isin", "identifier"].includes(path.split(".").slice(-1)[0].toLowerCase())))
     .map((path) => ({ path, label: isSecurityName(path) ? "Symbol / Name" : humanize(path.split(".").slice(-2).join(" ")) }));
 }
 
@@ -140,8 +140,9 @@ function cellOf(record: Rec, path: string): ReactNode {
   if (isSecurityName(path) && typeof value === "string" && value !== "") {
     const scope = path.includes(".") ? path.slice(0, path.lastIndexOf(".") + 1) : "";
     const symbol = pickString(record, [`${scope}symbol`, `${scope}ticker`, "symbol", "ticker"]);
-    const isin = pickString(record, [`${scope}isin`, "isin"]);
-    return <SecurityCell initials={(symbol ?? value).slice(0, 2).toUpperCase()} title={symbol ?? value} subtitle={symbol ? value : isin} />;
+    const isin = pickString(record, [`${scope}isin`, `${scope}identifier`, "isin"]);
+    const title = symbol ?? isin ?? value;
+    return <SecurityCell initials={(symbol ?? value).slice(0, 2).toUpperCase()} title={title} subtitle={title === value ? undefined : value} />;
   }
   if (path.split(".").slice(-1)[0].toLowerCase() === "securitytype" && typeof value === "string" && value !== "") return <Badge tone={securityTypeTone(value)}>{value.replace(/_/g, " ")}</Badge>;
   return formatCell(value);
