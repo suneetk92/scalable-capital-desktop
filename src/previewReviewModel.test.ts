@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { requiredAcknowledgementIds, reviewOf } from "./previewReview";
+import { requiredAcknowledgementIds, reviewOf } from "./previewReviewModel";
 
 const SUBMISSION = { executionIntent: {}, confirmationContext: { requiredAcknowledgementIds: ["acknowledge_appropriateness_warning"] }, confirmationProof: "c1.x" };
 

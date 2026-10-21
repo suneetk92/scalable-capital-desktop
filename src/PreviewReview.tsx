@@ -1,7 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
 import { CheckboxField } from "./controls";
-import type { PreviewReview as Review, ReviewField } from "./previewReview";
+import type { PreviewReview as Review, ReviewField } from "./previewReviewModel";
 import { btn, field } from "./ui";
 
 /** Label on the left, value on the right; used for every list of fields in the dialogs. */

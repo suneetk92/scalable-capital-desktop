@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { PreviewResponse } from "../commands";
 import { errorText } from "../tools";
-import { reviewOf } from "../previewReview";
+import { reviewOf } from "../previewReviewModel";
 import { usePreviewExpiry } from "../PreviewReview";
 
 type PreviewStage = "form" | "preview" | "complete";
