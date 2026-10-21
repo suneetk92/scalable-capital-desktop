@@ -20,7 +20,7 @@ export const OVERNIGHT_PERIODS = [
 export type OvernightPeriod = (typeof OVERNIGHT_PERIODS)[number]["value"];
 
 export type OvernightAccount = { displayName: string; ownerKind: "personal" | "junior"; isActive: boolean };
-export type OvernightDocument = { id: string | null; label: string | null; url: string };
+type OvernightDocument = { id: string | null; label: string | null; url: string };
 export type OvernightTransaction = {
   id: string;
   when: string | null;
@@ -33,7 +33,7 @@ export type OvernightTransaction = {
   documents: OvernightDocument[];
 };
 
-export type OvernightPage = {
+type OvernightPage = {
   account: OvernightAccount | null;
   savingsAccountId: string | null;
   transactions: OvernightTransaction[];

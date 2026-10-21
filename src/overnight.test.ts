@@ -8,7 +8,20 @@ describe("parseOvernightPage", () => {
         account: { displayName: "Overnight", ownerKind: "personal", isActive: true },
         savingsAccountId: "account-1",
         page: { nextCursor: "next", totalCount: 2, returnedCount: 1 },
-        transactions: [{ id: "t1", lastEventAt: "2025-01-02T12:00:00Z", cashTransactionType: "interest", type: "CASH", amount: "12.34", currency: "EUR", status: "BOOKED", description: "Interest", isCancellation: false, documents: [] }],
+        transactions: [
+          {
+            id: "t1",
+            lastEventAt: "2025-01-02T12:00:00Z",
+            cashTransactionType: "interest",
+            type: "CASH",
+            amount: "12.34",
+            currency: "EUR",
+            status: "BOOKED",
+            description: "Interest",
+            isCancellation: false,
+            documents: [],
+          },
+        ],
       }),
     ).toEqual({
       account: { displayName: "Overnight", ownerKind: "personal", isActive: true },
