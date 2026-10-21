@@ -152,6 +152,8 @@ jobs:
           # The Windows MSI cannot carry a pre-release version such as 1.2.3-rc.1, so those build NSIS only.
           bundles="${{ matrix.bundles }}"
           case "${{ inputs.version }}" in *-*) bundles="${bundles/,msi/}" ;; esac
+          # linuxdeploy only says why it failed in verbose output.
+          if [ "$RUNNER_OS" = "Linux" ]; then configs+=(--verbose); fi
           npx tauri build --target ${{ matrix.target }} --bundles "$bundles" "${configs[@]}"
 
       # Both macOS builds produce scalable-capital-desktop.app.tar.gz; the architecture keeps them apart.
