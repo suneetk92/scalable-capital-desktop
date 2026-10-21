@@ -5,7 +5,7 @@ description = "Scalable Capital portfolio and watchlist screener"
 authors = ["Suneet Kumar"]
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.90"
+rust-version = "1.99"
 
 [lib]
 name = "scalable_capital_desktop_lib"
@@ -19,14 +19,14 @@ extension = []
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-base64 = "0.22"
-rand = "0.8"
-regex = "1.11"
+base64 = "0.23"
+rand = "0.10"
+regex = "1.13"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
@@ -38,7 +38,7 @@ url = "2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
-winreg = "0.55"
+winreg = "0.56"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 keyring = { version = "3", features = ["linux-native-sync-persistent", "sync-secret-service"] }

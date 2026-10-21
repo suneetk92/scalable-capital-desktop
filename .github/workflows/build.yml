@@ -73,7 +73,7 @@ jobs:
             bundles: deb,rpm,appimage
             artifact: linux-arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
@@ -84,12 +84,12 @@ jobs:
             librsvg2-dev libdbus-1-dev libssl-dev pkg-config clang lld \
             libfuse2 xdg-utils file patchelf rpm
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@1.90.0
+      - uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: ${{ matrix.target }}
 
@@ -180,7 +180,7 @@ jobs:
           ls -l dist-artifacts
 
       - name: Upload installers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scalable-capital-desktop-${{ matrix.artifact }}
           if-no-files-found: error

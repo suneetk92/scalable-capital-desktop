@@ -160,7 +160,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
 
 ## Getting started
 
-Requirements: Node.js 22, a Rust toolchain (1.90 or newer) and the
+Requirements: Node.js 22, a Rust toolchain (1.99 or newer) and the
 [Tauri 2 prerequisites](https://tauri.app/start/prerequisites/) for your OS.
 
 ```bash
@@ -449,7 +449,7 @@ If `cargo-audit` or `cargo-deny` is not installed, install it once with `cargo i
 
 CI runs the frontend checks and Rust checks on Ubuntu and Windows (with `--locked` for Cargo), dependency audits including npm signatures, and installer builds on pushes to `main` and on pull requests. `cargo audit` downloads the RustSec advisory database when it is not already cached.
 
-The Rust crate declares 1.90 as its minimum supported version; `src-tauri/rust-toolchain.toml` pins local work to 1.90.0 with `rustfmt`, `clippy` and the `x86_64-pc-windows-msvc` target (rustup installs them for the pinned toolchain on first use; a target added to another toolchain does not carry over). `src-tauri/rustfmt.toml` fixes the formatting edition to 2021.
+The Rust crate declares 1.99 as its minimum supported version; `src-tauri/rust-toolchain.toml` pins local work to 1.99.1 with `rustfmt`, `clippy` and the `x86_64-pc-windows-msvc` target (rustup installs them for the pinned toolchain on first use; a target added to another toolchain does not carry over). `src-tauri/rustfmt.toml` fixes the formatting edition to 2021.
 
 Instants are displayed in the machine's local time zone with the short zone name; calendar-only dates remain dates. UTC storage and wire timestamps are not converted or rewritten.
 

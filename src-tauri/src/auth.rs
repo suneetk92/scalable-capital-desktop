@@ -5,7 +5,8 @@ use crate::mcp::{
     trading::{self, TradeState, TradingGate},
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::distr::Alphanumeric;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -899,7 +900,7 @@ fn now_seconds() -> u64 {
 }
 
 fn random_string(length: usize) -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(length)
         .map(char::from)
