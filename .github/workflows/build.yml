@@ -84,7 +84,7 @@ jobs:
             librsvg2-dev libdbus-1-dev libssl-dev pkg-config clang lld \
             libfuse2 xdg-utils file patchelf rpm
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
