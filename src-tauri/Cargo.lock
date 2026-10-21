@@ -3471,7 +3471,7 @@ dependencies = [
 name = "scalable-capital-desktop"
 version = "1.0.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "keyring",
  "rand 0.8.8",
  "regex",
