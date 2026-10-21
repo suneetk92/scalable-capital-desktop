@@ -46,7 +46,8 @@ import {
   type ToolDef,
   type ToolOutcome,
 } from "./tools";
-import { isRec, parseMaybeJson, pickString, recordsOf, type Rec } from "./response";
+import { useExtensionIsinLogos } from "./extensions";
+import { isRec, parseMaybeJson, recordsOf, type Rec } from "./response";
 
 export function Modal({ title, onClose, wide = false, children }: { title: string; onClose: () => void; wide?: boolean; children: ReactNode }) {
   return (
@@ -134,15 +135,26 @@ function valueAt(record: Rec, path: string): unknown {
   return path.split(".").reduce<unknown>((current, key) => (isRec(current) ? current[key] : undefined), record);
 }
 
+/** The first non-empty text among the dotted paths. */
+function textAt(record: Rec, paths: string[]): string | undefined {
+  for (const path of paths) {
+    const value = valueAt(record, path);
+    if (typeof value === "string" && value !== "") return value;
+  }
+  return undefined;
+}
+
 /** A security name is a symbol-over-name cell and a security type a coloured badge, like the Portfolio table's; every other value is plain text. */
-function cellOf(record: Rec, path: string): ReactNode {
+function cellOf(record: Rec, path: string, logos?: ReadonlyMap<string, string>): ReactNode {
   const value = valueAt(record, path);
   if (isSecurityName(path) && typeof value === "string" && value !== "") {
     const scope = path.includes(".") ? path.slice(0, path.lastIndexOf(".") + 1) : "";
-    const symbol = pickString(record, [`${scope}symbol`, `${scope}ticker`, "symbol", "ticker"]);
-    const isin = pickString(record, [`${scope}isin`, `${scope}identifier`, "isin"]);
+    const symbol = textAt(record, [`${scope}symbol`, `${scope}ticker`, "symbol", "ticker"]);
+    const isin = textAt(record, [`${scope}isin`, `${scope}identifier`, "isin"]);
     const title = symbol ?? isin ?? value;
-    return <SecurityCell initials={(symbol ?? value).slice(0, 2).toUpperCase()} title={title} subtitle={title === value ? undefined : value} />;
+    return (
+      <SecurityCell initials={(symbol ?? value).slice(0, 2).toUpperCase()} logo={isin ? logos?.get(isin.toUpperCase()) : undefined} title={title} subtitle={title === value ? undefined : value} />
+    );
   }
   if (path.split(".").slice(-1)[0].toLowerCase() === "securitytype" && typeof value === "string" && value !== "") return <Badge tone={securityTypeTone(value)}>{value.replace(/_/g, " ")}</Badge>;
   return formatCell(value);
@@ -152,6 +164,7 @@ function cellOf(record: Rec, path: string): ReactNode {
 const DEFAULT_RECORD_PAGE_SIZE = 25;
 
 /** Table for any list of records; columns are picked from what the records contain. Long lists are paged. */
+const unusedInvoke: Invoke = () => Promise.reject(new Error("No invoke"));
 const ACTIONS_COLUMN = "__actions";
 
 export function RecordTable({
@@ -163,6 +176,7 @@ export function RecordTable({
   emptyAction,
   onRow,
   pageSize = DEFAULT_RECORD_PAGE_SIZE,
+  invoke,
 }: {
   records: Rec[];
   actions?: (record: Rec) => ReactNode;
@@ -173,6 +187,8 @@ export function RecordTable({
   onRow?: (record: Rec) => void;
   /** Rows per page; 0 shows every row. */
   pageSize?: number;
+  /** Lets the extension supply ISIN logos for the securities shown. */
+  invoke?: Invoke;
 }) {
   const columns = useMemo(() => pickColumns(records), [records]);
   const [page, setPage] = useState(1);
@@ -181,6 +197,8 @@ export function RecordTable({
   // Tables of the same shape (the same columns) share their layout.
   const { order, layout } = useTableLayout(`records:${columns.map((column) => column.path).join("|")}`, columnIds);
   const resized = resizedTable(layout.widths);
+  const isins = useMemo(() => records.flatMap((record) => textAt(record, ["instrument.identifier", "instrument.isin", "isin"]) ?? []), [records]);
+  const logos = useExtensionIsinLogos({ invoke: invoke ?? unusedInvoke, isins, enabled: invoke !== undefined });
   const sorted = useMemo(
     () =>
       sortItems(records, sort, (record, path) => {
@@ -225,7 +243,7 @@ export function RecordTable({
                       <div className="flex justify-end gap-1.5">{actions(record)}</div>
                     </td>
                   ) : (
-                    <td key={id}>{cellOf(record, id)}</td>
+                    <td key={id}>{cellOf(record, id, logos)}</td>
                   ),
                 )}
               </tr>

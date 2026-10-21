@@ -1,7 +1,8 @@
 import { Tab, TabGroup, TabList } from "@headlessui/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { extension, useExtensionIsinLogos } from "../extensions";
 import { type Common } from "../types";
-import { btn, cx, EMPTY, field, LIST, LIST_ITEM, TABS, tabClass } from "../ui";
+import { btn, cx, EMPTY, field, LIST, LIST_ITEM, SecurityCell, TABS, tabClass } from "../ui";
 import { ToolRunnerPanel } from "../ToolViews";
 import { humanize } from "../tools";
 import { findRecords, pick, pickString, type Rec } from "../response";
@@ -20,6 +21,64 @@ function foundSecurities(result: unknown): FoundSecurity[] {
   });
 }
 
+function Hits({
+  result,
+  common,
+  watched,
+  held,
+  onOpen,
+  onTrade,
+}: {
+  result: unknown;
+  common: Common;
+  watched: Set<string> | null;
+  held: ReadonlySet<string>;
+  onOpen: (security: FoundSecurity) => void;
+  onTrade: (security: FoundSecurity) => void;
+}) {
+  const { actions } = common;
+  const hits = useMemo(() => foundSecurities(result), [result]);
+  const shown = hits.slice(0, 40);
+  const logos = useExtensionIsinLogos({ invoke: common.invoke, isins: shown.map((hit) => hit.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
+  if (hits.length === 0) return <p className={EMPTY}>Nothing found.</p>;
+  return (
+    <ul className={LIST}>
+      {shown.map((hit) => (
+        <li key={hit.isin} className={LIST_ITEM}>
+          <SecurityCell
+            logo={logos.get(hit.isin.toUpperCase())}
+            initials={hit.name.slice(0, 2).toUpperCase()}
+            title={hit.isin}
+            subtitle={hit.type ? `${hit.name} · ${humanize(hit.type)}` : hit.name}
+          />
+          <span className="flex shrink-0 items-center gap-1.5">
+            <button className={btn.trade} type="button" onClick={() => onOpen(hit)}>
+              Details
+            </button>
+            {watched && actions.has(TOOL.addWatchlistItem) && !watched.has(hit.isin) && !held.has(hit.isin) && (
+              <button className={btn.trade} type="button" onClick={() => void actions.run(TOOL.addWatchlistItem, { isin: hit.isin }, { done: `${hit.name} added to your watchlist` })}>
+                Add to watchlist
+              </button>
+            )}
+            {watched?.has(hit.isin) && <small className={field.hint}>On watchlist</small>}
+            {held.has(hit.isin) && <small className={field.hint}>In portfolio</small>}
+            {!watched && (
+              <small className={field.hint} title="Your watchlist could not be loaded. Refresh to check.">
+                Watchlist unknown
+              </small>
+            )}
+            {common.tradingEnabled && (
+              <button className={btn.buy} type="button" onClick={() => onTrade(hit)}>
+                Buy
+              </button>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function DiscoverPage({
   common,
   watched,
@@ -35,7 +94,7 @@ export function DiscoverPage({
   onOpen: (security: FoundSecurity) => void;
   onTrade: (security: FoundSecurity) => void;
 }) {
-  const { actions, defs } = common;
+  const { defs } = common;
   const [tool, setTool] = useState("search_securities");
   const def = defs.find((item) => item.name === tool);
   const tabs = ["search_securities", "search_derivatives"].filter((name) => defs.some((item) => item.name === name));
@@ -60,49 +119,7 @@ export function DiscoverPage({
           runLabel="Search"
           invoke={common.invoke}
           tradingEnabled={common.tradingEnabled}
-          renderResult={(result) => {
-            const hits = foundSecurities(result);
-            return hits.length === 0 ? (
-              <p className={EMPTY}>Nothing found.</p>
-            ) : (
-              <ul className={LIST}>
-                {hits.slice(0, 40).map((hit) => (
-                  <li key={hit.isin} className={LIST_ITEM}>
-                    <span>
-                      {hit.name}
-                      <small className={field.hint}>
-                        {" "}
-                        {hit.isin}
-                        {hit.type ? ` · ${humanize(hit.type)}` : ""}
-                      </small>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-1.5">
-                      <button className={btn.trade} type="button" onClick={() => onOpen(hit)}>
-                        Details
-                      </button>
-                      {watched && actions.has(TOOL.addWatchlistItem) && !watched.has(hit.isin) && !held.has(hit.isin) && (
-                        <button className={btn.trade} type="button" onClick={() => void actions.run(TOOL.addWatchlistItem, { isin: hit.isin }, { done: `${hit.name} added to your watchlist` })}>
-                          Add to watchlist
-                        </button>
-                      )}
-                      {watched?.has(hit.isin) && <small className={field.hint}>On watchlist</small>}
-                      {held.has(hit.isin) && <small className={field.hint}>In portfolio</small>}
-                      {!watched && (
-                        <small className={field.hint} title="Your watchlist could not be loaded. Refresh to check.">
-                          Watchlist unknown
-                        </small>
-                      )}
-                      {common.tradingEnabled && (
-                        <button className={btn.buy} type="button" onClick={() => onTrade(hit)}>
-                          Buy
-                        </button>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            );
-          }}
+          renderResult={(result) => <Hits result={result} common={common} watched={watched} held={held} onOpen={onOpen} onTrade={onTrade} />}
         />
       ) : (
         <p className={EMPTY}>Scalable did not offer a search tool for this sign-in.</p>

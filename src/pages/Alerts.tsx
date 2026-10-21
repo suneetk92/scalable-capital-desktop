@@ -42,6 +42,7 @@ export function AlertsPage({ common }: { common: Common }) {
         <QueryPanel entries={query.entries} loading={query.loading} what="price alerts" />
         {query.entries.some((entry) => entry.outcome.ok) && (
           <RecordTable
+            invoke={common.invoke}
             records={records}
             pageSize={common.pageSize}
             emptyTitle="No price alerts"

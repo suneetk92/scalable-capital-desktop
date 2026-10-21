@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CheckboxField, DropdownMenu, EmptyState, ShareBar, Select, SelectAllField } from "../controls";
 import { type GroupData, type SecurityGroup } from "../groups";
 import { type Common, type PagePortfolio } from "../types";
-import { Alert, btn, cx, EMPTY, field, LIST, LIST_ITEM, DialogFooter, SignGlyph, signClass } from "../ui";
+import { Alert, btn, cx, EMPTY, field, LIST, LIST_ITEM, DialogFooter, SecurityCell, SignGlyph, signClass } from "../ui";
 import { Modal } from "../ToolViews";
 import { Section, DetailsModal } from "./shared";
 import { formatNumber, formatPercent, formatSignedMoney, pluralize } from "../format";
@@ -78,7 +78,7 @@ function AddHoldingsModal({ group, candidates, onSubmit, onClose }: { group: Sec
           <div className="-ml-1.5 grid max-h-80 gap-1 overflow-y-auto pr-1 pl-1.5">
             {candidates.map((holding) => (
               <CheckboxField key={holding.isin} checked={chosen.has(holding.isin)} onChange={() => toggle(holding.isin)}>
-                {holding.name} <small className={field.hint}>{holding.isin}</small>
+                <SecurityCell initials={holding.name.slice(0, 2).toUpperCase()} title={holding.isin} subtitle={holding.name} />
               </CheckboxField>
             ))}
           </div>

@@ -1,3 +1,4 @@
+import { extension, useExtensionIsinLogos } from "../extensions";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { useTableLayout } from "../hooks/useTableLayout";
 import { ArrowTrendingDownIcon } from "@heroicons/react/24/outline";
@@ -29,7 +30,7 @@ const HEADS: Record<string, { label: string; className?: string }> = {
   actions: { label: "Actions", className: TH_NUM },
 };
 
-function Row({ order, stop, onRemove }: { order: string[]; stop: TrailingStop; onRemove: () => void }) {
+function Row({ order, stop, logo, onRemove }: { order: string[]; stop: TrailingStop; logo?: string; onRemove: () => void }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
   return (
@@ -38,7 +39,7 @@ function Row({ order, stop, onRemove }: { order: string[]; stop: TrailingStop; o
         {inOrder(order, {
           name: (
             <td>
-              <SecurityCell initials={stop.name.slice(0, 2).toUpperCase()} title={stop.isin} subtitle={stop.name} />
+              <SecurityCell initials={stop.name.slice(0, 2).toUpperCase()} logo={logo} title={stop.isin} subtitle={stop.name} />
             </td>
           ),
           status: (
@@ -79,6 +80,7 @@ export function TrailingStops({ common }: { common: Common }) {
   const { stops, problem, reload } = useTrailingStops(invoke);
   const { order, layout } = useTableLayout("trailing-stops", COLUMN_IDS);
   const resized = resizedTable(layout.widths);
+  const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -130,7 +132,7 @@ export function TrailingStops({ common }: { common: Common }) {
               </thead>
               <tbody>
                 {stops.map((stop) => (
-                  <Row key={stop.id} order={order} stop={stop} onRemove={() => void remove(stop.id)} />
+                  <Row key={stop.id} order={order} stop={stop} logo={logos.get(stop.isin.toUpperCase())} onRemove={() => void remove(stop.id)} />
                 ))}
               </tbody>
             </table>

@@ -45,6 +45,7 @@ export function SavingsPage({ common }: { common: Common }) {
         <QueryPanel entries={query.entries} loading={query.loading} what="savings plans" />
         {query.entries.some((entry) => entry.outcome.ok) && (
           <RecordTable
+            invoke={common.invoke}
             records={records}
             pageSize={common.pageSize}
             emptyTitle="No savings plans"
