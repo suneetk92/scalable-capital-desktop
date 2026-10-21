@@ -73,7 +73,7 @@ jobs:
             bundles: deb,rpm,appimage
             artifact: linux-arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
