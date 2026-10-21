@@ -1,0 +1,225 @@
+@import "tailwindcss";
+
+/*
+ * Everything visual lives in the components as Tailwind utilities (see src/ui.tsx for the shared kit).
+ * This file only holds what utilities cannot express: theme tokens, keyframes, the page defaults and the
+ * settings hooks (`data-theme` = dark|light, / `data-density` on <html>, `--app-font-size` / `--app-font-family` on :root).
+ */
+
+/* Table density: `compact:` applies when Settings > Table density is "Compact". */
+@custom-variant compact (html[data-density="compact"] &);
+
+/* Light theme: `light:` applies when Settings > Theme resolves to light (`html[data-theme="light"]`). */
+@custom-variant light (html[data-theme="light"] &);
+
+/*
+ * Colour tokens. The values here are the dark theme; the light theme overrides the same variables further down,
+ * so components use semantic utilities (bg-surface, text-ink-muted, border-line, ...) and never a literal colour.
+ *   canvas / inset / chrome / surface / raised / hover  background layers, darkest to lightest in dark mode
+ *   line / line-strong / line-hover                     borders and dividers
+ *   ink-faint ... ink-heading                           text, quietest to loudest
+ *   accent, ink-accent*, buy, sell, danger-*, warn-*    brand and status colours
+ */
+@theme {
+  --color-canvas: #101217;
+  --color-inset: #11141a;
+  --color-chrome: #14171e;
+  --color-surface: #181c24;
+  --color-raised: #1a1e26;
+  --color-hover: #232832;
+
+  --color-line: #292e38;
+  --color-line-strong: #323843;
+  --color-line-hover: #4d5664;
+
+  --color-ink-faint: #7f8692;
+  --color-ink-muted: #8c93a0;
+  --color-ink-soft: #a3aab5;
+  --color-ink-body: #c7cdd6;
+  --color-ink-strong: #dce0e7;
+  --color-ink-heading: #f1f3f7;
+
+  --color-accent: #42c7a4;
+  --color-ink-accent: #43c9a5;
+  --color-ink-accent-bright: #8ee6cf;
+  --color-ink-accent-dim: #6cae9c;
+  --color-accent-bg: #19231f;
+  --color-accent-line: #2d443f;
+  --color-accent-line-strong: #2d5a4d;
+  --color-on-accent: #06130f;
+  --color-cta-from: #4bd2ae;
+  --color-cta-to: #35b895;
+  --color-cta-edge: #39bc9a;
+  --color-logo-from: rgb(57 215 176 / 0.13);
+  --color-logo-to: rgb(38 84 83 / 0.05);
+  --color-logo-edge: rgb(65 211 174 / 0.3);
+  --color-buy: #3fc9a3;
+  --color-buy-edge: #2f8f76;
+  --color-sell: #b4414b;
+  --color-danger-edge: #8a3d44;
+  --color-up: #41c59f;
+  --color-down: #e46d76;
+
+  --color-danger-bg: #291d22;
+  --color-danger-line: #6a3a40;
+  --color-danger-ink: #e8a0a6;
+  --color-danger-ink-hover: #ffb9be;
+  --color-warn-bg: #2a2416;
+  --color-warn-line: #5a4a2a;
+  --color-warn-ink: #e0c58a;
+
+  /* Type scale in rem, so the font-size setting scales it. Body text is 1rem. */
+  /* Corner radii in rem (1rem is 15px by default). */
+  --font-weight-label: 550;
+  --font-weight-title: 650;
+  --font-weight-brand: 750;
+  --radius-control: 0.3333rem;
+  --radius-panel: 0.4667rem;
+  --radius-modal: 0.8rem;
+
+  --text-page: 1.6rem;
+  --text-page--line-height: 1.2;
+  --text-stat: 1.4rem;
+  --text-stat--line-height: 1.25;
+  --text-section: 1.1rem;
+  --text-section--line-height: 1.35;
+  --text-caption: 0.85rem;
+  --text-caption--line-height: 1.3;
+
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-in-left: slide-in-left 0.3s ease-in-out;
+  --animate-slide-in-right: slide-in-right 0.3s ease-in-out;
+  --animate-toast-in: toast-in 0.3s ease-out;
+  --animate-load-bar: load-bar 1.2s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+  }
+  @keyframes slide-in-left {
+    from { transform: translateX(-100%); }
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(0.5rem); }
+  }
+  @keyframes load-bar {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(350%); }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --pop-shadow: rgb(0 0 0 / 0.5);
+    --card-highlight: rgb(255 255 255 / 0.035);
+    --signin-bg-1: #1a2227;
+    --signin-bg-2: #11151a;
+    --signin-bg-3: #0e1015;
+    --signin-card-1: rgb(27 32 38 / 0.97);
+    --signin-card-2: rgb(18 21 27 / 0.98);
+    --signin-art-1: rgb(22 47 43 / 0.48);
+    --signin-art-2: rgb(19 26 31 / 0.54);
+    font-family: var(--app-font-family, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+    color: var(--color-ink-strong);
+    background: var(--color-canvas);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-size: var(--app-font-size, 15px);
+    font-feature-settings: "ss01" on;
+    font-variant-numeric: tabular-nums;
+  }
+
+  body { min-height: 100vh; }
+  @media (max-width: 640px) { body { min-width: 360px; } }
+
+  /* One focus ring for every interactive element, including Headless UI's `data-focus` (menu items and options keep their own highlight). */
+  :where(a, button, input, select, textarea, summary, [role="tab"], [role="switch"], [role="radio"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible,
+  [data-focus]:not([role="menuitem"]):not([role="option"]) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  @media (forced-colors: active) {
+    :where(a, button, input, select, textarea, summary, [role="tab"], [role="switch"], [role="radio"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible,
+    [data-focus]:not([role="menuitem"]):not([role="option"]) {
+      outline-color: Highlight;
+    }
+    :where([aria-pressed="true"], [aria-selected="true"], [aria-checked="true"], [data-selected], [data-checked]) {
+      outline: 1px solid Highlight;
+      outline-offset: 1px;
+    }
+  }
+  ::selection { color: #fff; background: #167a68; }
+
+  /* Light theme: same variables, light values. */
+  html[data-theme="light"] {
+    color-scheme: light;
+    --color-canvas: #f3f4f8;
+    --color-inset: #f5f6f9;
+    --color-chrome: #ffffff;
+    --color-surface: #ffffff;
+    --color-raised: #f1f3f7;
+    --color-hover: #e7eaf0;
+
+    --color-line: #e2e5eb;
+    --color-line-strong: #d1d6df;
+    --color-line-hover: #b3bac6;
+
+    --color-ink-faint: #67707e;
+    --color-ink-muted: #5c6573;
+    --color-ink-soft: #4c5565;
+    --color-ink-body: #3b4351;
+    --color-ink-strong: #232a36;
+    --color-ink-heading: #0f1420;
+
+    --color-accent: #17a98a;
+    --color-ink-accent: #007e64;
+    --color-ink-accent-bright: #086f5b;
+    --color-ink-accent-dim: #2e7b6a;
+    --color-accent-bg: #e6f6f1;
+    --color-accent-line: #bfe4d9;
+    --color-accent-line-strong: #8fd0bd;
+    --color-cta-from: #36bf9c;
+    --color-cta-to: #25a384;
+    --color-cta-edge: #1f9275;
+    --color-logo-from: rgb(23 169 138 / 0.16);
+    --color-logo-to: rgb(23 169 138 / 0.06);
+    --color-logo-edge: rgb(0 126 100 / 0.35);
+    --color-up: #017e5f;
+    --color-down: #c9303f;
+
+    --color-danger-bg: #fdecee;
+    --color-danger-line: #efb8be;
+    --color-danger-ink: #b0303c;
+    --color-danger-ink-hover: #8c1f2b;
+    --color-warn-bg: #fdf6e3;
+    --color-warn-line: #e4d09a;
+    --color-warn-ink: #8a6410;
+
+    --pop-shadow: rgb(20 30 50 / 0.18);
+    --card-highlight: rgb(255 255 255 / 0.6);
+    --signin-bg-1: #ffffff;
+    --signin-bg-2: #eef1f6;
+    --signin-bg-3: #e4e8ef;
+    --signin-card-1: rgb(255 255 255 / 0.98);
+    --signin-card-2: rgb(248 250 252 / 0.98);
+    --signin-art-1: rgb(23 169 138 / 0.12);
+    --signin-art-2: rgb(23 169 138 / 0.05);
+  }
+  html[data-theme="light"] ::selection { color: #fff; background: #17a98a; }
+}

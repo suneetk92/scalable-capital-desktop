@@ -1,0 +1,863 @@
+{
+ "_about": "Input schemas of Scalable's MCP tools, as published by tools/list (property names, required lists and the types the app relies on; nested submission objects are shortened). Read only by the tests of src/tools.ts and src-tauri/src/mcp. No account data.",
+ "tools": {
+  "ping": {
+   "properties": {}
+  },
+  "add_watchlist_item": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin"
+   ]
+  },
+  "remove_watchlist_item": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin"
+   ]
+  },
+  "create_price_alert": {
+   "properties": {
+    "instrument": {
+     "oneOf": [
+      {
+       "type": "object",
+       "properties": {
+        "kind": {
+         "const": "security"
+        },
+        "isin": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "isin"
+       ]
+      },
+      {
+       "type": "object",
+       "properties": {
+        "kind": {
+         "const": "crypto"
+        },
+        "ticker": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "ticker"
+       ]
+      }
+     ]
+    },
+    "price": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "number"
+      }
+     ]
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "instrument",
+    "price"
+   ]
+  },
+  "remove_price_alert": {
+   "properties": {
+    "alertId": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "alertId"
+   ]
+  },
+  "list_price_alerts": {
+   "properties": {
+    "activeOnly": {
+     "type": "boolean"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "get_savings_plan_config": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin"
+   ]
+  },
+  "remove_savings_plan": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin"
+   ]
+  },
+  "preview_savings_plan": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "amount": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "number"
+      }
+     ]
+    },
+    "frequency": {
+     "type": "string"
+    },
+    "dayOfMonth": {
+     "type": "integer"
+    },
+    "yearMonth": {
+     "type": "string"
+    },
+    "dynamizationRate": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "number"
+      }
+     ]
+    },
+    "paymentMethod": {
+     "type": "string"
+    },
+    "appropriatenessId": {
+     "type": "string"
+    },
+    "acknowledgedAppropriatenessWarningVersion": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin",
+    "amount"
+   ]
+  },
+  "submit_savings_plan": {
+   "properties": {
+    "submission": {
+     "type": "object"
+    }
+   },
+   "required": [
+    "submission"
+   ]
+  },
+  "list_savings_plans": {
+   "properties": {
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "get_account_profile": {
+   "properties": {}
+  },
+  "get_fixed_term_account": {
+   "properties": {
+    "fixedTermAccountId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "fixedTermAccountId"
+   ]
+  },
+  "list_fixed_term_accounts": {
+   "properties": {}
+  },
+  "get_overnight_summary": {
+   "properties": {
+    "savingsAccountId": {
+     "type": "string"
+    }
+   }
+  },
+  "list_accessible_portfolios": {
+   "properties": {}
+  },
+  "get_portfolio_cash_breakdown": {
+   "properties": {
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "get_portfolio_holdings": {
+   "properties": {
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "get_portfolio_overview": {
+   "properties": {
+    "includeYearToDate": {
+     "type": "boolean"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "list_portfolio_groups": {
+   "properties": {
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "get_portfolio_group": {
+   "properties": {
+    "groupId": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "groupId"
+   ]
+  },
+  "create_portfolio_group": {
+   "properties": {
+    "name": {
+     "type": "string"
+    },
+    "description": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "name"
+   ]
+  },
+  "upsert_portfolio_group": {
+   "properties": {
+    "groupId": {
+     "type": "string"
+    },
+    "name": {
+     "type": "string"
+    },
+    "description": {
+     "type": "string"
+    },
+    "clearDescription": {
+     "type": "boolean"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "groupId"
+   ]
+  },
+  "remove_portfolio_group": {
+   "properties": {
+    "groupId": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "groupId"
+   ]
+  },
+  "add_portfolio_group_holdings": {
+   "properties": {
+    "groupId": {
+     "type": "string"
+    },
+    "isins": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "groupId",
+    "isins"
+   ]
+  },
+  "remove_portfolio_group_holdings": {
+   "properties": {
+    "groupId": {
+     "type": "string"
+    },
+    "isins": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "groupId",
+    "isins"
+   ]
+  },
+  "get_security_chart": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "timeframe": {
+     "type": "string",
+     "enum": [
+      "one_day",
+      "seven_days",
+      "one_month",
+      "three_months",
+      "six_months",
+      "year_to_date",
+      "one_year",
+      "max"
+     ]
+    }
+   },
+   "required": [
+    "isin",
+    "timeframe"
+   ]
+  },
+  "get_security_news": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "locale": {
+     "type": "string",
+     "enum": [
+      "en_US",
+      "de_DE"
+     ]
+    }
+   },
+   "required": [
+    "isin"
+   ]
+  },
+  "list_portfolio_transactions": {
+   "properties": {
+    "pageSize": {
+     "type": "integer"
+    },
+    "cursor": {
+     "type": "string"
+    },
+    "cryptoCursor": {
+     "type": "string"
+    },
+    "transactionTypes": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "statuses": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "searchTerm": {
+     "type": "string"
+    },
+    "fromTime": {
+     "type": "string"
+    },
+    "toTime": {
+     "type": "string"
+    },
+    "isin": {
+     "type": "string"
+    },
+    "cryptoTicker": {
+     "type": "string"
+    },
+    "includeReinvestmentSubtypes": {
+     "type": "boolean"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "list_overnight_transactions": {
+   "properties": {
+    "cursor": {
+     "type": "string"
+    },
+    "fromTime": {
+     "type": "string"
+    },
+    "pageSize": {
+     "type": "integer"
+    },
+    "savingsAccountId": {
+     "type": "string"
+    },
+    "searchTerm": {
+     "type": "string"
+    },
+    "toTime": {
+     "type": "string"
+    },
+    "transactionTypes": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "list_watchlist_items": {
+   "properties": {
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "cancel_order": {
+   "properties": {
+    "orderId": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "orderId"
+   ]
+  },
+  "list_order_venues": {
+   "properties": {
+    "portfolioId": {
+     "type": "string"
+    }
+   }
+  },
+  "preview_buy_order": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "venue": {
+     "type": "string",
+     "enum": [
+      "gettex",
+      "xetra",
+      "eix"
+     ]
+    },
+    "quantity": {
+     "oneOf": [
+      {
+       "type": "object",
+       "properties": {
+        "mode": {
+         "const": "amount"
+        },
+        "amount": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "number"
+          }
+         ]
+        }
+       },
+       "required": [
+        "mode",
+        "amount"
+       ]
+      },
+      {
+       "type": "object",
+       "properties": {
+        "mode": {
+         "const": "shares"
+        },
+        "shares": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "string"
+          }
+         ]
+        }
+       },
+       "required": [
+        "mode",
+        "shares"
+       ]
+      }
+     ]
+    },
+    "order": {
+     "oneOf": [
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "market"
+        }
+       },
+       "required": [
+        "type"
+       ]
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "limit"
+        },
+        "limitPrice": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "number"
+          }
+         ]
+        }
+       },
+       "required": [
+        "type",
+        "limitPrice"
+       ]
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "stop"
+        },
+        "stopPrice": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "number"
+          }
+         ]
+        }
+       },
+       "required": [
+        "type",
+        "stopPrice"
+       ]
+      }
+     ]
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin",
+    "quantity",
+    "order"
+   ]
+  },
+  "preview_sell_order": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "venue": {
+     "type": "string",
+     "enum": [
+      "gettex",
+      "xetra",
+      "eix"
+     ]
+    },
+    "quantity": {
+     "type": "object",
+     "properties": {
+      "mode": {
+       "const": "shares"
+      },
+      "shares": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "number"
+        }
+       ]
+      }
+     },
+     "required": [
+      "mode",
+      "shares"
+     ]
+    },
+    "order": {
+     "oneOf": [
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "market"
+        }
+       },
+       "required": [
+        "type"
+       ]
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "limit"
+        },
+        "limitPrice": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "number"
+          }
+         ]
+        }
+       },
+       "required": [
+        "type",
+        "limitPrice"
+       ]
+      },
+      {
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "stop"
+        },
+        "stopPrice": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "number"
+          }
+         ]
+        }
+       },
+       "required": [
+        "type",
+        "stopPrice"
+       ]
+      }
+     ]
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin",
+    "quantity",
+    "order"
+   ]
+  },
+  "submit_buy_order": {
+   "properties": {
+    "submission": {
+     "type": "object"
+    },
+    "acknowledgementIds": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "enum": [
+       "acknowledge_appropriateness_warning",
+       "accept_unsuitable"
+      ]
+     }
+    }
+   },
+   "required": [
+    "submission",
+    "acknowledgementIds"
+   ]
+  },
+  "submit_sell_order": {
+   "properties": {
+    "submission": {
+     "type": "object"
+    },
+    "acknowledgementIds": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "enum": [
+       "acknowledge_appropriateness_warning",
+       "accept_unsuitable"
+      ]
+     }
+    }
+   },
+   "required": [
+    "submission",
+    "acknowledgementIds"
+   ]
+  },
+  "get_security_quote": {
+   "properties": {
+    "isin": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "isin"
+   ]
+  },
+  "search_derivatives": {
+   "properties": {
+    "derivativeType": {
+     "type": "string",
+     "enum": [
+      "knockout",
+      "warrant",
+      "factor"
+     ]
+    },
+    "underlyingIsin": {
+     "type": "string"
+    },
+    "strategy": {
+     "type": "string",
+     "enum": [
+      "long",
+      "short",
+      "call",
+      "put"
+     ]
+    },
+    "limit": {
+     "type": "integer"
+    },
+    "offset": {
+     "type": "integer"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "derivativeType",
+    "underlyingIsin",
+    "strategy"
+   ]
+  },
+  "search_securities": {
+   "properties": {
+    "query": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "query"
+   ]
+  },
+  "get_transaction_details": {
+   "properties": {
+    "transactionId": {
+     "type": "string"
+    },
+    "portfolioId": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "transactionId"
+   ]
+  }
+ }
+}

@@ -1,0 +1,82 @@
+import { ArrowPathIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { AVATAR } from "../Brand";
+import { initialsOf } from "../profile";
+import { pluralize } from "../format";
+import type { View } from "../nav";
+import { btn, SPIN } from "../ui";
+import { extension } from "../extensions";
+import type { AppCommands } from "./useAppCommands";
+import { useApp } from "./AppContext";
+import type { AppData } from "./useAppData";
+
+/** The heading of the account menu: the avatar, the name and the number of portfolios. */
+export function AccountHeader() {
+  const { data } = useApp();
+  const { accountName, dashboard } = data;
+  const count = dashboard?.portfolios.length ?? 0;
+  return (
+    <div className="flex items-center gap-2.5 px-2 pt-2 pb-2.5">
+      <span className={AVATAR}>{initialsOf(accountName)}</span>
+      <div className="grid gap-0.5">
+        <strong className="font-semibold text-ink-strong">{accountName ?? "My account"}</strong>
+        <small className="text-ink-muted">Scalable Capital · {pluralize(count, "portfolio")}</small>
+      </div>
+    </div>
+  );
+}
+
+const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "watchlist", "discover", "transactions"]);
+
+/** The buttons next to the page title: the Trading switch, New order and Refresh. Each only appears where it does something. */
+export function pageActions(data: AppData, commands: AppCommands) {
+  const { view, tradingEnabled, autoRefresh, refreshLabel, syncing, marketTableOpen, market, extensionRuntime } = data;
+  const { toggleTrading, openOrder, refreshAccount } = commands;
+  const extensionView = extension.views?.some((item) => item.id === view) ?? false;
+  const refreshExtension = extensionView && extensionRuntime.refresh !== undefined;
+  const showTrading = view !== "settings" && !extensionView;
+  // New order belongs to the pages about securities and orders; Groups, Alerts and Savings have their own "New …" action.
+  const showNewOrder = showTrading && tradingEnabled && ORDER_VIEWS.has(view);
+  const showRefresh = view !== "settings";
+  const headerAuto = refreshExtension ? (extensionRuntime.autoRefresh ?? false) : autoRefresh;
+  const headerLabel = refreshExtension ? (extensionRuntime.refreshLabel ?? "") : refreshLabel;
+  const refreshBusy = refreshExtension ? (extensionRuntime.busy ?? extensionRuntime.loading ?? false) : syncing || (marketTableOpen && market.loading);
+  const refreshNow = refreshExtension ? extensionRuntime.refresh! : refreshAccount;
+  if (!showTrading && !showRefresh) return undefined;
+  return (
+    <>
+      {showTrading && (
+        <button
+          className={btn.mode(tradingEnabled, "warn")}
+          type="button"
+          role="switch"
+          aria-checked={tradingEnabled}
+          onClick={toggleTrading}
+          title={
+            tradingEnabled
+              ? "Trading is on. Every order still needs a preview and your confirmation."
+              : "Read-only. Turn on to place orders, change watchlists, price alerts, groups and savings plans, or run other data-changing tools."
+          }
+        >
+          <ShieldCheckIcon aria-hidden="true" /> {tradingEnabled ? "Trading on" : "Read-only"}
+        </button>
+      )}
+      {showNewOrder && (
+        <button className={btn.primary} type="button" onClick={() => openOrder("buy", null)}>
+          New order
+        </button>
+      )}
+      {showRefresh && (
+        <button
+          className={btn.mode(headerAuto)}
+          type="button"
+          onClick={refreshNow}
+          disabled={refreshBusy}
+          title={headerAuto ? `Reload now. Data refreshes by itself every ${headerLabel}; change this in Settings.` : "Reload the current data now."}
+        >
+          <ArrowPathIcon aria-hidden="true" className={refreshBusy ? SPIN : ""} /> Refresh
+          {headerAuto && <span className="font-normal opacity-80">· every {headerLabel}</span>}
+        </button>
+      )}
+    </>
+  );
+}

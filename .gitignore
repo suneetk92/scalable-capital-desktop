@@ -1,0 +1,23 @@
+# Dependencies and build output
+node_modules
+dist
+dist-ssr
+
+# Local Windows build output (see AGENTS.md); published builds come from CI releases
+release/
+
+# Logs and JVM crash dumps
+logs
+*.log
+hs_err_pid*
+
+# Editors and OS
+.idea
+.junie
+.vscode/
+.DS_Store
+*.sw?
+*.local
+
+# Browser network captures hold session cookies
+*.har
