@@ -168,7 +168,7 @@ jobs:
           cp "src-tauri/target/${{ matrix.target }}/release/scalable-capital-desktop.exe" dist-artifacts/scalable-capital-desktop-portable-windows-x64.exe
 
       - name: Upload installers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scalable-capital-desktop-${{ matrix.artifact }}
           if-no-files-found: error
