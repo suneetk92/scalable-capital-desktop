@@ -120,7 +120,7 @@ export function Stat({ label, value, foot, icon: Icon, tone }: { label: string; 
 
 export function CardGrid({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <section aria-label={label} className="mb-5 grid grid-cols-1 gap-3 min-[901px]:grid-cols-2">
+    <section aria-label={label} className="mb-5 grid grid-cols-1 gap-3 min-[901px]:grid-cols-2 min-[1700px]:grid-cols-3">
       {children}
     </section>
   );

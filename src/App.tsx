@@ -104,7 +104,7 @@ function App() {
 
           <div className="flex min-h-0 flex-1">
             <div className="min-w-0 flex-1 overflow-y-auto">
-              <div className="mx-auto w-[min(100%,102.6667rem)] px-8 pt-7.75 pb-5 max-[1080px]:px-5 max-[640px]:px-3.25 max-[640px]:pt-5.5 max-[640px]:pb-4">
+              <div className="w-full px-8 pt-7.75 pb-5 max-[1080px]:px-5 max-[640px]:px-3.25 max-[640px]:pt-5.5 max-[640px]:pb-4">
                 {updateNotice}
                 {error && <Alert onDismiss={() => setError(null)}>{error}</Alert>}
                 <ProviderStatus statuses={providerStatuses} busy={providersBusy} onRetry={retryProvider} />

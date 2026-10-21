@@ -352,7 +352,7 @@ export function LoadingShell({ brand }: { brand: ReactNode }) {
       </aside>
       <section className="min-w-0 flex-1 overflow-hidden">
         <div className="h-[3.8667rem] border-b border-line bg-chrome" />
-        <div className="mx-auto w-[min(100%,102.6667rem)] px-8 pt-[2.0667rem] max-[640px]:px-[0.8667rem]">
+        <div className="w-full px-8 pt-[2.0667rem] max-[640px]:px-[0.8667rem]">
           <div className="mb-5 grid grid-cols-2 gap-3 min-[1081px]:grid-cols-4">
             {Array.from({ length: 4 }, (_, index) => (
               <Skeleton key={index} className="h-[5.8667rem] rounded-panel" />
