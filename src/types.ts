@@ -3,11 +3,15 @@ import type { Invoke, ToolDef } from "./tools";
 
 export type PagePortfolio = { portfolioId: string; name: string };
 
+/** A security held in a portfolio, with the shares held. */
+export type HeldPosition = { portfolioId: string; isin: string; name: string; symbol: string; currency: string; quantity: number };
+
 /** Everything a page needs to call Scalable's tools; built once in `App.tsx`. */
 export type Common = {
   invoke: Invoke;
   defs: ToolDef[];
   portfolios: PagePortfolio[];
+  held: HeldPosition[];
   actions: ToolActions;
   tradingEnabled: boolean;
   /** The "Rows per page" setting; 0 shows every row. */

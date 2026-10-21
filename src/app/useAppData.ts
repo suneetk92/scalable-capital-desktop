@@ -384,10 +384,18 @@ export function useAppData() {
     groups: baseGroups,
     defaultGroup: baseDefaultGroup,
   });
+  const heldPositions = useMemo(
+    () =>
+      portfolioRows.flatMap((row) =>
+        row.isin && row.quantity !== null && row.quantity > 0 ? [{ portfolioId: row.portfolioId, isin: row.isin, name: row.name || row.symbol, symbol: row.symbol, currency: row.currency, quantity: row.quantity }] : [],
+      ),
+    [portfolioRows],
+  );
   const common: Common = {
     invoke,
     defs: toolDefs,
     portfolios: pagePortfolioList,
+    held: heldPositions,
     actions: toolActions,
     tradingEnabled,
     pageSize: settings.pageSize,

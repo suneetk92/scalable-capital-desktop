@@ -5,7 +5,7 @@ import { ArrowTrendingDownIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { invokeCommand } from "../commands";
 import { useTrailingStops } from "../hooks/useTrailingStops";
-import { formatMoney, parseSearch } from "../screener";
+import { formatMoney } from "../screener";
 import { TrailingStopDialog } from "../TrailingStopDialog";
 import { errorText } from "../tools";
 import { STATUS_LABEL, trailLabel, triggerPrice, type TrailingStatus, type TrailingStop } from "../trailing";
@@ -76,7 +76,7 @@ function Row({ order, stop, logo, onRemove }: { order: string[]; stop: TrailingS
 
 /** The trailing stops the app watches itself, with a form to start one. */
 export function TrailingStops({ common }: { common: Common }) {
-  const { invoke, portfolios, tradingEnabled } = common;
+  const { invoke, portfolios, held, tradingEnabled } = common;
   const { stops, problem, reload } = useTrailingStops(invoke);
   const { order, layout } = useTableLayout("trailing-stops", COLUMN_IDS);
   const resized = resizedTable(layout.widths);
@@ -145,8 +145,8 @@ export function TrailingStops({ common }: { common: Common }) {
           portfolioId={portfolios[0]?.portfolioId ?? ""}
           quantity=""
           portfolios={portfolios}
+          held={held}
           invoke={invoke}
-          parseSearch={parseSearch}
           tradingEnabled={tradingEnabled}
           onClose={() => setAdding(false)}
           onAdded={() => void reload()}

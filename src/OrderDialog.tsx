@@ -562,8 +562,8 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
           portfolioId={portfolioId}
           quantity={bought.quantity !== null ? String(bought.quantity) : ""}
           portfolios={portfolios}
+          held={security && heldQuantity ? [{ portfolioId, isin: security.isin, name: security.name, symbol: security.symbol, currency: security.currency, quantity: heldQuantity }] : []}
           invoke={invoke}
-          parseSearch={parseSearch}
           tradingEnabled
           onClose={() => setTrailing(false)}
         />

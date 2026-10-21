@@ -317,7 +317,7 @@ non-read tool, including unknown tools, until Trading is on.
   take-profit price must be above and the stop-loss price below the limit price.
 - **Trailing stop loss (optional, local).** Scalable's MCP has no trailing stop, so the app does it itself
   (`src-tauri/src/mcp/trailing/`: the saved file, quotes, the sale, the watcher and the commands in one file each). Start one on the Alerts page (**New trailing stop**) or after a buy
-  (**Set trailing stop loss**): pick the security, the shares to sell and a distance in percent or money, and
+  (**Set trailing stop loss**): pick a security you hold (the dialog shows your shares and a **Sell all** link), the shares to sell and a distance in percent or money, and
   tick that the app may sell without asking again. The app remembers the highest price from then on (the
   bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (Settings, Trailing stop losses: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at
   or below the high minus the distance it sells the shares at market with `preview_sell_order` and
