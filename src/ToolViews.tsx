@@ -1,6 +1,8 @@
 import { Field, Label } from "@headlessui/react";
 import { InboxIcon } from "@heroicons/react/24/outline";
 import { useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { ColumnHead, resizedTable } from "./ColumnHead";
+import { useTableLayout } from "./hooks/useTableLayout";
 import { CheckboxField, EmptyState, Pagination, Select, SortHeader } from "./controls";
 import { nextSort, sortItems, type SortState } from "./sorting";
 import { useShowDiagnostics } from "./settings";
@@ -10,6 +12,7 @@ import {
   Badge,
   btn,
   ConfirmDialog,
+  cx,
   DescriptionList,
   DescriptionRow,
   EMPTY,
@@ -148,6 +151,8 @@ function cellOf(record: Rec, path: string): ReactNode {
 const DEFAULT_RECORD_PAGE_SIZE = 25;
 
 /** Table for any list of records; columns are picked from what the records contain. Long lists are paged. */
+const ACTIONS_COLUMN = "__actions";
+
 export function RecordTable({
   records,
   actions,
@@ -171,6 +176,10 @@ export function RecordTable({
   const columns = useMemo(() => pickColumns(records), [records]);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortState>(null);
+  const columnIds = useMemo(() => [...columns.map((column) => column.path), ...(actions ? [ACTIONS_COLUMN] : [])], [columns, actions]);
+  // Tables of the same shape (the same columns) share their layout.
+  const { order, layout } = useTableLayout(`records:${columns.map((column) => column.path).join("|")}`, columnIds);
+  const resized = resizedTable(layout.widths);
   const sorted = useMemo(
     () =>
       sortItems(records, sort, (record, path) => {
@@ -191,29 +200,32 @@ export function RecordTable({
   return (
     <>
       <div className={SCROLL_X}>
-        <table className={RECORD_TABLE}>
+        <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
           <thead>
             <tr>
-              {columns.map((column) => (
-                <SortHeader key={column.path} label={column.label} column={column.path} sort={sort} onSort={sortColumn} />
-              ))}
-              {actions && (
-                <th scope="col" className={TH_NUM}>
-                  Actions
-                </th>
-              )}
+              {order.map((id) => {
+                const column = columns.find((item) => item.path === id);
+                return column ? (
+                  <SortHeader key={id} layout={layout} label={column.label} column={id} sort={sort} onSort={sortColumn} />
+                ) : (
+                  <ColumnHead key={id} id={id} label="Actions" layout={layout} className={TH_NUM}>
+                    Actions
+                  </ColumnHead>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {sorted.slice(offset, offset + rowsPerPage).map((record, index) => (
               <tr key={offset + index} className={onRow ? "cursor-pointer" : ""} onClick={onRow ? () => onRow(record) : undefined}>
-                {columns.map((column) => (
-                  <td key={column.path}>{cellOf(record, column.path)}</td>
-                ))}
-                {actions && (
-                  <td className={TD_NUM} onClick={(event) => event.stopPropagation()}>
-                    <div className="flex justify-end gap-1.5">{actions(record)}</div>
-                  </td>
+                {order.map((id) =>
+                  id === ACTIONS_COLUMN && actions ? (
+                    <td key={id} className={TD_NUM} onClick={(event) => event.stopPropagation()}>
+                      <div className="flex justify-end gap-1.5">{actions(record)}</div>
+                    </td>
+                  ) : (
+                    <td key={id}>{cellOf(record, id)}</td>
+                  ),
                 )}
               </tr>
             ))}

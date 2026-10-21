@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
+import { useTableLayout } from "../hooks/useTableLayout";
 import { Modal } from "../ToolViews";
 import { schemaArguments, type PublishedTool } from "../toolSchema";
 import { pretty } from "../tools";
@@ -11,6 +13,9 @@ const PARTS: { id: Part; label: string }[] = [
   { id: "input", label: "Input schema" },
   { id: "output", label: "Output schema" },
 ];
+
+const COLUMN_IDS = ["name", "type", "required", "description"];
+const HEADS: Record<string, string> = { name: "Argument", type: "Type", required: "Required", description: "Description" };
 
 function Json({ value, empty }: { value: unknown; empty: string }) {
   if (value === null || value === undefined) return <p className={EMPTY}>{empty}</p>;
@@ -36,6 +41,8 @@ export function ToolSchemaModal({
   onClose: () => void;
 }) {
   const [part, setPart] = useState<Part>("arguments");
+  const { order, layout } = useTableLayout("tool-schema", COLUMN_IDS);
+  const resized = resizedTable(layout.widths);
   const rows = schemaArguments(tool?.inputSchema);
   const annotations = tool?.annotations as Rec | null | undefined;
   const hints = ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"].filter((key) => annotations?.[key] === true).map((key) => key.replace("Hint", ""));
@@ -78,24 +85,29 @@ export function ToolSchemaModal({
               <p className={EMPTY}>This tool takes no arguments.</p>
             ) : (
               <div className={SCROLL_X}>
-                <table className={cx(RECORD_TABLE, "[&_td]:max-w-none! [&_td]:whitespace-normal [&_td]:align-top")}>
+                <table className={cx(RECORD_TABLE, "[&_td]:max-w-none! [&_td]:whitespace-normal [&_td]:align-top", resized.className)} style={resized.style}>
                   <thead>
                     <tr>
-                      <th scope="col">Argument</th>
-                      <th scope="col">Type</th>
-                      <th scope="col">Required</th>
-                      <th scope="col">Description</th>
+                      {order.map((id) => (
+                        <ColumnHead key={id} id={id} label={HEADS[id]} layout={layout}>
+                          {HEADS[id]}
+                        </ColumnHead>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.name}>
-                        <td>
-                          <code>{row.name}</code>
-                        </td>
-                        <td className="break-words">{row.type}</td>
-                        <td>{row.required ? "Yes" : "No"}</td>
-                        <td className="text-ink-muted">{row.description || "—"}</td>
+                        {inOrder(order, {
+                          name: (
+                            <td>
+                              <code>{row.name}</code>
+                            </td>
+                          ),
+                          type: <td className="break-words">{row.type}</td>,
+                          required: <td>{row.required ? "Yes" : "No"}</td>,
+                          description: <td className="text-ink-muted">{row.description || "—"}</td>,
+                        })}
                       </tr>
                     ))}
                   </tbody>

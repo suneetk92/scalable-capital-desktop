@@ -2,7 +2,9 @@ import { Tab, TabGroup, TabList } from "@headlessui/react";
 import { Bars2Icon, ChevronDownIcon, MagnifyingGlassIcon, RectangleGroupIcon, StarIcon, TableCellsIcon } from "@heroicons/react/24/outline";
 import { useCallback, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { ColumnHead, resizedTable } from "./ColumnHead";
 import { ColumnPicker } from "./ColumnPicker";
+import { moveColumn, useColumnWidths, type ColumnLayout } from "./hooks/useTableLayout";
 import { CheckboxField, DropdownMenu, EmptyState, FILTER_TITLE, FiltersPopover, Pagination, RadioList, RowCheckbox, SearchBox, SortButton, type MenuEntry } from "./controls";
 import { ScreenerRowView, isTextColumn } from "./ScreenerRow";
 import type { ScreenerTableState } from "./hooks/useScreenerTable";
@@ -149,6 +151,17 @@ export function ScreenerTable({
   );
   const isColumnText = (column: (typeof shownColumns)[number]) => (column.source === "scalable" ? isTextColumn(column) : (extension.tableColumns?.isTextColumn?.(column) ?? isTextColumn(column)));
   const usesExtensionData = shownColumns.some((column) => column.source !== "scalable");
+  const [widths, setWidths] = useColumnWidths(`screener-${view}`);
+  const columnLayout: ColumnLayout = {
+    widths,
+    setWidths,
+    move: (from, to, after) => {
+      if (from === "symbol") return;
+      const ids = shownColumns.map((column) => column.id);
+      onChangeColumns(to === "symbol" ? (after ? moveColumn(ids, from, ids[0] ?? from, false) : ids) : moveColumn(ids, from, to, after));
+    },
+  };
+  const resized = resizedTable(widths, 5.75 + (hasRowActions ? 8.6667 : 0));
   const columnCount = 3 + shownColumns.length + (hasRowActions ? 1 : 0);
   const filtered = query !== "" || activeFilters > 0;
 
@@ -319,21 +332,27 @@ export function ScreenerTable({
         </div>
       )}
       <div ref={tableScroll} className="max-h-[calc(100vh-12.6667rem)] min-h-40 overflow-auto">
-        <table aria-rowcount={tableItems.length + 1 + (visibleRows.length === 0 ? 1 : 0)} className={cx(TABLE, "[&_thead]:bg-surface/80 [&_thead]:backdrop-blur-sm")}>
+        <table
+          aria-rowcount={tableItems.length + 1 + (visibleRows.length === 0 ? 1 : 0)}
+          className={cx(TABLE, "[&_thead]:bg-surface/80 [&_thead]:backdrop-blur-sm", resized.className)}
+          style={resized.style}
+        >
           <thead>
             <tr aria-rowindex={1}>
               <th scope="col" className="w-11 px-3!">
                 <RowCheckbox label="Select all rows on this page" checked={pageSelected} indeterminate={!pageSelected && pageSomeSelected} onChange={togglePage} />
               </th>
-              <th scope="col" className={NAME_COLUMN} aria-sort={activeSortKey === "symbol" ? sortDirection : "none"}>
+              <ColumnHead id="symbol" label="Symbol / Name" layout={columnLayout} className={NAME_COLUMN} sortState={activeSortKey === "symbol" ? sortDirection : "none"}>
                 <SortButton start label="Symbol / Name" column="symbol" active={activeSortKey === "symbol"} direction={sortDirection} onSort={toggleSort} />
-              </th>
+              </ColumnHead>
               {shownColumns.map((column) => (
-                <th
+                <ColumnHead
                   key={column.id}
-                  scope="col"
+                  id={column.id}
+                  label={column.label}
+                  layout={columnLayout}
                   className={isColumnText(column) || column.id === "exchange" ? "min-w-[8.6667rem] text-left" : TH_NUM}
-                  aria-sort={activeSortKey === column.id ? sortDirection : "none"}
+                  sortState={activeSortKey === column.id ? sortDirection : "none"}
                 >
                   <SortButton
                     start={isColumnText(column) || column.id === "exchange"}
@@ -344,10 +363,10 @@ export function ScreenerTable({
                     direction={sortDirection}
                     onSort={toggleSort}
                   />
-                </th>
+                </ColumnHead>
               ))}
               {hasRowActions && (
-                <th scope="col" className={TH_NUM}>
+                <th scope="col" className="w-[8.6667rem] min-w-[8.6667rem] text-right">
                   {tradingEnabled ? "Trade" : "Actions"}
                 </th>
               )}

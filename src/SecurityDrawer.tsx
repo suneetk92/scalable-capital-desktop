@@ -2,6 +2,8 @@ import { NewspaperIcon } from "@heroicons/react/24/outline";
 import { formatPercent } from "./format";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useMemo, useState, type ReactNode } from "react";
+import { ColumnHead, inOrder, resizedTable } from "./ColumnHead";
+import { useTableLayout } from "./hooks/useTableLayout";
 import { EmptyState, Feed, SkeletonRows } from "./controls";
 import { extension, type ExtensionContext } from "./extensions";
 import type { Common } from "./types";
@@ -25,6 +27,13 @@ export type DrawerTarget = {
   quantity: number | null;
   /** `null` when the watchlist could not be loaded, so the state is unknown. */
   inWatchlist: boolean | null;
+};
+
+const PERFORMANCE_COLUMNS = ["period", "return", "absolute"];
+const PERFORMANCE_HEADS: Record<string, { label: string; className?: string }> = {
+  period: { label: "Period" },
+  return: { label: "Return", className: TH_NUM },
+  absolute: { label: "Absolute", className: TH_NUM },
 };
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
@@ -86,6 +95,8 @@ export function SecurityDrawer({
   const chart = useToolQuery(invoke, defs, TOOL.getSecurityChart, actions.has(TOOL.getSecurityChart) ? [{ ...base, timeframe }] : null, reloadKey);
   const news = useToolQuery(invoke, defs, TOOL.getSecurityNews, actions.has(TOOL.getSecurityNews) ? [base] : null, reloadKey);
   const venues = useToolQuery(invoke, defs, TOOL.listOrderVenues, actions.has(TOOL.listOrderVenues) ? [base] : null, reloadKey);
+  const { order, layout } = useTableLayout("security-performance", PERFORMANCE_COLUMNS);
+  const resized = resizedTable(layout.widths);
   const performances = useMemo(() => sortByTimeframe(findPerformances(quote)), [quote]);
   const bid = findField(quote, ["bidPrice"]);
   const ask = findField(quote, ["askPrice"]);
@@ -242,16 +253,14 @@ export function SecurityDrawer({
           </DescriptionList>
         )}
         {performances.length > 0 ? (
-          <table className={RECORD_TABLE}>
+          <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
             <thead>
               <tr>
-                <th scope="col">Period</th>
-                <th scope="col" className={TH_NUM}>
-                  Return
-                </th>
-                <th scope="col" className={TH_NUM}>
-                  Absolute
-                </th>
+                {order.map((id) => (
+                  <ColumnHead key={id} id={id} label={PERFORMANCE_HEADS[id].label} layout={layout} className={PERFORMANCE_HEADS[id].className}>
+                    {PERFORMANCE_HEADS[id].label}
+                  </ColumnHead>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -261,12 +270,16 @@ export function SecurityDrawer({
                 const value = typeof percent === "number" ? percent * 100 : null;
                 return (
                   <tr key={index}>
-                    <td>{humanize(String(pick(entry, ["timeframe"]) ?? ""))}</td>
-                    <td className={`${TD_NUM} ${signClass(value)}`}>
-                      <SignGlyph value={value} />
-                      {formatPercent(value, 2, 2)}
-                    </td>
-                    <td className={TD_NUM}>{typeof absolute === "number" ? formatMoney(absolute, target.currency) : "—"}</td>
+                    {inOrder(order, {
+                      period: <td>{humanize(String(pick(entry, ["timeframe"]) ?? ""))}</td>,
+                      return: (
+                        <td className={`${TD_NUM} ${signClass(value)}`}>
+                          <SignGlyph value={value} />
+                          {formatPercent(value, 2, 2)}
+                        </td>
+                      ),
+                      absolute: <td className={TD_NUM}>{typeof absolute === "number" ? formatMoney(absolute, target.currency) : "—"}</td>,
+                    })}
                   </tr>
                 );
               })}

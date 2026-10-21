@@ -18,6 +18,8 @@ import {
   PopoverPanel,
   RadioGroup,
 } from "@headlessui/react";
+import { ColumnHead } from "./ColumnHead";
+import type { ColumnLayout } from "./hooks/useTableLayout";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpDownIcon, MinusIcon } from "@heroicons/react/20/solid";
 import type { ComponentProps, ComponentType, InputHTMLAttributes, ReactNode, Ref, SVGProps } from "react";
@@ -386,6 +388,7 @@ export function SortHeader({
   onSort,
   numeric = false,
   className,
+  layout,
 }: {
   label: string;
   column: string;
@@ -393,11 +396,21 @@ export function SortHeader({
   onSort: (column: string) => void;
   numeric?: boolean;
   className?: string;
+  /** Makes the column movable and resizable. */
+  layout?: ColumnLayout;
 }) {
   const active = sort !== null && sort.key === column;
+  const button = <SortButton label={label} column={column} active={active} direction={sort?.direction ?? "descending"} onSort={onSort} start={!numeric} />;
+  if (layout) {
+    return (
+      <ColumnHead id={column} label={label} layout={layout} className={cx(numeric && TH_NUM, className)} sortState={active ? sort.direction : "none"}>
+        {button}
+      </ColumnHead>
+    );
+  }
   return (
     <th scope="col" className={cx(numeric && TH_NUM, className)} aria-sort={active ? sort.direction : "none"}>
-      <SortButton label={label} column={column} active={active} direction={sort?.direction ?? "descending"} onSort={onSort} start={!numeric} />
+      {button}
     </th>
   );
 }

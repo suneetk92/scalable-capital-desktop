@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
+import { useTableLayout } from "../hooks/useTableLayout";
 import { CheckboxField, Pagination } from "../controls";
 import { VIEW_TITLES, type View } from "../nav";
 import { extension } from "../extensions";
@@ -11,6 +13,13 @@ import { Section } from "./shared";
 import { ToolSchemaModal } from "./ToolSchema";
 import { pluralize } from "../format";
 import { useAsyncQuery } from "../hooks/useAsyncQuery";
+
+const COLUMN_IDS = ["tool", "usedFor", "actions"];
+const HEADS: Record<string, { label: string; className?: string }> = {
+  tool: { label: "Tool · group · access · calls" },
+  usedFor: { label: "Used for" },
+  actions: { label: "Actions", className: "text-right" },
+};
 
 function status(row: { usage?: unknown; offered: boolean }) {
   return !row.offered ? "Not offered by this connection" : row.usage ? "Used by the app" : "Not used by the app";
@@ -29,6 +38,8 @@ function accessOf(name: string) {
 export function ToolsPage({ common, onSelectView }: { common: Common; onSelectView: (view: View) => void }) {
   const { defs, actions, invoke } = common;
   const [, force] = useState(0);
+  const { order, layout } = useTableLayout("tools", COLUMN_IDS);
+  const resized = resizedTable(layout.widths);
   const [onlyUnused, setOnlyUnused] = useState(false);
   const [ping, setPing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -111,14 +122,14 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
         Show only tools the app does not use
       </CheckboxField>
       <div className={SCROLL_X}>
-        <table className={RECORD_TABLE}>
+        <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
           <thead>
             <tr>
-              <th scope="col">Tool · group · access · calls</th>
-              <th scope="col">Used for</th>
-              <th scope="col" className="text-right">
-                Actions
-              </th>
+              {order.map((id) => (
+                <ColumnHead key={id} id={id} label={HEADS[id].label} layout={layout} className={HEADS[id].className}>
+                  {HEADS[id].label}
+                </ColumnHead>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -126,54 +137,68 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
               const stat = stats.get(row.name);
               return (
                 <tr key={row.name} title={row.description}>
-                  <td>
-                    <code className={cx("font-semibold", row.usage && row.offered ? "text-up!" : "text-down!")} title={status(row)}>
-                      {row.name}
-                    </code>
-                    <div className="text-caption text-ink-muted">{[row.usage?.category, row.access, callsText(row.name, stat)].filter(Boolean).join(" · ")}</div>
-                  </td>
-                  <td className="min-w-48 whitespace-normal">
-                    {row.usage ? (
-                      <>
-                        {row.usage.feature}
-                        <div className="text-caption">
+                  {inOrder(order, {
+                    tool: (
+                      <td>
+                        <code className={cx("font-semibold", row.usage && row.offered ? "text-up!" : "text-down!")} title={status(row)}>
+                          {row.name}
+                        </code>
+                        <div className="text-caption text-ink-muted">{[row.usage?.category, row.access, callsText(row.name, stat)].filter(Boolean).join(" · ")}</div>
+                      </td>
+                    ),
+                    usedFor: (
+                      <td className="min-w-48 whitespace-normal">
+                        {row.usage ? (
+                          <>
+                            {row.usage.feature}
+                            <div className="text-caption">
+                              <button
+                                className={cx(btn.link, "max-w-full truncate text-left hover:underline")}
+                                type="button"
+                                title={`Open ${VIEW_TITLES[row.usage.view as keyof typeof VIEW_TITLES] ?? extension.views?.find((view) => view.id === row.usage?.view)?.title ?? row.usage.view}`}
+                                onClick={() => onSelectView(row.usage!.view)}
+                              >
+                                {row.usage.where} ↗
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    ),
+                    actions: (
+                      <td className="text-right whitespace-nowrap">
+                        <span className="inline-flex gap-1">
                           <button
-                            className={cx(btn.link, "max-w-full truncate text-left hover:underline")}
+                            className={cx(btn.trade, "px-2! py-0.5! text-caption!")}
                             type="button"
-                            title={`Open ${VIEW_TITLES[row.usage.view as keyof typeof VIEW_TITLES] ?? extension.views?.find((view) => view.id === row.usage?.view)?.title ?? row.usage.view}`}
-                            onClick={() => onSelectView(row.usage!.view)}
+                            disabled={!row.offered}
+                            aria-label={`Schema of ${row.name}`}
+                            onClick={() => openSchema(row.name)}
                           >
-                            {row.usage.where} ↗
+                            Schema
                           </button>
-                        </div>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="text-right whitespace-nowrap">
-                    <span className="inline-flex gap-1">
-                      <button className={cx(btn.trade, "px-2! py-0.5! text-caption!")} type="button" disabled={!row.offered} aria-label={`Schema of ${row.name}`} onClick={() => openSchema(row.name)}>
-                        Schema
-                      </button>
-                      <button
-                        className={cx(btn.trade, "px-2! py-0.5! text-caption!")}
-                        type="button"
-                        disabled={!row.offered || row.name in DIALOG_ONLY_TOOLS || !actions.has(row.name)}
-                        title={
-                          row.name in DIALOG_ONLY_TOOLS
-                            ? `Only sent from ${DIALOG_ONLY_TOOLS[row.name]}, after a preview`
-                            : row.offered && !actions.has(row.name)
-                              ? "Turn on Trading (top right) to run tools that change data"
-                              : undefined
-                        }
-                        aria-label={`Run ${row.name}`}
-                        onClick={() => actions.openRunner(row.name)}
-                      >
-                        Run
-                      </button>
-                    </span>
-                  </td>
+                          <button
+                            className={cx(btn.trade, "px-2! py-0.5! text-caption!")}
+                            type="button"
+                            disabled={!row.offered || row.name in DIALOG_ONLY_TOOLS || !actions.has(row.name)}
+                            title={
+                              row.name in DIALOG_ONLY_TOOLS
+                                ? `Only sent from ${DIALOG_ONLY_TOOLS[row.name]}, after a preview`
+                                : row.offered && !actions.has(row.name)
+                                  ? "Turn on Trading (top right) to run tools that change data"
+                                  : undefined
+                            }
+                            aria-label={`Run ${row.name}`}
+                            onClick={() => actions.openRunner(row.name)}
+                          >
+                            Run
+                          </button>
+                        </span>
+                      </td>
+                    ),
+                  })}
                 </tr>
               );
             })}

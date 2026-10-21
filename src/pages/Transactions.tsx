@@ -1,7 +1,9 @@
 import { Tab, TabGroup, TabList } from "@headlessui/react";
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, ArrowsRightLeftIcon, BanknotesIcon, ClockIcon, ListBulletIcon, MagnifyingGlassIcon, TableCellsIcon } from "@heroicons/react/24/outline";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, type Ref } from "react";
+import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { EmptyState, FILTER_TITLE, FiltersPopover, Feed, Pagination, RadioList, SearchBox, SortHeader, type FeedItem } from "../controls";
+import { useTableLayout } from "../hooks/useTableLayout";
 import { useChunkedMap } from "../hooks/useChunkedMap";
 import { useExtensionIsinLogos } from "../extensions";
 import { useTransactionHistory } from "../hooks/useTransactionHistory";
@@ -123,6 +125,17 @@ const optionsOf = (values: (string | undefined)[], current: string, all: string)
   ...distinctValues([...values, current]).map((value): [string, string] => [value, humanize(value)]),
 ];
 
+const COLUMNS = ["when", "kind", "name", "status", "quantity", "limit", "amount", "actions"];
+const HEADS: Record<string, { label: string; numeric?: boolean; className?: string }> = {
+  when: { label: "Date" },
+  kind: { label: "Type" },
+  name: { label: "Symbol / Name", className: NAME_COLUMN },
+  status: { label: "Status" },
+  quantity: { label: "Quantity", numeric: true },
+  limit: { label: "Limit price", numeric: true },
+  amount: { label: "Amount", numeric: true },
+};
+
 export function TransactionsPage({
   common,
   logosEnabled,
@@ -217,6 +230,8 @@ export function TransactionsPage({
 
   // Sorting covers every page and only applies to the table; the timeline stays newest first.
   const [sort, setSort] = useState<SortState>(null);
+  const { order, layout } = useTableLayout("transactions", COLUMNS);
+  const resized = resizedTable(layout.widths);
   const sortColumn = (column: string) => {
     setSort((current) => nextSort(current, column));
     setPage(1);
@@ -355,19 +370,18 @@ export function TransactionsPage({
               ) : (
                 <>
                   <div className={SCROLL_X}>
-                    <table className={RECORD_TABLE}>
+                    <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
                       <thead>
                         <tr>
-                          <SortHeader label="Date" column="when" sort={sort} onSort={sortColumn} />
-                          <SortHeader label="Type" column="kind" sort={sort} onSort={sortColumn} />
-                          <SortHeader label="Symbol / Name" column="name" sort={sort} onSort={sortColumn} className={NAME_COLUMN} />
-                          <SortHeader label="Status" column="status" sort={sort} onSort={sortColumn} />
-                          <SortHeader numeric label="Quantity" column="quantity" sort={sort} onSort={sortColumn} />
-                          <SortHeader numeric label="Limit price" column="limit" sort={sort} onSort={sortColumn} />
-                          <SortHeader numeric label="Amount" column="amount" sort={sort} onSort={sortColumn} />
-                          <th scope="col" className="min-w-[8.6667rem] text-right">
-                            Actions
-                          </th>
+                          {order.map((id) =>
+                            id === "actions" ? (
+                              <ColumnHead key={id} id={id} label="Actions" layout={layout} className="min-w-[8.6667rem] text-right">
+                                Actions
+                              </ColumnHead>
+                            ) : (
+                              <SortHeader key={id} layout={layout} {...HEADS[id]} column={id} sort={sort} onSort={sortColumn} />
+                            ),
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -378,43 +392,51 @@ export function TransactionsPage({
                           const symbol = symbolOf(fields);
                           return (
                             <tr key={`${currentPage}-${index}`}>
-                              <td>{fields.when}</td>
-                              <td>{fields.kind ? <Badge tone={isBuy ? "green" : isSell ? "red" : "gray"}>{humanize(fields.kind)}</Badge> : "—"}</td>
-                              <td>
-                                {fields.isin || name ? (
-                                  <SecurityCell
-                                    initials={(symbol ?? name ?? fields.isin ?? "").slice(0, 2).toUpperCase()}
-                                    logo={logos.get(fields.isin?.toUpperCase() ?? "")}
-                                    title={
-                                      fields.isin ? (
-                                        <button
-                                          className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline"
-                                          type="button"
-                                          onClick={() => openSecurity(fields)}
-                                          title="Open details, chart and news"
-                                        >
-                                          {symbol ?? name ?? fields.isin}
-                                        </button>
-                                      ) : (
-                                        name
-                                      )
-                                    }
-                                    subtitle={fields.isin ? (symbol ? name : name ? fields.isin : undefined) : undefined}
-                                  />
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                              <td>{fields.status ? humanize(fields.status) : "—"}</td>
-                              <td className={TD_NUM}>{fields.quantity ? formatCell(Number(fields.quantity)) : "—"}</td>
-                              <td className={TD_NUM}>{fields.limit ? formatCell(Number(fields.limit)) : "—"}</td>
-                              <td className={cx(TD_NUM, fields.amount ? signClass(fields.amount) : "")}>
-                                <SignGlyph value={fields.amount} />
-                                {fields.amount !== null ? formatCell(fields.amount) : "—"}
-                              </td>
-                              <td className={TD_NUM}>
-                                <div className="flex justify-end gap-1.5">{rowActions(row.record, row.portfolioId)}</div>
-                              </td>
+                              {inOrder(order, {
+                                when: <td>{fields.when}</td>,
+                                kind: <td>{fields.kind ? <Badge tone={isBuy ? "green" : isSell ? "red" : "gray"}>{humanize(fields.kind)}</Badge> : "—"}</td>,
+                                name: (
+                                  <td>
+                                    {fields.isin || name ? (
+                                      <SecurityCell
+                                        initials={(symbol ?? name ?? fields.isin ?? "").slice(0, 2).toUpperCase()}
+                                        logo={logos.get(fields.isin?.toUpperCase() ?? "")}
+                                        title={
+                                          fields.isin ? (
+                                            <button
+                                              className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline"
+                                              type="button"
+                                              onClick={() => openSecurity(fields)}
+                                              title="Open details, chart and news"
+                                            >
+                                              {symbol ?? name ?? fields.isin}
+                                            </button>
+                                          ) : (
+                                            name
+                                          )
+                                        }
+                                        subtitle={fields.isin ? (symbol ? name : name ? fields.isin : undefined) : undefined}
+                                      />
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </td>
+                                ),
+                                status: <td>{fields.status ? humanize(fields.status) : "—"}</td>,
+                                quantity: <td className={TD_NUM}>{fields.quantity ? formatCell(Number(fields.quantity)) : "—"}</td>,
+                                limit: <td className={TD_NUM}>{fields.limit ? formatCell(Number(fields.limit)) : "—"}</td>,
+                                amount: (
+                                  <td className={cx(TD_NUM, fields.amount ? signClass(fields.amount) : "")}>
+                                    <SignGlyph value={fields.amount} />
+                                    {fields.amount !== null ? formatCell(fields.amount) : "—"}
+                                  </td>
+                                ),
+                                actions: (
+                                  <td className={TD_NUM}>
+                                    <div className="flex justify-end gap-1.5">{rowActions(row.record, row.portfolioId)}</div>
+                                  </td>
+                                ),
+                              })}
                             </tr>
                           );
                         })}

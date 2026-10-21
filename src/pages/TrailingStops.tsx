@@ -1,3 +1,5 @@
+import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
+import { useTableLayout } from "../hooks/useTableLayout";
 import { ArrowTrendingDownIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { invokeCommand } from "../commands";
@@ -8,37 +10,57 @@ import { errorText } from "../tools";
 import { STATUS_LABEL, trailLabel, triggerPrice, type TrailingStatus, type TrailingStop } from "../trailing";
 import { type Common } from "../types";
 import { EmptyState } from "../controls";
-import { Alert, Badge, btn, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../ui";
+import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../ui";
 import { Section } from "./shared";
 
 const COLUMNS = 8;
 
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
-function Row({ stop, onRemove }: { stop: TrailingStop; onRemove: () => void }) {
+const COLUMN_IDS = ["name", "status", "quantity", "trail", "high", "trigger", "now", "actions"];
+const HEADS: Record<string, { label: string; className?: string }> = {
+  name: { label: "ISIN / name", className: NAME_COLUMN },
+  status: { label: "Status" },
+  quantity: { label: "Shares", className: TH_NUM },
+  trail: { label: "Trails", className: TH_NUM },
+  high: { label: "High", className: TH_NUM },
+  trigger: { label: "Sells at or below", className: TH_NUM },
+  now: { label: "Now", className: TH_NUM },
+  actions: { label: "Actions", className: TH_NUM },
+};
+
+function Row({ order, stop, onRemove }: { order: string[]; stop: TrailingStop; onRemove: () => void }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
   return (
     <>
       <tr className={stop.message ? "[&>td]:border-b-0!" : undefined}>
-        <td>
-          <SecurityCell initials={stop.name.slice(0, 2).toUpperCase()} title={stop.isin} subtitle={stop.name} />
-        </td>
-        <td>
-          <Badge tone={TONE[stop.status]}>{STATUS_LABEL[stop.status]}</Badge>
-        </td>
-        <td className={TD_NUM}>{stop.quantity}</td>
-        <td className={TD_NUM}>{trailLabel(stop.trail, money)}</td>
-        <td className={TD_NUM}>{money(stop.high)}</td>
-        <td className={TD_NUM}>{watching ? money(triggerPrice(stop.high, stop.trail)) : "—"}</td>
-        <td className={TD_NUM}>{watching && stop.lastPrice !== null ? money(stop.lastPrice) : "—"}</td>
-        <td className={TD_NUM}>
-          <div className="flex justify-end gap-1.5">
-            <button className={btn.sell} type="button" onClick={onRemove} disabled={stop.status === "selling"}>
-              {watching ? "Stop watching" : "Remove"}
-            </button>
-          </div>
-        </td>
+        {inOrder(order, {
+          name: (
+            <td>
+              <SecurityCell initials={stop.name.slice(0, 2).toUpperCase()} title={stop.isin} subtitle={stop.name} />
+            </td>
+          ),
+          status: (
+            <td>
+              <Badge tone={TONE[stop.status]}>{STATUS_LABEL[stop.status]}</Badge>
+            </td>
+          ),
+          quantity: <td className={TD_NUM}>{stop.quantity}</td>,
+          trail: <td className={TD_NUM}>{trailLabel(stop.trail, money)}</td>,
+          high: <td className={TD_NUM}>{money(stop.high)}</td>,
+          trigger: <td className={TD_NUM}>{watching ? money(triggerPrice(stop.high, stop.trail)) : "—"}</td>,
+          now: <td className={TD_NUM}>{watching && stop.lastPrice !== null ? money(stop.lastPrice) : "—"}</td>,
+          actions: (
+            <td className={TD_NUM}>
+              <div className="flex justify-end gap-1.5">
+                <button className={btn.sell} type="button" onClick={onRemove} disabled={stop.status === "selling"}>
+                  {watching ? "Stop watching" : "Remove"}
+                </button>
+              </div>
+            </td>
+          ),
+        })}
       </tr>
       {stop.message && (
         <tr>
@@ -55,6 +77,8 @@ function Row({ stop, onRemove }: { stop: TrailingStop; onRemove: () => void }) {
 export function TrailingStops({ common }: { common: Common }) {
   const { invoke, portfolios, tradingEnabled } = common;
   const { stops, problem, reload } = useTrailingStops(invoke);
+  const { order, layout } = useTableLayout("trailing-stops", COLUMN_IDS);
+  const resized = resizedTable(layout.widths);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,36 +118,19 @@ export function TrailingStops({ common }: { common: Common }) {
           <EmptyState icon={ArrowTrendingDownIcon} title="No trailing stops" text="Start one here or right after a buy, and the app sells at market if the price falls by your distance." />
         ) : (
           <div className={`${SCROLL_X} border-t border-line`}>
-            <table className={RECORD_TABLE}>
+            <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
               <thead>
                 <tr>
-                  <th scope="col" className={NAME_COLUMN}>
-                    ISIN / name
-                  </th>
-                  <th scope="col">Status</th>
-                  <th scope="col" className={TH_NUM}>
-                    Shares
-                  </th>
-                  <th scope="col" className={TH_NUM}>
-                    Trails
-                  </th>
-                  <th scope="col" className={TH_NUM}>
-                    High
-                  </th>
-                  <th scope="col" className={TH_NUM}>
-                    Sells at or below
-                  </th>
-                  <th scope="col" className={TH_NUM}>
-                    Now
-                  </th>
-                  <th scope="col" className={TH_NUM}>
-                    Actions
-                  </th>
+                  {order.map((id) => (
+                    <ColumnHead key={id} id={id} label={HEADS[id].label} layout={layout} className={HEADS[id].className}>
+                      {HEADS[id].label}
+                    </ColumnHead>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {stops.map((stop) => (
-                  <Row key={stop.id} stop={stop} onRemove={() => void remove(stop.id)} />
+                  <Row key={stop.id} order={order} stop={stop} onRemove={() => void remove(stop.id)} />
                 ))}
               </tbody>
             </table>

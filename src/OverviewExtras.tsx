@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { summarizeActivity } from "./activity";
 import { useExtensionIsinLogos } from "./extensions";
+import { ColumnHead, inOrder, resizedTable } from "./ColumnHead";
+import { useTableLayout } from "./hooks/useTableLayout";
 import { useOvernightTransactions } from "./hooks/useOvernightTransactions";
 import { useTransactionHistory } from "./hooks/useTransactionHistory";
 import { FILTER_TITLE, FiltersPopover, Pagination, RadioList, SearchBox, SortHeader } from "./controls";
@@ -18,6 +20,26 @@ import { pickString } from "./response";
 import { TOOL } from "./commands";
 import { OVERNIGHT_PERIODS, OVERNIGHT_TYPES, type OvernightPeriod, type OvernightType } from "./overnight";
 import { humanize } from "./tools";
+
+const SECURITY_COLUMNS = ["name", "boughtAmount", "soldAmount", "averageBuyPrice", "realised", "fees", "dividends"];
+const SECURITY_HEADS: Record<string, { label: string; numeric?: boolean; className?: string }> = {
+  name: { label: "ISIN / name", className: NAME_COLUMN },
+  boughtAmount: { label: "Bought", numeric: true },
+  soldAmount: { label: "Sold", numeric: true },
+  averageBuyPrice: { label: "Avg buy price", numeric: true },
+  realised: { label: "Realised (avg. cost)", numeric: true },
+  fees: { label: "Fees", numeric: true },
+  dividends: { label: "Dividends", numeric: true },
+};
+const OVERNIGHT_COLUMNS = ["when", "kind", "description", "status", "amount", "documents"];
+const OVERNIGHT_HEADS: Record<string, { label: string; className?: string }> = {
+  when: { label: "Date" },
+  kind: { label: "Type" },
+  description: { label: "Description" },
+  status: { label: "Status" },
+  amount: { label: "Amount", className: "text-right" },
+  documents: { label: "Documents" },
+};
 
 function ToolCard({ title, entries, loading, children }: { title: string; entries: QueryEntry[]; loading: boolean; children?: (entry: QueryEntry) => ReactNode }) {
   return (
@@ -45,6 +67,8 @@ function ActivityCards({ common, currency, logosEnabled }: { common: Common; cur
   );
   const securities = paginate(sortedSecurities, page, pageSize);
   const securityLogos = useExtensionIsinLogos({ invoke: common.invoke, isins: securities.rows.map((security) => security.isin), enabled: logosEnabled });
+  const { order, layout } = useTableLayout("activity-securities", SECURITY_COLUMNS);
+  const resized = resizedTable(layout.widths);
   if (!common.actions.has(TOOL.listPortfolioTransactions)) return null;
   const sortSecurities = (column: string) => {
     setSort((current) => nextSort(current, column));
@@ -121,38 +145,40 @@ function ActivityCards({ common, currency, logosEnabled }: { common: Common; cur
         {summary.securities.length > 0 && (
           <Card title="By security" hint={hint} wide>
             <div className={SCROLL_X}>
-              <table className={RECORD_TABLE}>
+              <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
                 <thead>
                   <tr>
-                    <SortHeader label="ISIN / name" column="name" sort={sort} onSort={sortSecurities} className={NAME_COLUMN} />
-                    <SortHeader numeric label="Bought" column="boughtAmount" sort={sort} onSort={sortSecurities} />
-                    <SortHeader numeric label="Sold" column="soldAmount" sort={sort} onSort={sortSecurities} />
-                    <SortHeader numeric label="Avg buy price" column="averageBuyPrice" sort={sort} onSort={sortSecurities} />
-                    <SortHeader numeric label="Realised (avg. cost)" column="realised" sort={sort} onSort={sortSecurities} />
-                    <SortHeader numeric label="Fees" column="fees" sort={sort} onSort={sortSecurities} />
-                    <SortHeader numeric label="Dividends" column="dividends" sort={sort} onSort={sortSecurities} />
+                    {order.map((id) => (
+                      <SortHeader key={id} layout={layout} {...SECURITY_HEADS[id]} column={id} sort={sort} onSort={sortSecurities} />
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {securities.rows.map((security) => (
                     <tr key={security.isin}>
-                      <td>
-                        <SecurityCell
-                          initials={(security.name || security.isin).slice(0, 2).toUpperCase()}
-                          logo={securityLogos.get(security.isin.toUpperCase())}
-                          title={security.isin || security.name}
-                          subtitle={security.isin && security.name ? security.name : undefined}
-                        />
-                      </td>
-                      <td className={TD_NUM}>{money(security.boughtAmount)}</td>
-                      <td className={TD_NUM}>{money(security.soldAmount)}</td>
-                      <td className={TD_NUM}>{security.averageBuyPrice === null ? "—" : money(security.averageBuyPrice)}</td>
-                      <td className={cx(TD_NUM, signClass(security.realised))}>
-                        <SignGlyph value={security.realised} />
-                        {security.realised === null ? "—" : signed(security.realised)}
-                      </td>
-                      <td className={TD_NUM}>{money(security.fees)}</td>
-                      <td className={TD_NUM}>{money(security.dividends)}</td>
+                      {inOrder(order, {
+                        name: (
+                          <td>
+                            <SecurityCell
+                              initials={(security.name || security.isin).slice(0, 2).toUpperCase()}
+                              logo={securityLogos.get(security.isin.toUpperCase())}
+                              title={security.isin || security.name}
+                              subtitle={security.isin && security.name ? security.name : undefined}
+                            />
+                          </td>
+                        ),
+                        boughtAmount: <td className={TD_NUM}>{money(security.boughtAmount)}</td>,
+                        soldAmount: <td className={TD_NUM}>{money(security.soldAmount)}</td>,
+                        averageBuyPrice: <td className={TD_NUM}>{security.averageBuyPrice === null ? "—" : money(security.averageBuyPrice)}</td>,
+                        realised: (
+                          <td className={cx(TD_NUM, signClass(security.realised))}>
+                            <SignGlyph value={security.realised} />
+                            {security.realised === null ? "—" : signed(security.realised)}
+                          </td>
+                        ),
+                        fees: <td className={TD_NUM}>{money(security.fees)}</td>,
+                        dividends: <td className={TD_NUM}>{money(security.dividends)}</td>,
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -179,6 +205,8 @@ function OvernightTransactionsCard({ common, currency }: { common: Common; curre
     const timeout = window.setTimeout(() => setSearchTerm(search.trim()), 400);
     return () => window.clearTimeout(timeout);
   }, [search]);
+  const { order, layout } = useTableLayout("overnight-transactions", OVERNIGHT_COLUMNS);
+  const resized = resizedTable(layout.widths);
   if (!common.actions.has("list_overnight_transactions")) return null;
   const activeFilters = Number(type !== "all") + Number(period !== "all");
   const hint = `${formatNumber(history.rows.length, 0)} of ${formatNumber(history.total, 0)} transactions`;
@@ -212,52 +240,59 @@ function OvernightTransactionsCard({ common, currency }: { common: Common; curre
         <p className={EMPTY}>No overnight transactions were found.</p>
       ) : (
         <div className={SCROLL_X}>
-          <table className={RECORD_TABLE}>
+          <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
             <thead>
               <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Type</th>
-                <th scope="col">Description</th>
-                <th scope="col">Status</th>
-                <th scope="col" className="text-right">
-                  Amount
-                </th>
-                <th scope="col">Documents</th>
+                {order.map((id) => (
+                  <ColumnHead key={id} id={id} label={OVERNIGHT_HEADS[id].label} layout={layout} className={OVERNIGHT_HEADS[id].className}>
+                    {OVERNIGHT_HEADS[id].label}
+                  </ColumnHead>
+                ))}
               </tr>
             </thead>
             <tbody>
               {history.rows.map((row) => (
                 <tr key={row.id}>
-                  <td className="whitespace-nowrap">{formatDateTime(row.when)}</td>
-                  <td>
-                    <Badge>{row.kind ? humanize(row.kind) : "Unknown"}</Badge>
-                  </td>
-                  <td>{row.description || "—"}</td>
-                  <td>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {row.status ? <Badge>{humanize(row.status)}</Badge> : "—"}
-                      {row.cancellation && <span className="text-ink-muted">Cancellation</span>}
-                    </div>
-                  </td>
-                  <td className={cx(TD_NUM, signClass(row.amount))}>
-                    <SignGlyph value={row.amount} />
-                    {row.amount === null ? "—" : `${row.amount > 0 ? "+" : ""}${formatMoney(row.amount, row.currency ?? currency)}`}
-                  </td>
-                  <td>
-                    <div className="flex flex-wrap gap-x-2">
-                      {row.documents.map((document, index) => (
-                        <button
-                          key={document.id ?? document.url ?? index}
-                          className={btn.link}
-                          type="button"
-                          onClick={() => void openUrl(document.url).catch((error: unknown) => setOpenError(String(error)))}
-                        >
-                          {document.label || "Open document"}
-                        </button>
-                      ))}
-                      {row.documents.length === 0 && "—"}
-                    </div>
-                  </td>
+                  {inOrder(order, {
+                    when: <td className="whitespace-nowrap">{formatDateTime(row.when)}</td>,
+                    kind: (
+                      <td>
+                        <Badge>{row.kind ? humanize(row.kind) : "Unknown"}</Badge>
+                      </td>
+                    ),
+                    description: <td>{row.description || "—"}</td>,
+                    status: (
+                      <td>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {row.status ? <Badge>{humanize(row.status)}</Badge> : "—"}
+                          {row.cancellation && <span className="text-ink-muted">Cancellation</span>}
+                        </div>
+                      </td>
+                    ),
+                    amount: (
+                      <td className={cx(TD_NUM, signClass(row.amount))}>
+                        <SignGlyph value={row.amount} />
+                        {row.amount === null ? "—" : `${row.amount > 0 ? "+" : ""}${formatMoney(row.amount, row.currency ?? currency)}`}
+                      </td>
+                    ),
+                    documents: (
+                      <td>
+                        <div className="flex flex-wrap gap-x-2">
+                          {row.documents.map((document, index) => (
+                            <button
+                              key={document.id ?? document.url ?? index}
+                              className={btn.link}
+                              type="button"
+                              onClick={() => void openUrl(document.url).catch((error: unknown) => setOpenError(String(error)))}
+                            >
+                              {document.label || "Open document"}
+                            </button>
+                          ))}
+                          {row.documents.length === 0 && "—"}
+                        </div>
+                      </td>
+                    ),
+                  })}
                 </tr>
               ))}
             </tbody>
