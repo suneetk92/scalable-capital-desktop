@@ -15,7 +15,18 @@ all-features = false
 version = 2
 db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
-ignore = []
+# Unmaintained crates are reported for direct dependencies only: the transitive ones come from Tauri
+# (Linux and build-time crates) and have no replacement this project can choose.
+unmaintained = "workspace"
+ignore = [
+  # zip 4 comes from tauri-plugin-updater, whose latest release has no fix yet. All three are about
+  # extracting Unix permission bits and symlinks. The updater only extracts an update that is a zip
+  # archive (this app ships the NSIS installer itself) and checks its signature first. Keep this list
+  # in step with the `cargo audit --ignore` flags in .github/workflows/ci.yml.
+  { id = "RUSTSEC-2026-0367", reason = "zip via tauri-plugin-updater; Unix-only extraction issue, no fixed release" },
+  { id = "RUSTSEC-2026-0368", reason = "zip via tauri-plugin-updater; Unix-only extraction issue, no fixed release" },
+  { id = "RUSTSEC-2026-0369", reason = "zip via tauri-plugin-updater; Unix-only extraction issue, no fixed release" },
+]
 
 [licenses]
 version = 2
@@ -37,15 +48,6 @@ allow = [
   "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
-
-# Crates whose licence is only in their LICENSE file, not in `Cargo.toml`.
-[[licenses.clarify]]
-crate = "dlopen2"
-expression = "MIT"
-
-[[licenses.clarify]]
-crate = "dlopen2_derive"
-expression = "MIT"
 
 [bans]
 multiple-versions = "warn"

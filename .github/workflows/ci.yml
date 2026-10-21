@@ -95,7 +95,10 @@ jobs:
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
       - name: Audit Rust dependencies
-        run: cargo audit --file src-tauri/Cargo.lock
+        # The ignored advisories are explained in src-tauri/deny.toml.
+        run: >-
+          cargo audit --file src-tauri/Cargo.lock
+          --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369
       - name: Check licences, duplicate versions and sources (cargo-deny)
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
