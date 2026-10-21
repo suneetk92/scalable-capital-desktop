@@ -1,0 +1,57 @@
+[package]
+name = "scalable-capital-desktop"
+version = "1.0.0"
+description = "Scalable Capital portfolio and watchlist screener"
+authors = ["Suneet Kumar"]
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.90"
+
+[lib]
+name = "scalable_capital_desktop_lib"
+crate-type = ["rlib"]
+
+[features]
+# Builds in an optional extension from the folder named by APP_EXTENSION_DIR (see build.rs).
+extension = []
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+base64 = "0.22"
+rand = "0.8"
+regex = "1.11"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+semver = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+tokio = { version = "1", features = ["io-util", "net", "time", "macros", "rt-multi-thread", "sync"] }
+url = "2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+winreg = "0.55"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native-sync-persistent", "sync-secret-service"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.release]
+codegen-units = 16
+lto = "thin"
+opt-level = 3
+panic = "abort"
+strip = true

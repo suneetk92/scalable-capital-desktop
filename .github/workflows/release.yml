@@ -1,0 +1,77 @@
+# Push a tag like v1.2.3 to build and sign the installers for Windows, macOS and Linux and publish them as
+# a GitHub Release of this repository (scripts/publish-github-release.sh). Nothing is published unless
+# every target built. Installed apps read
+# https://github.com/<this repository>/releases/latest/download/latest.json, which is uploaded last, so they
+# only see the update once its files are there. A pre-release tag like v1.2.3-rc.1 becomes a GitHub
+# pre-release with no latest.json: download it by hand, because releases/latest never points at a
+# pre-release. The publish job runs in the `release` environment, so a required reviewer on that
+# environment makes publishing a manual approval.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    name: Check the tag is a version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # The tag is the version: the build writes it into package.json, Cargo.toml and tauri.conf.json.
+      - name: Check the tag looks like vX.Y.Z
+        run: |
+          if ! echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::The tag $GITHUB_REF_NAME is not a version like v1.2.3."
+            exit 1
+          fi
+      - name: Check the updater public key and endpoint are set
+        run: |
+          node -e '
+            const updater = require("./src-tauri/tauri.conf.json").plugins?.updater ?? {};
+            const problems = [];
+            const key = Buffer.from(updater.pubkey ?? "", "base64").toString("utf8");
+            if (!key.startsWith("untrusted comment:")) problems.push("plugins.updater.pubkey is empty or a placeholder. Add the public key for the public updater signing secret.");
+            const endpoints = updater.endpoints ?? [];
+            const expected = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/latest/download/latest.json`;
+            if (endpoints.length !== 1 || endpoints[0] !== expected) problems.push(`plugins.updater.endpoints must contain only ${expected}.`);
+            for (const problem of problems) console.log(`::error::${problem}`);
+            process.exit(problems.length ? 1 : 0);
+          '
+
+  build:
+    name: Build installers
+    needs: check-version
+    uses: ./.github/workflows/build.yml
+    with:
+      sign: true
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
+  publish:
+    name: Publish the GitHub release
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      # The release notes are made from the commits since the previous release: full history and tags.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Write SHA-256 checksums
+        working-directory: artifacts
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Publish with the gh CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASES_REPO: ${{ github.repository }}
+        run: scripts/publish-github-release.sh "$GITHUB_REF_NAME" artifacts
