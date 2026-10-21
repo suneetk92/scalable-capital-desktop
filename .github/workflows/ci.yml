@@ -88,6 +88,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm audit --audit-level=high
+      # `npm audit signatures` checks the installed packages, so install them first.
+      - run: npm ci
       - run: npm audit signatures
       - uses: dtolnay/rust-toolchain@1.90.0
       - name: Install cargo-audit
