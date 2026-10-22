@@ -129,8 +129,13 @@ function Row({
       </tr>
       {stop.message && (
         <tr>
-          <td colSpan={COLUMNS} className="h-auto! max-w-none! pt-0! pb-3! whitespace-normal! text-ink-muted">
-            {stop.message}
+          <td colSpan={COLUMNS} className="h-auto! max-w-none! pt-0! pb-3! whitespace-normal! text-center text-ink-muted">
+            <div className="flex flex-col items-center gap-0.5">
+              <span>{stop.message}</span>
+              {stop.status === "sold" && stop.soldPrice !== null && (
+                <span className="text-sm">{formatMoney(stop.soldPrice)}</span>
+              )}
+            </div>
           </td>
         </tr>
       )}

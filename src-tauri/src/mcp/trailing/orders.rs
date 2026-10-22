@@ -73,7 +73,7 @@ fn assess(preview: &Value, submission: &Value, trigger: f64, side: Side) -> Verd
 }
 
 enum Outcome {
-    Done,
+    Done(f64),
     /// Nothing was placed; the stop stays active.
     Retry(String),
     /// Not repeated, because it needs the user or may or may not have gone through.
@@ -145,7 +145,13 @@ async fn try_trade(app: &AppHandle, stop: &TrailingStop) -> Outcome {
     )
     .await
     {
-        Ok(_) => Outcome::Done,
+        Ok(_) => {
+            let price = preview
+                .get("marketQuote")
+                .and_then(|q| quote_price(q, stop.side))
+                .unwrap_or(stop.last_price.unwrap_or(trigger_price(stop.side, stop.high, stop.trail)));
+            Outcome::Done(price)
+        }
         Err(error) => Outcome::Attention(format!(
             "{error}. The order may or may not have gone through: check your transactions in Scalable before doing anything else."
         )),
@@ -155,16 +161,17 @@ async fn try_trade(app: &AppHandle, stop: &TrailingStop) -> Outcome {
 /// Sells or buys for a stop that was hit and records how it went. `stop` is already marked as selling.
 pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
     let outcome = try_trade(app, &stop).await;
-    let (status, message) = match &outcome {
-        Outcome::Done => (
+    let (status, message, sold_price) = match &outcome {
+        Outcome::Done(price) => (
             Status::Sold,
             Some(match stop.side {
-                Side::Sell => "Sold at market.".to_owned(),
-                Side::Buy => "Bought at market.".to_owned(),
+                Side::Sell => format!("Sold at {:.2}", price),
+                Side::Buy => format!("Bought at {:.2}", price),
             }),
+            Some(*price),
         ),
-        Outcome::Retry(message) => (Status::Active, Some(message.clone())),
-        Outcome::Attention(message) => (Status::Attention, Some(message.clone())),
+        Outcome::Retry(message) => (Status::Active, Some(message.clone()), None),
+        Outcome::Attention(message) => (Status::Attention, Some(message.clone()), None),
     };
     let state = app.state::<TrailingState>();
     let earlier = state.mutate(|stops| {
@@ -175,6 +182,7 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
                 let earlier = item.message.take();
                 item.status = status;
                 item.message = message.clone();
+                item.sold_price = sold_price;
                 earlier
             })
     });
@@ -204,7 +212,7 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
         ),
     };
     match outcome {
-        Outcome::Done => notify::send(app, done_title, &done_text),
+        Outcome::Done(_) => notify::send(app, done_title, &done_text),
         Outcome::Attention(message) => {
             notify::send(app, needs_title, &format!("{name}: {message}"))
         }

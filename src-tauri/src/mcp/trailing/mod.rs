@@ -103,6 +103,8 @@ pub struct TrailingStop {
     pub status: Status,
     #[serde(default)]
     pub message: Option<String>,
+    #[serde(default)]
+    pub sold_price: Option<f64>,
     pub created_at: u64,
 }
 
@@ -220,6 +222,7 @@ pub(super) fn sample_stop(trail: Trail, high: f64) -> TrailingStop {
         last_price: None,
         status: Status::Active,
         message: None,
+        sold_price: None,
         created_at: 0,
     }
 }

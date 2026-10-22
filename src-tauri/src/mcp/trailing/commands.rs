@@ -196,6 +196,7 @@ pub async fn add_trailing_stop(
         last_price: Some(price),
         status: Status::Active,
         message: None,
+        sold_price: None,
         created_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|elapsed| elapsed.as_secs())

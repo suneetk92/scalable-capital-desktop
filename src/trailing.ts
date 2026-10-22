@@ -23,6 +23,8 @@ export type TrailingStop = {
   lastPrice: number | null;
   status: TrailingStatus;
   message: string | null;
+  /** The price at which the stop was executed (only when status is 'sold'). */
+  soldPrice: number | null;
   createdAt: number;
 };
 
@@ -87,6 +89,7 @@ function toStop(value: unknown): TrailingStop | null {
     lastPrice: typeof value.lastPrice === "number" ? value.lastPrice : null,
     status,
     message: typeof value.message === "string" ? value.message : null,
+    soldPrice: typeof value.soldPrice === "number" ? value.soldPrice : null,
     createdAt: typeof value.createdAt === "number" ? value.createdAt : 0,
   };
 }
