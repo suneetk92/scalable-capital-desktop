@@ -31,10 +31,10 @@ export function securityTypeTone(type: string): BadgeTone {
 }
 
 /** "Flat with dot" badge (Badges 10). */
-export function Badge({ tone = "gray", children }: { tone?: BadgeTone; children: ReactNode }) {
+export function Badge({ tone = "gray", title, children }: { tone?: BadgeTone; title?: string; children: ReactNode }) {
   const colors = BADGE_TONES[tone];
   return (
-    <span className={`inline-flex items-center gap-x-1.5 rounded-control px-2 py-1 font-medium ${colors.box}`}>
+    <span title={title} className={`inline-flex items-center gap-x-1.5 rounded-control px-2 py-1 font-medium ${colors.box}`}>
       <svg viewBox="0 0 6 6" aria-hidden="true" className={`size-1.5 ${colors.dot}`}>
         <circle r={3} cx={3} cy={3} />
       </svg>

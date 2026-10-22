@@ -80,7 +80,17 @@ function Row({
               />
             </td>
           ),
-          status: <td>{paused ? <Badge tone="yellow">Paused, Trading is off</Badge> : <Badge tone={TONE[stop.status]}>{statusLabel(stop.side, stop.status)}</Badge>}</td>,
+          status: (
+            <td>
+              {paused ? (
+                <Badge tone="yellow">Paused, Trading is off</Badge>
+              ) : (
+                <Badge tone={TONE[stop.status]} title={stop.status === "sold" && stop.soldPrice !== null ? formatMoney(stop.soldPrice) : undefined}>
+                  {statusLabel(stop.side, stop.status)}
+                </Badge>
+              )}
+            </td>
+          ),
           quantity: <td className={TD_NUM}>{stop.side === "buy" ? money(stop.amount ?? 0) : stop.quantity}</td>,
           trail: <td className={TD_NUM}>{trailLabel(stop.trail, money)}</td>,
           high: <td className={TD_NUM}>{money(stop.high)}</td>,
@@ -129,13 +139,8 @@ function Row({
       </tr>
       {stop.message && (
         <tr>
-          <td colSpan={COLUMNS} className="h-auto! max-w-none! pt-0! pb-3! whitespace-normal! text-center text-ink-muted">
-            <div className="flex flex-col items-center gap-0.5">
-              <span>{stop.message}</span>
-              {stop.status === "sold" && stop.soldPrice !== null && (
-                <span className="text-sm">{formatMoney(stop.soldPrice)}</span>
-              )}
-            </div>
+          <td colSpan={COLUMNS} className="h-auto! max-w-none! pt-0! pb-3! whitespace-normal! text-justify text-ink-muted">
+            {stop.message}
           </td>
         </tr>
       )}
