@@ -37,13 +37,43 @@ fn report(app: &AppHandle, state: &TrailingState, problem: Option<String>) {
     }
 }
 
+/// With Trading off nothing is watched or sold, but the shown price still follows the market: the high
+/// and the status stay as they are, and nothing is saved.
+async fn show_prices(
+    app: &AppHandle,
+    state: &TrailingState,
+    targets: Vec<(String, Option<String>)>,
+) {
+    let Ok(prices) = quote_prices(app, targets).await else {
+        return;
+    };
+    let changed = state.mutate(|stops| {
+        let mut changed = false;
+        for stop in stops
+            .iter_mut()
+            .filter(|stop| stop.status == Status::Active)
+        {
+            let price = prices
+                .iter()
+                .find(|(isin, _)| *isin == stop.isin)
+                .and_then(|(_, price)| *price);
+            if price.is_some() && price != stop.last_price {
+                stop.last_price = price;
+                changed = true;
+            }
+        }
+        changed
+    });
+    if changed {
+        announce_change(app);
+    }
+}
+
 /// One pass: reads the prices of the active stops, moves their highs up and sells the ones that were hit.
 async fn check(app: &AppHandle) {
     let gate = app.state::<TradingGate>();
     let state = app.state::<TrailingState>();
-    if !gate.is_on() {
-        return;
-    }
+    let trading = gate.is_on();
     let mut targets: Vec<(String, Option<String>)> = Vec::new();
     for stop in state
         .snapshot()
@@ -56,6 +86,10 @@ async fn check(app: &AppHandle) {
     }
     if targets.is_empty() {
         report(app, &state, None);
+        return;
+    }
+    if !trading {
+        show_prices(app, &state, targets).await;
         return;
     }
     let prices = match quote_prices(app, targets).await {

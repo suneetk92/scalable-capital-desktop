@@ -30,9 +30,10 @@ const HEADS: Record<string, { label: string; className?: string }> = {
   actions: { label: "Actions", className: TH_NUM },
 };
 
-function Row({ order, stop, logo, onRemove }: { order: string[]; stop: TrailingStop; logo?: string; onRemove: () => void }) {
+function Row({ order, stop, logo, tradingEnabled, onRemove }: { order: string[]; stop: TrailingStop; logo?: string; tradingEnabled: boolean; onRemove: () => void }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
+  const paused = watching && !tradingEnabled;
   return (
     <>
       <tr className={stop.message ? "[&>td]:border-b-0!" : undefined}>
@@ -42,11 +43,7 @@ function Row({ order, stop, logo, onRemove }: { order: string[]; stop: TrailingS
               <SecurityCell initials={stop.name.slice(0, 2).toUpperCase()} logo={logo} title={stop.isin} subtitle={stop.name} />
             </td>
           ),
-          status: (
-            <td>
-              <Badge tone={TONE[stop.status]}>{STATUS_LABEL[stop.status]}</Badge>
-            </td>
-          ),
+          status: <td>{paused ? <Badge tone="yellow">Paused, Trading is off</Badge> : <Badge tone={TONE[stop.status]}>{STATUS_LABEL[stop.status]}</Badge>}</td>,
           quantity: <td className={TD_NUM}>{stop.quantity}</td>,
           trail: <td className={TD_NUM}>{trailLabel(stop.trail, money)}</td>,
           high: <td className={TD_NUM}>{money(stop.high)}</td>,
@@ -55,7 +52,13 @@ function Row({ order, stop, logo, onRemove }: { order: string[]; stop: TrailingS
           actions: (
             <td className={TD_NUM}>
               <div className="flex justify-end gap-1.5">
-                <button className={btn.sell} type="button" onClick={onRemove} disabled={stop.status === "selling"}>
+                <button
+                  className={btn.sell}
+                  type="button"
+                  onClick={onRemove}
+                  disabled={stop.status === "selling" || paused}
+                  title={paused ? "Read-only mode: turn on Trading to stop watching" : undefined}
+                >
                   {watching ? "Stop watching" : "Remove"}
                 </button>
               </div>
@@ -132,7 +135,7 @@ export function TrailingStops({ common }: { common: Common }) {
               </thead>
               <tbody>
                 {stops.map((stop) => (
-                  <Row key={stop.id} order={order} stop={stop} logo={logos.get(stop.isin.toUpperCase())} onRemove={() => void remove(stop.id)} />
+                  <Row key={stop.id} order={order} stop={stop} logo={logos.get(stop.isin.toUpperCase())} tradingEnabled={tradingEnabled} onRemove={() => void remove(stop.id)} />
                 ))}
               </tbody>
             </table>
