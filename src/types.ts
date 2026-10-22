@@ -16,6 +16,8 @@ export type Common = {
   tradingEnabled: boolean;
   /** The "Rows per page" setting; 0 shows every row. */
   pageSize: number;
+  /** How often the backend checks the trailing stops. */
+  trailingSeconds: number;
   reloadKey: unknown;
 };
 

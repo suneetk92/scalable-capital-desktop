@@ -1,3 +1,4 @@
+import { intervalLabel } from "../settings";
 import { extension, useExtensionIsinLogos } from "../extensions";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { useTableLayout } from "../hooks/useTableLayout";
@@ -101,7 +102,7 @@ function Row({ order, stop, logo, tradingEnabled, onOpen, onRemove }: { order: s
 
 /** The trailing stops the app watches itself, with a form to start one. */
 export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
-  const { invoke, portfolios, held, tradingEnabled } = common;
+  const { invoke, portfolios, held, tradingEnabled, trailingSeconds } = common;
   const { stops, problem, reload } = useTrailingStops(invoke);
   const { order, layout } = useTableLayout("trailing-stops", COLUMN_IDS);
   const resized = resizedTable(layout.widths);
@@ -126,7 +127,7 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
         title="Trailing stop losses"
         flush
         footer={<PanelFooter tradingEnabled={tradingEnabled} />}
-        hint={`${active} watching`}
+        hint={`${active} watching · checked every ${intervalLabel(trailingSeconds)}`}
         actions={
           <button className={btn.primary} type="button" onClick={() => setAdding(true)} disabled={!tradingEnabled} title={tradingEnabled ? undefined : "Turn on Trading to start a trailing stop"}>
             New trailing stop

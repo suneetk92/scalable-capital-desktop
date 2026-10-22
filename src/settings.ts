@@ -60,6 +60,9 @@ export const REFRESH_OPTIONS: [number, string][] = [
   [600, "10 minutes"],
 ];
 
+/** "30 seconds", "1 minute" becomes "minute"; used in "every …". */
+export const intervalLabel = (seconds: number) => (REFRESH_OPTIONS.find(([value]) => value === seconds)?.[1] ?? `${seconds} seconds`).replace(/^1 /, "");
+
 export const PAGE_SIZE_OPTIONS: [number, string][] = [
   [10, "10 rows"],
   [25, "25 rows"],

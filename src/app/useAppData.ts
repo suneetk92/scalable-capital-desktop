@@ -24,7 +24,7 @@ import type { Provider } from "../providerStatus";
 import { profileName } from "../profile";
 import { connectionCheckDue, nextRefreshDelay, wokeFromSleep } from "../refreshSchedule";
 import type { DrawerTarget } from "../SecurityDrawer";
-import { REFRESH_OPTIONS, useLightTheme, useSettings } from "../settings";
+import { intervalLabel, useLightTheme, useSettings } from "../settings";
 import { useToolActions, useToolQuery } from "../toolActions";
 import { callTools, type ToolDef } from "../tools";
 import { pickString, type Rec } from "../response";
@@ -35,8 +35,6 @@ import { getErrorMessage, hasTauriRuntime, invoke } from "./invoke";
 const CONNECTION_CHECK_MS = 60_000;
 const WAKE_CHECK_MS = 30_000;
 const EMPTY_DEFS: ToolDef[] = [];
-
-const intervalLabel = (seconds: number) => (REFRESH_OPTIONS.find(([value]) => value === seconds)?.[1] ?? `${seconds} seconds`).replace(/^1 /, "");
 
 /** The state of the app: the dashboard and its timers, the sign-in, the pages' data hooks and the open dialogs. */
 export function useAppData() {
@@ -413,6 +411,7 @@ export function useAppData() {
     actions: toolActions,
     tradingEnabled,
     pageSize: settings.pageSize,
+    trailingSeconds: settings.trailingSeconds,
     reloadKey,
   };
   const extensionContext = {
