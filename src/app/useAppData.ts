@@ -30,6 +30,7 @@ import { callTools, type ToolDef } from "../tools";
 import { pickString, type Rec } from "../response";
 import { dedupeRows } from "../transactions";
 import type { Common, Connection, Dashboard } from "../types";
+import { useTrailingStops } from "../hooks/useTrailingStops";
 import { getErrorMessage, hasTauriRuntime, invoke } from "./invoke";
 
 const CONNECTION_CHECK_MS = 60_000;
@@ -103,6 +104,7 @@ export function useAppData() {
     if (!marketOpen) setTradingEnabled(false);
   }, [marketOpen]);
 
+  const trailing = useTrailingStops(invoke);
   // The trailing stop watcher runs in Rust; it uses 30 seconds until it is told the setting.
   useEffect(() => {
     if (!hasTauriRuntime()) return;
@@ -522,6 +524,7 @@ export function useAppData() {
     background,
     accountName,
     alertCount,
+    trailing,
     transactionCount,
     marketTableOpen,
     portfolioRows,

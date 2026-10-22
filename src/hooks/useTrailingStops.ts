@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useState } from "react";
 import { invokeCommand } from "../commands";
 import { parseTrailingList, type TrailingList } from "../trailing";
-import type { Invoke } from "../tools";
+import { errorText, type Invoke } from "../tools";
 
 /** Sent by the backend whenever a stop or the problem line changes (`src-tauri/src/mcp/trailing`). */
 const CHANGED_EVENT = "trailing-stops-changed";
@@ -14,6 +14,9 @@ const FALLBACK_MS = 60_000;
 export function useTrailingStops(invoke: Invoke) {
   const [list, setList] = useState<TrailingList>({ stops: [], problem: null, lastChecked: null });
   const [loaded, setLoaded] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [openedAt] = useState(() => Date.now());
   const [visible, setVisible] = useState(() => document.visibilityState === "visible");
 
   const reload = useCallback(async () => {
@@ -65,5 +68,17 @@ export function useTrailingStops(invoke: Invoke) {
     return () => window.clearInterval(timer);
   }, [visible, watching, reload]);
 
-  return { ...list, loaded, reload };
+  const checkNow = useCallback(async () => {
+    setCheckError(null);
+    setChecking(true);
+    try {
+      await invokeCommand(invoke, "check_trailing_stops_now");
+    } catch (error) {
+      setCheckError(errorText(error));
+    }
+    setChecking(false);
+    void reload();
+  }, [invoke, reload]);
+
+  return { ...list, loaded, reload, checking, checkNow, checkError, setCheckError, openedAt };
 }

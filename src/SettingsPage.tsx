@@ -391,10 +391,10 @@ export function SettingsPage({
               <Switch label="Also show in the app" checked={settings.alertToasts} onToggle={() => onChange({ alertToasts: !settings.alertToasts })} />
             </Row>
           </SectionCard>
-          <SectionCard title="Trailing stop losses">
+          <SectionCard title="Trailing stops">
             <Row
-              label="Trailing stop check frequency"
-              hint="How often the app reads the price of each security with a trailing stop. Shorter reacts faster to a drop but makes more requests to Scalable, which may throttle them. Checks run only while the app runs, you are signed in and Trading is on"
+              label="Trailing stops check frequency"
+              hint="How often the app reads the price of each security with a trailing stop loss or buy stop. Shorter reacts faster to a price move but makes more requests to Scalable, which may throttle them. Checks run only while the app runs, you are signed in and Trading is on"
             >
               <Select
                 size="compact"

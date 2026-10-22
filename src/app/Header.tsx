@@ -5,6 +5,7 @@ import { pluralize } from "../format";
 import type { View } from "../nav";
 import { btn } from "../ui";
 import { RefreshButton } from "../controls";
+import { intervalLabel } from "../settings";
 import { extension } from "../extensions";
 import { EXCHANGE_HOURS_NOTE } from "../marketHours";
 import type { AppCommands } from "./useAppCommands";
@@ -43,6 +44,8 @@ export function pageActions(data: AppData, commands: AppCommands) {
   const headerLabel = refreshExtension ? (extensionRuntime.refreshLabel ?? "") : refreshLabel;
   const refreshBusy = refreshExtension ? (extensionRuntime.busy ?? extensionRuntime.loading ?? false) : syncing || (marketTableOpen && market.loading);
   const refreshNow = refreshExtension ? extensionRuntime.refresh! : refreshAccount;
+  const { trailing } = data;
+  const trailingView = view === "trailing";
   if (!showTrading && !showRefresh) return undefined;
   return (
     <>
@@ -72,12 +75,12 @@ export function pageActions(data: AppData, commands: AppCommands) {
       )}
       {showRefresh && (
         <RefreshButton
-          auto={headerAuto}
-          label={headerLabel}
-          busy={refreshBusy}
-          onRefresh={refreshNow}
-          lastLoadedAt={refreshExtension ? null : (data.lastUpdated?.getTime() ?? null)}
-          intervalMs={data.settings.refreshSeconds * 1000}
+          auto={trailingView ? trailing.stops.some((stop) => stop.status === "active") : headerAuto}
+          label={trailingView ? intervalLabel(data.settings.trailingSeconds) : headerLabel}
+          busy={trailingView ? trailing.checking : refreshBusy}
+          onRefresh={trailingView ? () => void trailing.checkNow() : refreshNow}
+          lastLoadedAt={trailingView ? (trailing.lastChecked ?? trailing.openedAt) : refreshExtension ? null : (data.lastUpdated?.getTime() ?? null)}
+          intervalMs={(trailingView ? data.settings.trailingSeconds : data.settings.refreshSeconds) * 1000}
         />
       )}
     </>

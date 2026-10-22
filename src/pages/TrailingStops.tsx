@@ -1,17 +1,16 @@
-import { intervalLabel } from "../settings";
 import { extension, useExtensionIsinLogos } from "../extensions";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { useTableLayout } from "../hooks/useTableLayout";
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { invokeCommand } from "../commands";
-import { useTrailingStops } from "../hooks/useTrailingStops";
+import { useApp } from "../app/AppContext";
 import { formatMoney } from "../screener";
 import { TrailingStopDialog } from "../TrailingStopDialog";
 import { errorText } from "../tools";
 import { statusLabel, trailLabel, triggerMargin, triggerPrice, type TrailingStatus, type TrailingStop, type TrailSide } from "../trailing";
 import { type Common } from "../types";
-import { EmptyState, RefreshButton, ShareBar } from "../controls";
+import { EmptyState, ShareBar } from "../controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../ui";
 import { Section } from "./shared";
 
@@ -168,18 +167,14 @@ type PanelProps = {
   side: TrailSide;
   common: Common;
   stops: TrailingStop[];
-  lastChecked: number | null;
-  checking: boolean;
-  openedAt: number;
-  onCheck: () => void;
   onAdd: () => void;
   onEdit: (stop: TrailingStop) => void;
   onRemove: (id: string) => void;
   onOpenSecurity: (security: { isin: string; name: string }) => void;
 };
 
-function TrailingPanel({ side, common, stops, lastChecked, checking, openedAt, onCheck, onAdd, onEdit, onRemove, onOpenSecurity }: PanelProps) {
-  const { invoke, tradingEnabled, trailingSeconds } = common;
+function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSecurity }: PanelProps) {
+  const { invoke, tradingEnabled } = common;
   const copy = PANELS[side];
   const heads = HEADS[side];
   const { order, layout } = useTableLayout(copy.layout, COLUMN_IDS);
@@ -191,10 +186,9 @@ function TrailingPanel({ side, common, stops, lastChecked, checking, openedAt, o
       title={copy.title}
       flush
       footer={<PanelFooter tradingEnabled={tradingEnabled} />}
-      hint={`${active} watching · checked every ${intervalLabel(trailingSeconds)}`}
+      hint={`${active} watching`}
       actions={
         <>
-          <RefreshButton auto={active > 0} label={intervalLabel(trailingSeconds)} busy={checking} onRefresh={onCheck} lastLoadedAt={lastChecked ?? openedAt} intervalMs={trailingSeconds * 1000} />
           <button className={btn.primary} type="button" onClick={onAdd} disabled={!tradingEnabled} title={tradingEnabled ? undefined : copy.addTitle}>
             {copy.add}
           </button>
@@ -242,32 +236,17 @@ function TrailingPanel({ side, common, stops, lastChecked, checking, openedAt, o
 /** The trailing stop losses and trailing buy stops the app watches itself, with a form to start each. */
 export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
   const { invoke, portfolios, held, tradingEnabled } = common;
-  const { stops, problem, lastChecked, reload } = useTrailingStops(invoke);
+  const { stops, problem, reload, checkError, setCheckError } = useApp().data.trailing;
   const [adding, setAdding] = useState<TrailSide | null>(null);
   const [editing, setEditing] = useState<TrailingStop | null>(null);
-  const [openedAt] = useState(() => Date.now());
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function remove(id: string) {
-    setError(null);
+    setCheckError(null);
     try {
       await invokeCommand(invoke, "remove_trailing_stop", { id });
     } catch (removeError) {
-      setError(errorText(removeError));
+      setCheckError(errorText(removeError));
     }
-    void reload();
-  }
-
-  async function checkNow() {
-    setError(null);
-    setChecking(true);
-    try {
-      await invokeCommand(invoke, "check_trailing_stops_now");
-    } catch (checkError) {
-      setError(errorText(checkError));
-    }
-    setChecking(false);
     void reload();
   }
 
@@ -289,9 +268,9 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
 
   return (
     <>
-      {(error || problem) && (
+      {(checkError || problem) && (
         <div className="mb-4 grid gap-2">
-          {error && <Alert onDismiss={() => setError(null)}>{error}</Alert>}
+          {checkError && <Alert onDismiss={() => setCheckError(null)}>{checkError}</Alert>}
           {problem && <Alert>{problem}</Alert>}
         </div>
       )}
@@ -301,10 +280,6 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
           side={side}
           common={common}
           stops={stops.filter((stop) => stop.side === side)}
-          lastChecked={lastChecked}
-          checking={checking}
-          openedAt={openedAt}
-          onCheck={() => void checkNow()}
           onAdd={() => setAdding(side)}
           onEdit={setEditing}
           onRemove={(id) => void remove(id)}

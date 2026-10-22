@@ -43,6 +43,7 @@ function App() {
     accountName,
     baseGroups,
     alertCount,
+    trailing,
     transactionCount,
     portfolioRows,
     watchlistRows,
@@ -70,6 +71,7 @@ function App() {
     watchlist: watchlistUnknown ? "—" : watchlistRows.length,
     groups: baseGroups.length,
     alerts: alertCount,
+    trailing: trailing.stops.length,
     transactions: transactionCount,
   };
   const account = { header: <AccountHeader />, items: commands.accountItems, name: accountName ?? "My account", initials: initialsOf(accountName) };
