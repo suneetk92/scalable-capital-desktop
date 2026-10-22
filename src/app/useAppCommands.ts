@@ -100,6 +100,9 @@ export function useAppCommands(data: AppData) {
     });
     const scalableValues: Record<string, (row: ScreenerRow) => string | number | null> = {
       price: (row) => row.lastPrice,
+      bid: (row) => row.bid ?? null,
+      ask: (row) => row.ask ?? null,
+      spreadPct: (row) => row.spreadPct ?? null,
       change: (row) => row.change,
       quantity: (row) => row.quantity,
       value: (row) => row.value,

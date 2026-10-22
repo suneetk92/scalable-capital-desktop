@@ -31,6 +31,10 @@ export type ScreenerRow = {
   sinceBuyPct?: number | null;
   /** Share of the total market value of the portfolio holdings, 0 to 1. */
   weight?: number | null;
+  /** Best bid and ask of the fresh quote, and the spread between them as a percent of the mid price. */
+  bid?: number | null;
+  ask?: number | null;
+  spreadPct?: number | null;
   /** The move today in money, from the change %. */
   today?: number | null;
   currency: string;
@@ -328,6 +332,8 @@ export function rowFromRecord(record: Record<string, unknown>, index: number, co
   );
   if (value === null && price !== null && quantity !== null) value = price * quantity;
   if (price === null && value !== null && quantity) price = value / quantity;
+  const bid = quoteFlat ? pickNumber(quoteFlat, ["bidPrice", "bid", "quoteBidPrice"]) : null;
+  const ask = quoteFlat ? pickNumber(quoteFlat, ["askPrice", "ask", "quoteAskPrice"]) : null;
   const sinceBuy = sinceBuyOf(flat, value, quantity);
   const { avgPrice, cost } = costOf(flat, value, quantity, sinceBuy);
 
@@ -346,6 +352,9 @@ export function rowFromRecord(record: Record<string, unknown>, index: number, co
     quantity,
     value,
     sinceBuy,
+    bid,
+    ask,
+    spreadPct: bid !== null && ask !== null && bid > 0 && ask >= bid ? ((ask - bid) / ((ask + bid) / 2)) * 100 : null,
     avgPrice,
     cost,
     sinceBuyPct: sinceBuy !== null && cost !== null && cost > 0 ? (sinceBuy / cost) * 100 : null,

@@ -110,6 +110,19 @@ export const ScreenerRowView = memo(function ScreenerRowView({
                 {formatMoney(row.lastPrice, row.currency)}
               </td>
             );
+          case "bid":
+          case "ask":
+            return (
+              <td key={column.id} className={TD_NUM}>
+                {formatMoney(row[column.id] ?? null, row.currency)}
+              </td>
+            );
+          case "spreadPct":
+            return (
+              <td key={column.id} className={TD_NUM}>
+                {row.spreadPct == null ? "—" : `${formatNumber(row.spreadPct, 2, 2)}%`}
+              </td>
+            );
           case "change":
             return (
               <td key={column.id} className={cx(TD_NUM, changeTone(row.change))}>

@@ -42,7 +42,8 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   shows "every 1 min" when the Scalable auto-refresh is on, which you switch in the account menu or
   Settings. The loading bar at the top shows only for the panel that is updating. Crypto holdings with a
   positive amount are listed too. All columns come from Scalable: price and change % are shown by default,
-  and the **+** in the table header adds more from the "From Scalable" group (quantity, market value,
+  and the **+** in the table header adds more from the "From Scalable" group (bid, ask and spread %, taken from the quote that
+  the refresh already reads, so they cost no extra calls; quantity, market value,
   average price, total cost, gain or loss in money and percent, and security type; the cost and gain
   columns are for the Portfolio tab and show a dash where Scalable gives no cost). The column picker has a
   search box and **Select all**, and unticking removes a column. Every column sorts, the choice is

@@ -28,6 +28,9 @@ const scalable = (id: string, label: string, hint: string): TableColumn => ({ id
 
 const TABLE_COLUMNS: TableColumn[] = [
   scalable("price", "Price", "Last price from Scalable, in the listing currency"),
+  scalable("bid", "Bid", "Best bid from the latest Scalable quote, the price you get when selling"),
+  scalable("ask", "Ask", "Best ask from the latest Scalable quote, the price you pay when buying"),
+  scalable("spreadPct", "Spread %", "Ask minus bid as a percent of the mid price"),
   scalable("change", "Chg %", "Day change in percent, from Scalable"),
   scalable("quantity", "Quantity", "Shares you hold (portfolio only)"),
   scalable("value", "Market value", "Value of your position"),

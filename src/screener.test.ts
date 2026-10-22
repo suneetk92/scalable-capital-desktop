@@ -211,3 +211,16 @@ describe("cost, average price and gain percent", () => {
     expect(row).toMatchObject({ avgPrice: null, cost: null, sinceBuyPct: null });
   });
 });
+
+describe("bid, ask and spread", () => {
+  it("reads them from the fresh quote", () => {
+    const [row] = holdingRows("p1", [{ isin: "DE0001000001", name: "A", quantity: 1 }], { DE0001000001: { bidPrice: 99, askPrice: 101, midPrice: 100 } });
+    expect(row).toMatchObject({ bid: 99, ask: 101 });
+    expect(row.spreadPct).toBeCloseTo(2);
+  });
+
+  it("leaves them empty without a quote", () => {
+    const [row] = holdingRows("p1", [{ isin: "DE0001000001", name: "A", quantity: 1, price: 10 }]);
+    expect(row).toMatchObject({ bid: null, ask: null, spreadPct: null });
+  });
+});
