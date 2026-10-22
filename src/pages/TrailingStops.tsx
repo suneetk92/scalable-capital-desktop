@@ -93,7 +93,7 @@ function Row({
               <div className="flex justify-end gap-1.5">
                 {watching && (
                   <button
-                    className={btn.secondary}
+                    className={btn.trade}
                     type="button"
                     onClick={onEdit}
                     disabled={!tradingEnabled}
