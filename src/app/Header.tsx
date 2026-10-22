@@ -29,7 +29,7 @@ export function AccountHeader() {
 
 const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "watchlist", "discover", "transactions"]);
 
-/** Refresh, with a thin bar along its bottom edge that fills up to the next automatic reload. */
+/** Refresh, with a thin bar along its bottom edge that drains to empty when the next automatic reload happens. */
 function RefreshButton({
   auto,
   label,
@@ -52,13 +52,13 @@ function RefreshButton({
       type="button"
       onClick={onRefresh}
       disabled={busy}
-      title={auto ? `Reload now. Data refreshes by itself every ${label}; the bar shows how soon the next reload is. Change this in Settings.` : "Reload the current data now."}
+      title={auto ? `Reload now. Data refreshes by itself every ${label}; the bar drains to empty when the next reload happens. Change this in Settings.` : "Reload the current data now."}
     >
       <ArrowPathIcon aria-hidden="true" className={busy ? SPIN : ""} /> Refresh
       {auto && <span className="font-normal opacity-80">· every {label}</span>}
       {auto && lastLoadedAt !== null && !busy && (
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-heading/10">
-          <span className="block h-full bg-accent transition-[width] duration-1000 ease-linear" style={{ width: `${share * 100}%` }} />
+          <span className="block h-full bg-accent transition-[width] duration-1000 ease-linear" style={{ width: `${(1 - share) * 100}%` }} />
         </span>
       )}
     </button>

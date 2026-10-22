@@ -39,7 +39,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   losers only, "Also held in portfolio" on the Watchlist, a group filter, and "Divide rows into groups" on
   the Portfolio), row selection with bulk actions (add to a group, add to or remove from the watchlist,
   Copy CSV), Copy CSV for the rows shown, and an "Updated" time. The Refresh button next to the page title
-  shows "every 1 min" when the Scalable auto-refresh is on, with a thin bar along its bottom edge that fills up to the next automatic reload, which you switch in the account menu or
+  shows "every 1 min" when the Scalable auto-refresh is on, with a thin bar along its bottom edge that drains to empty when the next automatic reload happens, which you switch in the account menu or
   Settings. The loading bar at the top shows only for the panel that is updating. Crypto holdings with a
   positive amount are listed too. All columns come from Scalable: price and change % are shown by default,
   and the **+** in the table header adds more from the "From Scalable" group (bid, ask and spread %, taken from the quote that
@@ -325,7 +325,7 @@ non-read tool, including unknown tools, until Trading is on.
   (`src-tauri/src/mcp/trailing/`: the saved file, quotes, the sale, the watcher and the commands in one file each). Start one on the Alerts page (**New trailing stop**) or after a buy
   (**Set trailing stop loss**): pick a security you hold (the dialog shows your shares and a **Sell all** link), the shares to sell and a distance in percent or money, and
   tick that the app may sell without asking again. The app remembers the highest price from then on (the
-  bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (the panel header says "checked every …") (Settings, Trailing stop losses: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at
+  bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (the panel header says "checked every …" and a "Next check" bar drains to empty when the next check happens) (Settings, Trailing stop losses: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at
   or below the high minus the distance it sells the shares at market with `preview_sell_order` and
   `submit_sell_order`. A thin bar under **Now** shows how much of the distance between the high and the sell price is left. With Trading off the **Now** price still follows the market, but the high is not raised and nothing is sold (the row shows "Paused, Trading is off" and **Stop watching** is disabled until Trading is on). Limits and safeguards:
   - It works only while the app runs (the tray keeps it running), is signed in and **Trading is on**. It is

@@ -43,6 +43,8 @@ pub fn set_trailing_interval(state: State<'_, TrailingState>, seconds: u64) {
 pub struct TrailingList {
     stops: Vec<TrailingStop>,
     problem: Option<String>,
+    /// When the wait for the next price check began (milliseconds since 1970); none while nothing is watched.
+    cycle_started_at: Option<u64>,
 }
 
 #[tauri::command]
@@ -50,6 +52,7 @@ pub fn list_trailing_stops(state: State<'_, TrailingState>) -> TrailingList {
     TrailingList {
         stops: state.snapshot(),
         problem: state.problem(),
+        cycle_started_at: state.cycle_started(),
     }
 }
 

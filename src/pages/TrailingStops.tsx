@@ -1,3 +1,4 @@
+import { useElapsedShare } from "../countdown";
 import { intervalLabel } from "../settings";
 import { extension, useExtensionIsinLogos } from "../extensions";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
@@ -103,7 +104,7 @@ function Row({ order, stop, logo, tradingEnabled, onOpen, onRemove }: { order: s
 /** The trailing stops the app watches itself, with a form to start one. */
 export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
   const { invoke, portfolios, held, tradingEnabled, trailingSeconds } = common;
-  const { stops, problem, reload } = useTrailingStops(invoke);
+  const { stops, problem, cycleStartedAt, reload } = useTrailingStops(invoke);
   const { order, layout } = useTableLayout("trailing-stops", COLUMN_IDS);
   const resized = resizedTable(layout.widths);
   const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
@@ -121,6 +122,7 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
   }
 
   const active = stops.filter((stop) => stop.status === "active").length;
+  const untilCheck = 1 - useElapsedShare(cycleStartedAt, trailingSeconds * 1000, cycleStartedAt !== null && active > 0);
   return (
     <>
       <Section
@@ -129,9 +131,19 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
         footer={<PanelFooter tradingEnabled={tradingEnabled} />}
         hint={`${active} watching · checked every ${intervalLabel(trailingSeconds)}`}
         actions={
-          <button className={btn.primary} type="button" onClick={() => setAdding(true)} disabled={!tradingEnabled} title={tradingEnabled ? undefined : "Turn on Trading to start a trailing stop"}>
-            New trailing stop
-          </button>
+          <>
+            {cycleStartedAt !== null && active > 0 && (
+              <div className="flex items-center gap-2 text-[0.75rem] text-ink-muted" title="The bar drains to empty when the next price check happens.">
+                Next check
+                <div className="w-16">
+                  <ShareBar share={untilCheck} label="Time until the next price check" />
+                </div>
+              </div>
+            )}
+            <button className={btn.primary} type="button" onClick={() => setAdding(true)} disabled={!tradingEnabled} title={tradingEnabled ? undefined : "Turn on Trading to start a trailing stop"}>
+              New trailing stop
+            </button>
+          </>
         }
       >
         <div className={PANEL_BODY}>
