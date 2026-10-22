@@ -14,8 +14,6 @@ import { EmptyState, ShareBar } from "../controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../ui";
 import { Section } from "./shared";
 
-const COLUMNS = 8;
-
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
 const COLUMN_IDS = ["name", "status", "quantity", "trail", "high", "trigger", "now", "actions"];
@@ -62,9 +60,22 @@ function Row({
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
   const paused = watching && !tradingEnabled;
+  const buying = stop.side === "buy";
+  const verb = buying ? "buy" : "sell";
+  const soldNote = stop.status === "sold" && stop.soldPrice !== null ? `${buying ? "Bought" : "Sold"} at ${money(stop.soldPrice)}` : null;
+  const watchNote = `Watching the price. The app will ${verb} at market once it ${buying ? "reaches" : "falls to"} ${money(triggerPrice(stop.high, stop.trail, stop.side))}.`;
+  const defaultTitle: Record<TrailingStatus, string> = {
+    active: watchNote,
+    selling: `The trigger was hit and the ${verb} order is being placed now.`,
+    sold: buying ? "The buy order was placed." : "The sell order was placed.",
+    attention: `The app did not ${verb} automatically. Check Scalable before doing anything else.`,
+  };
+  const statusTitle = paused
+    ? `${stop.message ?? ""}${stop.message ? "\n" : ""}Trading is off, so the app will not move the ${buying ? "low" : "high"} or ${verb} until you turn Trading on.`
+    : (soldNote ?? stop.message ?? defaultTitle[stop.status]);
   return (
     <>
-      <tr className={stop.message ? "[&>td]:border-b-0!" : undefined}>
+      <tr>
         {inOrder(order, {
           name: (
             <td>
@@ -83,9 +94,11 @@ function Row({
           status: (
             <td>
               {paused ? (
-                <Badge tone="yellow">Paused, Trading is off</Badge>
+                <Badge tone="yellow" title={statusTitle}>
+                  Paused, Trading is off
+                </Badge>
               ) : (
-                <Badge tone={TONE[stop.status]} title={stop.status === "sold" && stop.soldPrice !== null ? formatMoney(stop.soldPrice) : undefined}>
+                <Badge tone={TONE[stop.status]} title={statusTitle}>
                   {statusLabel(stop.side, stop.status)}
                 </Badge>
               )}
@@ -137,13 +150,6 @@ function Row({
           ),
         })}
       </tr>
-      {stop.message && (
-        <tr>
-          <td colSpan={COLUMNS} className="h-auto! max-w-none! pt-0! pb-3! whitespace-normal! text-justify text-ink-muted">
-            {stop.message}
-          </td>
-        </tr>
-      )}
     </>
   );
 }
