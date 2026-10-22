@@ -94,7 +94,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   Settings, Background, "Also show in the app" is on, or when Windows cannot show the notification (toasts
   go away after a few seconds; errors stay until dismissed). Clear all or remove
   single entries from the panel. The history is not saved between launches.
-- **Discover** (securities and derivatives), **Price alerts** (with the trailing stop losses), **Savings plans** (list, options,
+- **Discover** (securities and derivatives), **Price alerts**, **Trailing stops**, **Savings plans** (list, options,
   guided create and edit with Scalable's preview, removal) and **Transactions** (table or timeline, details, cancel open
   orders). The list is the history stored on this computer (the same one the Overview uses, newest first), so
   the pages cover every transaction at once and the count is the real total. It is brought up to date in the
@@ -196,7 +196,7 @@ src/                 React frontend (TypeScript, Tailwind-only styling)
   app/               useAppData (state, timers, data hooks), useAppCommands (refresh, copy, orders, bulk edits, sign in and out, palette and menu entries), AppContext (shared data/commands and route wrappers), AppRouter (the page for the view; the pages other than Overview, Portfolio and Watchlist load lazily), GlobalDialogs (order, palette, confirmations, security dock), Header (page buttons, account menu heading), ProviderStatus (the service status line), invoke.ts (the `invoke` that fails with a clear message outside the desktop window)
   commands.ts        typed registry of the Tauri commands (`CommandMap`, `invokeCommand`) and the names of the Scalable tools used in more than one file; a test checks it against `generate_handler!` in `src-tauri/src/lib.rs` (tested)
   Sidebar, TopBar, SignIn, Brand, Overview, OverviewExtras, SummaryStats, ScreenerTable, ScreenerRow, SecurityDrawer, SettingsPage, ...   screens and chrome; the Portfolio and Watchlist table (ScreenerTable, ScreenerRow) and the Overview cards are separate modules
-  pages/             Groups, Alerts (+ TrailingStops), Savings (+ plan dialog), Transactions, Tools and ToolSchema (shown in Settings), Discover
+  pages/             Groups, Alerts, TrailingStops, Savings (+ plan dialog), Transactions, Tools and ToolSchema (shown in Settings), Discover
   hooks/             dashboard data, async query and preview flows, table state, overnight transactions, transaction history, windowed table rows (`useRowWindow.ts`), group figures and order, price alert watch, trailing stops, notifications, provider status, sidebar order, session info, updater, background options
   extensions.ts      typed extension slots (extra pages, table columns, security-panel sections, settings and menu entries); the app works without any extension
   extensionStub.ts   the empty extension; `vite.config.ts` resolves the `virtual:app-extension` module to it
@@ -323,8 +323,9 @@ non-read tool, including unknown tools, until Trading is on.
   choose it. The sell can only be accepted once the bought shares are in your portfolio, and Scalable may
   refuse the second order if the first already reserves the same shares. When the buy was a limit order, the
   take-profit price must be above and the stop-loss price below the limit price.
+- **Trailing buy stop (optional, local).** The mirror image, in its own panel on the Trailing stops page: pick any security, an amount of money to spend and a distance above the low. The app follows the lowest ask price and, when the price rises to the low plus the distance, buys at market with `preview_buy_order` and `submit_buy_order`. It has the same rules as the stop loss (app running, signed in, Trading on, never accepts a warning, never repeats a submitted order) and also needs enough cash; an ask more than 25% above the trigger needs manual review. Edit works the same way.
 - **Trailing stop loss (optional, local).** Scalable's MCP has no trailing stop, so the app does it itself
-  (`src-tauri/src/mcp/trailing/`: the saved file, quotes, the sale, the watcher and the commands in one file each). Start one on the Alerts page (**New trailing stop**) or after a buy
+  (`src-tauri/src/mcp/trailing/`: the saved file, quotes, the sale, the watcher and the commands in one file each). Start one on the Trailing stops page (**New trailing stop**) or after a buy
   (**Set trailing stop loss**): pick a security you hold (the dialog shows your shares and a **Sell all** link), the shares to sell and a distance in percent or money, and
   tick that the app may sell without asking again. The app remembers the highest price from then on (the
   bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (the panel header says "checked every …", and its Refresh button reads the prices right away instead of waiting for the next check; it only runs while a stop is active) (Settings, Trailing stop losses: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at

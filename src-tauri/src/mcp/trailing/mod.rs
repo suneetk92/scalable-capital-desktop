@@ -1,8 +1,10 @@
-//! Trailing stop loss, kept and watched in the app.
+//! Trailing stop loss and trailing buy stop, kept and watched in the app.
 //!
 //! Scalable's MCP has no trailing stop (an order is a market, limit or plain stop order), so the
-//! app does it itself: it remembers the highest price seen since the stop was set and, when the
-//! price falls by the chosen percentage or amount below that high, sells the shares at market.
+//! app does it itself. A trailing stop loss remembers the highest price seen since it was set and,
+//! when the price falls by the chosen percentage or amount below that high, sells the shares at
+//! market. A trailing buy stop is the mirror image: it remembers the lowest price, and when the
+//! price rises by the distance above that low, it buys for the chosen amount of money at market.
 //!
 //! This only works while the app runs (the tray keeps it running with the window closed), is
 //! signed in and has Trading switched on. The stops are saved in `trailing_stops.json` in the app
@@ -11,7 +13,7 @@
 //! order from the dialog and never accepts a warning on the user's behalf.
 //!
 //! One submodule per responsibility: `store` (the saved file), `quotes` (prices), `orders` (the
-//! sale), `watcher` (the price checks, which run only while a stop is active) and `commands` (what
+//! sale or purchase), `watcher` (the price checks, which run only while a stop is active) and `commands` (what
 //! the webview can call).
 
 pub mod commands;
@@ -37,7 +39,25 @@ const MAX_CHECK_SECONDS: u64 = 600;
 const MAX_STOPS: usize = 50;
 const MAX_NAME: usize = 80;
 
-/// How far below the highest price the stop sits.
+/// Which way a stop trades: a stop loss sells when the price falls, a buy stop buys when it rises.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Side {
+    #[default]
+    Sell,
+    Buy,
+}
+
+impl Side {
+    pub fn word(self) -> &'static str {
+        match self {
+            Side::Sell => "sell",
+            Side::Buy => "buy",
+        }
+    }
+}
+
+/// How far the stop sits from the extreme price: below the highest for a sale, above the lowest for a purchase.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "kind", content = "value", rename_all = "camelCase")]
 pub enum Trail {
@@ -50,8 +70,9 @@ pub enum Trail {
 pub enum Status {
     /// Watched while Trading is on.
     Active,
-    /// A sale was started. It is never repeated: a stop in this state when the app starts becomes `Attention`.
+    /// A sale or purchase was started. It is never repeated: a stop in this state when the app starts becomes `Attention`.
     Selling,
+    /// The sale or purchase went through.
     Sold,
     /// Not watched any more: the user has to look at it (a warning to accept, or an uncertain sale).
     Attention,
@@ -60,15 +81,22 @@ pub enum Status {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TrailingStop {
+    #[serde(default)]
+    pub side: Side,
     pub id: String,
     pub isin: String,
     pub name: String,
     #[serde(default)]
     pub portfolio_id: Option<String>,
+    /// The shares to sell; 0 for a buy stop.
+    #[serde(default)]
     pub shares: f64,
+    /// The money to spend; only for a buy stop.
+    #[serde(default)]
+    pub amount: Option<f64>,
     pub trail: Trail,
     pub start_price: f64,
-    /// The highest price seen since the stop was set.
+    /// The extreme price seen since the stop was set: the highest for a sale, the lowest for a purchase.
     pub high: f64,
     #[serde(default)]
     pub last_price: Option<f64>,
@@ -179,11 +207,13 @@ fn has_sale_in_progress(stops: &[TrailingStop]) -> bool {
 #[cfg(test)]
 pub(super) fn sample_stop(trail: Trail, high: f64) -> TrailingStop {
     TrailingStop {
+        side: Side::Sell,
         id: "a".to_owned(),
         isin: "US0378331005".to_owned(),
         name: "Apple".to_owned(),
         portfolio_id: None,
         shares: 2.0,
+        amount: None,
         trail,
         start_price: high,
         high,

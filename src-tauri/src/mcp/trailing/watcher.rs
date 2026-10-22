@@ -2,27 +2,36 @@
 //! waits for a wake-up (a stop was added, or the saved stops were loaded) and does not tick.
 
 use super::{
-    announce_change, orders::sell, quotes::quote_prices, Status, Trail, TrailingState, TrailingStop,
+    announce_change, orders::execute, quotes::quote_prices, Side, Status, Trail, TrailingState,
+    TrailingStop,
 };
 use crate::mcp::trading::TradingGate;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-/// The price at or below which the stop sells.
-pub(super) fn trigger_price(high: f64, trail: Trail) -> f64 {
-    match trail {
-        Trail::Percent(percent) => high * (1.0 - percent / 100.0),
-        Trail::Amount(amount) => high - amount,
+/// The price at which the stop trades: at or below it for a sale, at or above it for a purchase.
+pub(super) fn trigger_price(side: Side, extreme: f64, trail: Trail) -> f64 {
+    match (side, trail) {
+        (Side::Sell, Trail::Percent(percent)) => extreme * (1.0 - percent / 100.0),
+        (Side::Sell, Trail::Amount(amount)) => extreme - amount,
+        (Side::Buy, Trail::Percent(percent)) => extreme * (1.0 + percent / 100.0),
+        (Side::Buy, Trail::Amount(amount)) => extreme + amount,
     }
 }
 
-/// Records the latest price, raises the high when it is a new one, and says whether the stop is hit.
+/// Records the latest price, moves the extreme (the high of a sale, the low of a purchase) when it is a new one, and says whether the stop is hit.
 fn advance(stop: &mut TrailingStop, price: f64) -> bool {
     stop.last_price = Some(price);
-    if price > stop.high {
-        stop.high = price;
+    match stop.side {
+        Side::Sell if price > stop.high => stop.high = price,
+        Side::Buy if price < stop.high => stop.high = price,
+        _ => {}
     }
-    price <= trigger_price(stop.high, stop.trail)
+    let trigger = trigger_price(stop.side, stop.high, stop.trail);
+    match stop.side {
+        Side::Sell => price <= trigger,
+        Side::Buy => price >= trigger,
+    }
 }
 
 /// Whether the watcher has anything to do: only an active stop is ever checked.
@@ -37,7 +46,7 @@ fn report(app: &AppHandle, state: &TrailingState, problem: Option<String>) {
     }
 }
 
-/// With Trading off nothing is watched or sold, but the shown price still follows the market: the high
+/// With Trading off nothing is watched or traded, but the shown price still follows the market: the high
 /// and the status stay as they are, and nothing is saved.
 async fn show_prices(
     app: &AppHandle,
@@ -56,7 +65,7 @@ async fn show_prices(
             let price = prices
                 .iter()
                 .find(|(isin, _)| *isin == stop.isin)
-                .and_then(|(_, price)| *price);
+                .and_then(|(_, quote)| quote.for_side(stop.side));
             if price.is_some() && price != stop.last_price {
                 stop.last_price = price;
                 changed = true;
@@ -69,7 +78,7 @@ async fn show_prices(
     }
 }
 
-/// One pass: reads the prices of the active stops, moves their highs up and sells the ones that were hit.
+/// One pass: reads the prices of the active stops, moves their highs up (or lows down) and trades the ones that were hit.
 pub(super) async fn check(app: &AppHandle) {
     run_check(app).await;
     app.state::<TrailingState>().stamp_check();
@@ -107,7 +116,7 @@ async fn run_check(app: &AppHandle) {
     };
     let missing: Vec<&str> = prices
         .iter()
-        .filter(|(_, price)| price.is_none())
+        .filter(|(_, quote)| quote.sell.is_none())
         .map(|(isin, _)| isin.as_str())
         .collect();
     report(
@@ -130,7 +139,7 @@ async fn run_check(app: &AppHandle) {
             let Some(price) = prices
                 .iter()
                 .find(|(isin, _)| *isin == stop.isin)
-                .and_then(|(_, price)| *price)
+                .and_then(|(_, quote)| quote.for_side(stop.side))
             else {
                 continue;
             };
@@ -156,7 +165,7 @@ async fn run_check(app: &AppHandle) {
                     {
                         stop.status = Status::Attention;
                         stop.message = Some(format!(
-                            "Not sold, because the stop could not be saved: {error}"
+                            "Nothing was sent, because the stop could not be saved: {error}"
                         ));
                     }
                 });
@@ -168,7 +177,7 @@ async fn run_check(app: &AppHandle) {
         announce_change(app);
     }
     for stop in hits {
-        sell(app, stop).await;
+        execute(app, stop).await;
     }
 }
 
@@ -204,8 +213,13 @@ mod tests {
 
     #[test]
     fn the_trigger_is_below_the_high_by_the_trail() {
-        assert_eq!(trigger_price(200.0, Trail::Percent(10.0)), 180.0);
-        assert_eq!(trigger_price(200.0, Trail::Amount(15.0)), 185.0);
+        assert_eq!(
+            trigger_price(Side::Sell, 200.0, Trail::Percent(10.0)),
+            180.0
+        );
+        assert_eq!(trigger_price(Side::Sell, 200.0, Trail::Amount(15.0)), 185.0);
+        assert_eq!(trigger_price(Side::Buy, 200.0, Trail::Percent(25.0)), 250.0);
+        assert_eq!(trigger_price(Side::Buy, 200.0, Trail::Amount(15.0)), 215.0);
     }
 
     #[test]
@@ -218,6 +232,21 @@ mod tests {
         assert_eq!(stop.last_price, Some(109.0));
         assert!(advance(&mut stop, 108.0));
         assert!(advance(&mut stop, 90.0));
+    }
+
+    #[test]
+    fn a_buy_stop_follows_the_low_down_and_buys_on_the_rise() {
+        let mut stop = sample_stop(Trail::Percent(10.0), 100.0);
+        stop.side = Side::Buy;
+        assert!(!advance(&mut stop, 80.0));
+        assert_eq!(stop.high, 80.0);
+        assert!(!advance(&mut stop, 87.0));
+        assert_eq!(stop.high, 80.0);
+        assert_eq!(stop.last_price, Some(87.0));
+        assert!(advance(&mut stop, 88.0));
+        assert!(advance(&mut stop, 95.0));
+        assert!(!advance(&mut stop, 70.0));
+        assert_eq!(stop.high, 70.0);
     }
 
     #[test]

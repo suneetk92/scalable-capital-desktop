@@ -1,8 +1,8 @@
-//! What the webview can call: list, add and remove a stop, and set the check interval.
+//! What the webview can call: list, add, change and remove a stop, and set the check interval.
 
 use super::{
-    announce_change, quotes::quote_prices, watcher, Status, Trail, TrailingState, TrailingStop,
-    MAX_CHECK_SECONDS, MAX_NAME, MAX_STOPS, MIN_CHECK_SECONDS,
+    announce_change, quotes::quote_prices, watcher, Side, Status, Trail, TrailingState,
+    TrailingStop, MAX_CHECK_SECONDS, MAX_NAME, MAX_STOPS, MIN_CHECK_SECONDS,
 };
 use crate::mcp::{
     args::is_isin,
@@ -15,7 +15,7 @@ use std::{
 };
 use tauri::{AppHandle, State};
 
-fn valid_trail(trail: Trail, price: f64) -> Result<(), String> {
+fn valid_trail(side: Side, trail: Trail, price: f64) -> Result<(), String> {
     match trail {
         Trail::Percent(percent) if percent.is_finite() && percent > 0.0 && percent < 100.0 => {
             Ok(())
@@ -23,11 +23,27 @@ fn valid_trail(trail: Trail, price: f64) -> Result<(), String> {
         Trail::Percent(_) => {
             Err("The trailing distance must be above 0 and below 100 percent".to_owned())
         }
-        Trail::Amount(amount) if amount.is_finite() && amount > 0.0 && amount < price => Ok(()),
+        // A sale cannot trail by more than the price; a purchase has no such ceiling.
+        Trail::Amount(amount)
+            if amount.is_finite() && amount > 0.0 && (side == Side::Buy || amount < price) =>
+        {
+            Ok(())
+        }
         Trail::Amount(_) => {
             Err("The trailing distance must be above zero and below the current price".to_owned())
         }
     }
+}
+
+/// The size of a stop: the shares to sell, or the money to spend on a purchase.
+fn valid_size(side: Side, size: f64) -> Result<(), String> {
+    if size.is_finite() && size > 0.0 {
+        return Ok(());
+    }
+    Err(match side {
+        Side::Sell => "The number of shares must be greater than zero".to_owned(),
+        Side::Buy => "The amount to spend must be greater than zero".to_owned(),
+    })
 }
 
 /// Sets the seconds between price checks (the app's setting), within the allowed bounds.
@@ -72,17 +88,41 @@ pub async fn check_trailing_stops_now(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewTrailingStop {
+    #[serde(default)]
+    pub side: Side,
     pub isin: String,
     pub name: String,
     #[serde(default)]
     pub portfolio_id: Option<String>,
+    /// The shares to sell (a stop loss).
+    #[serde(default)]
     pub shares: f64,
+    /// The money to spend (a buy stop).
+    #[serde(default)]
+    pub amount: f64,
     pub trail: Trail,
 }
 
-fn is_duplicate(stops: &[TrailingStop], isin: &str, portfolio_id: &Option<String>) -> bool {
+impl NewTrailingStop {
+    fn size(&self) -> f64 {
+        match self.side {
+            Side::Sell => self.shares,
+            Side::Buy => self.amount,
+        }
+    }
+}
+
+fn is_duplicate(
+    stops: &[TrailingStop],
+    side: Side,
+    isin: &str,
+    portfolio_id: &Option<String>,
+) -> bool {
     stops.iter().any(|stop| {
-        stop.status == Status::Active && stop.isin == isin && stop.portfolio_id == *portfolio_id
+        stop.status == Status::Active
+            && stop.side == side
+            && stop.isin == isin
+            && stop.portfolio_id == *portfolio_id
     })
 }
 
@@ -100,19 +140,17 @@ fn admit_new_stop(
     if !is_isin(&request.isin) {
         return Err("A valid 12-character ISIN is required".to_owned());
     }
-    if !request.shares.is_finite() || request.shares <= 0.0 {
-        return Err("The number of shares must be greater than zero".to_owned());
-    }
+    valid_size(request.side, request.size())?;
     let portfolio_id = request.portfolio_id.clone().filter(|id| !id.is_empty());
     let (count, exists) = state.mutate(|stops| {
         (
             stops.len(),
-            is_duplicate(stops, &request.isin, &portfolio_id),
+            is_duplicate(stops, request.side, &request.isin, &portfolio_id),
         )
     });
     if exists {
         return Err(
-            "There is already a trailing stop for this security. Remove it first.".to_owned(),
+            "There is already a trailing stop of this kind for this security. Edit or remove it first.".to_owned(),
         );
     }
     if count >= MAX_STOPS {
@@ -132,11 +170,12 @@ pub async fn add_trailing_stop(
     let prices = quote_prices(&app, vec![(request.isin.clone(), portfolio_id.clone())]).await?;
     let price = prices
         .first()
-        .and_then(|(_, price)| *price)
+        .and_then(|(_, quote)| quote.for_side(request.side))
         .ok_or("Scalable gave no price for this security, so the stop cannot start.")?;
-    valid_trail(request.trail, price)?;
+    valid_trail(request.side, request.trail, price)?;
     let name: String = request.name.trim().chars().take(MAX_NAME).collect();
     let stop = TrailingStop {
+        side: request.side,
         id: format!("{:016x}", rand::random::<u64>()),
         isin: request.isin.clone(),
         name: if name.is_empty() {
@@ -145,7 +184,12 @@ pub async fn add_trailing_stop(
             name
         },
         portfolio_id: portfolio_id.clone(),
-        shares: request.shares,
+        shares: if request.side == Side::Sell {
+            request.shares
+        } else {
+            0.0
+        },
+        amount: (request.side == Side::Buy).then_some(request.amount),
         trail: request.trail,
         start_price: price,
         high: price,
@@ -159,7 +203,7 @@ pub async fn add_trailing_stop(
     };
     // Trading may have been switched off while the price loaded, and the same stop twice is refused again.
     let added = state.mutate(|stops| {
-        if !gate.is_on() || is_duplicate(stops, &request.isin, &portfolio_id) {
+        if !gate.is_on() || is_duplicate(stops, request.side, &request.isin, &portfolio_id) {
             return false;
         }
         stops.push(stop.clone());
@@ -180,11 +224,12 @@ pub async fn add_trailing_stop(
 #[derive(Deserialize)]
 pub struct TrailingStopChange {
     pub id: String,
-    pub shares: f64,
+    /// The shares of a stop loss, or the money of a buy stop.
+    pub size: f64,
     pub trail: Trail,
 }
 
-/// Changes the shares and the distance of a stop that is watching, or one that needs the user, which then
+/// Changes the size (shares or money) and the distance of a stop that is watching, or one that needs the user, which then
 /// watches again. A watching stop keeps its high; one that needs the user starts over from the last price,
 /// because the old high is what triggered it. It changes what the app sells, so it needs the Trading switch.
 #[tauri::command]
@@ -197,9 +242,6 @@ pub fn update_trailing_stop(
     if !gate.is_on() {
         return Err(TRADING_OFF.to_owned());
     }
-    if !request.shares.is_finite() || request.shares <= 0.0 {
-        return Err("The number of shares must be greater than zero".to_owned());
-    }
     let (previous, updated) = state.mutate(|stops| {
         let stop = stops
             .iter_mut()
@@ -208,6 +250,7 @@ pub fn update_trailing_stop(
         if !matches!(stop.status, Status::Active | Status::Attention) {
             return Err("Only a stop that is watching or needs you can be changed.".to_owned());
         }
+        valid_size(stop.side, request.size)?;
         let high = if stop.status == Status::Attention {
             stop.last_price
                 .filter(|price| *price > 0.0)
@@ -215,11 +258,14 @@ pub fn update_trailing_stop(
         } else {
             stop.high
         };
-        valid_trail(request.trail, high)?;
+        valid_trail(stop.side, request.trail, high)?;
         let previous = stop.clone();
         stop.high = high;
         stop.status = Status::Active;
-        stop.shares = request.shares;
+        match stop.side {
+            Side::Sell => stop.shares = request.size,
+            Side::Buy => stop.amount = Some(request.size),
+        }
         stop.trail = request.trail;
         stop.message = None;
         Ok((previous, stop.clone()))
@@ -266,10 +312,12 @@ mod tests {
 
     fn new_stop(isin: &str) -> NewTrailingStop {
         NewTrailingStop {
+            side: Side::Sell,
             isin: isin.to_owned(),
             name: "Test".to_owned(),
             portfolio_id: Some("p-1".to_owned()),
             shares: 2.0,
+            amount: 0.0,
             trail: Trail::Percent(5.0),
         }
     }
@@ -294,6 +342,11 @@ mod tests {
         let mut none = new_stop("US0378331005");
         none.shares = 0.0;
         assert!(admit_new_stop(&gate, &state, &none).is_err());
+        let mut buy = new_stop("US0378331005");
+        buy.side = Side::Buy;
+        assert!(admit_new_stop(&gate, &state, &buy).is_err());
+        buy.amount = 100.0;
+        assert!(admit_new_stop(&gate, &state, &buy).is_ok());
         gate.enabled.store(false, Ordering::SeqCst);
         assert_eq!(
             admit_new_stop(&gate, &state, &request).unwrap_err(),
@@ -303,12 +356,20 @@ mod tests {
 
     #[test]
     fn the_trail_must_fit_the_price() {
-        assert!(valid_trail(Trail::Percent(5.0), 100.0).is_ok());
-        assert!(valid_trail(Trail::Percent(0.0), 100.0).is_err());
-        assert!(valid_trail(Trail::Percent(100.0), 100.0).is_err());
-        assert!(valid_trail(Trail::Percent(f64::NAN), 100.0).is_err());
-        assert!(valid_trail(Trail::Amount(5.0), 100.0).is_ok());
-        assert!(valid_trail(Trail::Amount(100.0), 100.0).is_err());
-        assert!(valid_trail(Trail::Amount(-1.0), 100.0).is_err());
+        let sell = |trail, price| valid_trail(Side::Sell, trail, price);
+        assert!(sell(Trail::Percent(5.0), 100.0).is_ok());
+        assert!(sell(Trail::Percent(0.0), 100.0).is_err());
+        assert!(sell(Trail::Percent(100.0), 100.0).is_err());
+        assert!(sell(Trail::Percent(f64::NAN), 100.0).is_err());
+        assert!(sell(Trail::Amount(5.0), 100.0).is_ok());
+        assert!(sell(Trail::Amount(100.0), 100.0).is_err());
+        assert!(sell(Trail::Amount(-1.0), 100.0).is_err());
+    }
+
+    #[test]
+    fn a_buy_stop_may_trail_by_more_than_the_price() {
+        assert!(valid_trail(Side::Buy, Trail::Amount(150.0), 100.0).is_ok());
+        assert!(valid_trail(Side::Buy, Trail::Amount(0.0), 100.0).is_err());
+        assert!(valid_trail(Side::Buy, Trail::Percent(100.0), 100.0).is_err());
     }
 }

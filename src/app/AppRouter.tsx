@@ -12,6 +12,7 @@ import { useApp } from "./AppContext";
 const GroupsPage = lazy(() => import("../pages/Groups").then((module) => ({ default: module.GroupsPage })));
 const DiscoverPage = lazy(() => import("../pages/Discover").then((module) => ({ default: module.DiscoverPage })));
 const AlertsPage = lazy(() => import("../pages/Alerts").then((module) => ({ default: module.AlertsPage })));
+const TrailingStopsPage = lazy(() => import("../pages/TrailingStops").then((module) => ({ default: module.TrailingStops })));
 const SavingsPage = lazy(() => import("../pages/Savings").then((module) => ({ default: module.SavingsPage })));
 const TransactionsPage = lazy(() => import("../pages/Transactions").then((module) => ({ default: module.TransactionsPage })));
 const SettingsPage = lazy(() => import("../SettingsPage").then((module) => ({ default: module.SettingsPage })));
@@ -88,6 +89,7 @@ export function AppRouter() {
       {view === "groups" && <GroupsPage common={common} data={groupData} defaultGroup={defaultGroup} errors={groupErrors} offered={groupsOffered} formatMoney={formatMoney} onShowGroup={openGroup} />}
       {view === "discover" && <DiscoverPage common={common} watched={watchedIsins} held={heldIsins} onOpen={openFound} onTrade={(found) => tradeFound(found)} />}
       {view === "alerts" && <AlertsPage common={common} onOpenSecurity={openFound} />}
+      {view === "trailing" && <TrailingStopsPage common={common} onOpenSecurity={openFound} />}
       {view === "savings" && <SavingsPage common={common} onOpenSecurity={openFound} />}
       {transactionsOpened && (
         <div hidden={view !== "transactions"}>

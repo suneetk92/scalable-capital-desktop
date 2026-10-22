@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTrailingList, trailIssue, trailLabel, triggerMargin, triggerPrice } from "./trailing";
+import { parseTrailingList, statusLabel, trailIssue, trailLabel, triggerMargin, triggerPrice } from "./trailing";
 
 const stop = {
   id: "a",
@@ -20,6 +20,25 @@ describe("triggerPrice", () => {
   it("sits below the high by the percentage or the amount", () => {
     expect(triggerPrice(200, { kind: "percent", value: 10 })).toBe(180);
     expect(triggerPrice(200, { kind: "amount", value: 15 })).toBe(185);
+  });
+});
+
+describe("buy stops", () => {
+  it("trigger above the low and use up the margin as the price rises", () => {
+    const trail = { kind: "percent", value: 10 } as const;
+    expect(triggerPrice(100, trail, "buy")).toBeCloseTo(110);
+    expect(triggerPrice(100, { kind: "amount", value: 5 }, "buy")).toBe(105);
+    expect(triggerMargin(100, 100, trail, "buy")).toBe(1);
+    expect(triggerMargin(105, 100, trail, "buy")).toBeCloseTo(0.5);
+    expect(triggerMargin(112, 100, trail, "buy")).toBe(0);
+    expect(triggerMargin(95, 100, trail, "buy")).toBe(1);
+  });
+
+  it("read as bought, not sold", () => {
+    expect(statusLabel("buy", "sold")).toBe("Bought");
+    expect(statusLabel("sell", "sold")).toBe("Sold");
+    expect(parseTrailingList({ stops: [{ ...stop, side: "buy", shares: 0, amount: 250 }] }).stops[0]).toMatchObject({ side: "buy", amount: 250 });
+    expect(parseTrailingList({ stops: [stop] }).stops[0].side).toBe("sell");
   });
 });
 

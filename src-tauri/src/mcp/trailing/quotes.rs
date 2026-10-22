@@ -1,5 +1,6 @@
 //! Prices of the watched securities, from `get_security_quote`.
 
+use super::Side;
 use crate::mcp::{
     client::require_tool,
     response::finite_number,
@@ -8,9 +9,14 @@ use crate::mcp::{
 use serde_json::{json, Map, Value};
 use tauri::AppHandle;
 
-/// What a sale would get: the bid, else the mid price. Scalable sends them as numbers or strings.
-pub(super) fn quote_price(quote: &Value) -> Option<f64> {
-    ["bidPrice", "midPrice"].iter().find_map(|key| {
+/// What the order would get: a sale the bid, a purchase the ask, then the mid price and the other side as a last
+/// resort (while the market is closed one side can be missing). Scalable sends them as numbers or strings.
+pub(super) fn quote_price(quote: &Value, side: Side) -> Option<f64> {
+    let keys = match side {
+        Side::Sell => ["bidPrice", "midPrice", "askPrice"],
+        Side::Buy => ["askPrice", "midPrice", "bidPrice"],
+    };
+    keys.iter().find_map(|key| {
         quote
             .get(key)
             .and_then(finite_number)
@@ -18,20 +24,28 @@ pub(super) fn quote_price(quote: &Value) -> Option<f64> {
     })
 }
 
-/// The price in a `get_security_quote` answer, whose quote sits under `security.quote`. While the
-/// market is closed the bid can be missing, so the ask is the last resort.
-fn security_quote_price(answer: &Value) -> Option<f64> {
+/// The price in a `get_security_quote` answer, whose quote sits under `security.quote`.
+fn security_quote_price(answer: &Value, side: Side) -> Option<f64> {
     ["/security/quote", "/quote", ""]
         .iter()
         .filter_map(|path| answer.pointer(path))
-        .find_map(|quote| {
-            quote_price(quote).or_else(|| {
-                quote
-                    .get("askPrice")
-                    .and_then(finite_number)
-                    .filter(|price| *price > 0.0)
-            })
-        })
+        .find_map(|quote| quote_price(quote, side))
+}
+
+/// The latest price of a security as a sale and as a purchase would get it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(super) struct Quote {
+    pub sell: Option<f64>,
+    pub buy: Option<f64>,
+}
+
+impl Quote {
+    pub fn for_side(self, side: Side) -> Option<f64> {
+        match side {
+            Side::Sell => self.sell,
+            Side::Buy => self.buy,
+        }
+    }
 }
 
 fn quote_arguments(isin: &str, portfolio_id: Option<&str>) -> Value {
@@ -43,12 +57,12 @@ fn quote_arguments(isin: &str, portfolio_id: Option<&str>) -> Value {
     Value::Object(arguments)
 }
 
-/// The latest price of every ISIN, `None` for one Scalable gave no price for. A rejected
+/// The latest quote of every ISIN, empty for one Scalable gave no price for. A rejected
 /// session is the only failure that is raised, so the quote calls can be repeated on a new one.
 pub(super) async fn quote_prices(
     app: &AppHandle,
     targets: Vec<(String, Option<String>)>,
-) -> Result<Vec<(String, Option<f64>)>, String> {
+) -> Result<Vec<(String, Quote)>, String> {
     session::with_session(app, |mut mcp, tools| {
         let targets = targets.clone();
         async move {
@@ -56,12 +70,15 @@ pub(super) async fn quote_prices(
             let mut prices = Vec::with_capacity(targets.len());
             for (isin, portfolio_id) in targets {
                 let arguments = quote_arguments(&isin, portfolio_id.as_deref());
-                let price = match mcp.call_tool("get_security_quote", arguments).await {
-                    Ok(quote) => security_quote_price(&quote),
+                let quote = match mcp.call_tool("get_security_quote", arguments).await {
+                    Ok(answer) => Quote {
+                        sell: security_quote_price(&answer, Side::Sell),
+                        buy: security_quote_price(&answer, Side::Buy),
+                    },
                     Err(error) if is_stale_session_error(&error) => return Err(error),
-                    Err(_) => None,
+                    Err(_) => Quote::default(),
                 };
-                prices.push((isin, price));
+                prices.push((isin, quote));
             }
             Ok(prices)
         }
@@ -76,30 +93,42 @@ mod tests {
 
     #[test]
     fn the_price_is_the_bid_then_the_mid_as_number_or_text() {
+        let sell = |quote: Value| quote_price(&quote, Side::Sell);
         assert_eq!(
-            quote_price(&json!({ "bidPrice": "9.5", "midPrice": 10 })),
+            sell(json!({ "bidPrice": "9.5", "midPrice": 10 })),
             Some(9.5)
         );
-        assert_eq!(quote_price(&json!({ "midPrice": 10.25 })), Some(10.25));
+        assert_eq!(sell(json!({ "midPrice": 10.25 })), Some(10.25));
+        assert_eq!(sell(json!({ "bidPrice": 0, "midPrice": "10" })), Some(10.0));
+        assert_eq!(sell(json!({ "bidPrice": "x" })), None);
+        assert_eq!(sell(json!({})), None);
+    }
+
+    #[test]
+    fn a_purchase_reads_the_ask_first() {
+        let quote = json!({ "bidPrice": 9.5, "askPrice": 10.5, "midPrice": 10 });
+        assert_eq!(quote_price(&quote, Side::Buy), Some(10.5));
+        assert_eq!(quote_price(&quote, Side::Sell), Some(9.5));
         assert_eq!(
-            quote_price(&json!({ "bidPrice": 0, "midPrice": "10" })),
-            Some(10.0)
+            quote_price(&json!({ "bidPrice": 9.5 }), Side::Buy),
+            Some(9.5)
         );
-        assert_eq!(quote_price(&json!({ "bidPrice": "x" })), None);
-        assert_eq!(quote_price(&json!({})), None);
     }
 
     #[test]
     fn the_price_is_found_in_the_nested_security_quote() {
         let nested = json!({ "security": { "quote": { "bidPrice": 9.5, "midPrice": 10 } } });
-        assert_eq!(security_quote_price(&nested), Some(9.5));
+        assert_eq!(security_quote_price(&nested, Side::Sell), Some(9.5));
         assert_eq!(
-            security_quote_price(&json!({ "quote": { "midPrice": 10 } })),
+            security_quote_price(&json!({ "quote": { "midPrice": 10 } }), Side::Sell),
             Some(10.0)
         );
-        assert_eq!(security_quote_price(&json!({ "midPrice": 10 })), Some(10.0));
         assert_eq!(
-            security_quote_price(&json!({ "security": { "quote": null } })),
+            security_quote_price(&json!({ "midPrice": 10 }), Side::Sell),
+            Some(10.0)
+        );
+        assert_eq!(
+            security_quote_price(&json!({ "security": { "quote": null } }), Side::Sell),
             None
         );
     }

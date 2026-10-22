@@ -1,18 +1,24 @@
 import { isRec } from "./response";
 import { parseDecimal } from "./format";
 
-/** A trailing stop loss the app watches itself: Scalable's MCP has no such order. See `src-tauri/src/mcp/trailing/`. */
+/** A trailing stop loss (sells when the price falls) or trailing buy stop (buys when it rises) the app watches itself: Scalable's MCP has no such order. See `src-tauri/src/mcp/trailing/`. */
 export type TrailKind = "percent" | "amount";
+export type TrailSide = "sell" | "buy";
 export type TrailingStatus = "active" | "selling" | "sold" | "attention";
 
 export type TrailingStop = {
+  side: TrailSide;
   id: string;
   isin: string;
   name: string;
   portfolioId: string | null;
+  /** The shares to sell; 0 for a buy stop. */
   quantity: number;
+  /** The money to spend; only for a buy stop. */
+  amount: number | null;
   trail: { kind: TrailKind; value: number };
   startPrice: number;
+  /** The extreme price seen: the highest for a stop loss, the lowest for a buy stop. */
   high: number;
   lastPrice: number | null;
   status: TrailingStatus;
@@ -22,22 +28,28 @@ export type TrailingStop = {
 
 export type TrailingList = { stops: TrailingStop[]; problem: string | null; lastChecked: number | null };
 
-export const STATUS_LABEL: Record<TrailingStatus, string> = {
-  active: "Watching",
-  selling: "Selling",
-  sold: "Sold",
-  attention: "Needs you",
+const STATUS_LABEL: Record<TrailSide, Record<TrailingStatus, string>> = {
+  sell: { active: "Watching", selling: "Selling", sold: "Sold", attention: "Needs you" },
+  buy: { active: "Watching", selling: "Buying", sold: "Bought", attention: "Needs you" },
 };
 
-/** How much of the distance between the high and the trigger is left: 1 at the high, 0 at the trigger. */
-export function triggerMargin(price: number, high: number, trail: TrailingStop["trail"]): number {
-  const trigger = triggerPrice(high, trail);
-  return high > trigger ? Math.max(0, Math.min(1, (price - trigger) / (high - trigger))) : 0;
+export function statusLabel(side: TrailSide, status: TrailingStatus): string {
+  return STATUS_LABEL[side][status];
 }
 
-/** The price at or below which the stop sells. */
-export function triggerPrice(high: number, trail: TrailingStop["trail"]): number {
-  return trail.kind === "percent" ? high * (1 - trail.value / 100) : high - trail.value;
+/** How much of the distance between the extreme price and the trigger is left: 1 at the extreme, 0 at the trigger. */
+export function triggerMargin(price: number, extreme: number, trail: TrailingStop["trail"], side: TrailSide = "sell"): number {
+  const trigger = triggerPrice(extreme, trail, side);
+  const span = Math.abs(extreme - trigger);
+  if (span === 0) return 0;
+  const left = side === "sell" ? price - trigger : trigger - price;
+  return Math.max(0, Math.min(1, left / span));
+}
+
+/** The price at or below which a stop loss sells, or at or above which a buy stop buys. */
+export function triggerPrice(extreme: number, trail: TrailingStop["trail"], side: TrailSide = "sell"): number {
+  const sign = side === "sell" ? -1 : 1;
+  return trail.kind === "percent" ? extreme * (1 + (sign * trail.value) / 100) : extreme + sign * trail.value;
 }
 
 export function trailIssue(kind: TrailKind, distance: number | null): string | null {
@@ -62,11 +74,13 @@ function toStop(value: unknown): TrailingStop | null {
   const status = value.status;
   if (status !== "active" && status !== "selling" && status !== "sold" && status !== "attention") return null;
   return {
+    side: value.side === "buy" ? "buy" : "sell",
     id: value.id,
     isin: value.isin,
     name: typeof value.name === "string" ? value.name : value.isin,
     portfolioId: typeof value.portfolioId === "string" ? value.portfolioId : null,
     quantity: value.shares, // the backend stores the amount as `shares`
+    amount: typeof value.amount === "number" ? value.amount : null,
     trail: { kind: value.trail.kind === "amount" ? "amount" : "percent", value: value.trail.value },
     startPrice: typeof value.startPrice === "number" ? value.startPrice : value.high,
     high: value.high,

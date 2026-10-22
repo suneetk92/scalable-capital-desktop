@@ -162,6 +162,18 @@ describe("mocked-invoke smoke flows", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("creates a trailing buy stop with an amount", async () => {
+    const invoke = mockInvoke((command) => (command === "add_trailing_stop" ? { id: "stop-2" } : undefined));
+    render(<TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} tradingEnabled onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: /amount to spend/i }), { target: { value: "250" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /distance above the low/i }), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /i understand/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Start trailing buy stop" }));
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("add_trailing_stop", expect.objectContaining({ request: expect.objectContaining({ side: "buy", amount: 250 }) })));
+  });
+
   it("installs or dismisses the updater notice and confirms sign-out", () => {
     const onInstall = vi.fn();
     const onDismiss = vi.fn();

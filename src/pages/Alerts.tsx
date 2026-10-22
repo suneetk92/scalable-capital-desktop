@@ -8,7 +8,6 @@ import { alertRemovedNotice } from "../notifications";
 import { parseAlerts } from "../alerts";
 import { pickString, type Rec } from "../response";
 import { QueryPanel, collect, perPortfolio, Section } from "./shared";
-import { TrailingStops } from "./TrailingStops";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
 
@@ -81,7 +80,6 @@ export function AlertsPage({ common, onOpenSecurity }: { common: Common; onOpenS
           />
         )}
       </Section>
-      <TrailingStops common={common} onOpenSecurity={onOpenSecurity} />
     </>
   );
 }
