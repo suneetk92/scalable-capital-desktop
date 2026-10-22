@@ -31,7 +31,23 @@ const HEADS: Record<string, { label: string; className?: string }> = {
   actions: { label: "Actions", className: TH_NUM },
 };
 
-function Row({ order, stop, logo, tradingEnabled, onOpen, onRemove }: { order: string[]; stop: TrailingStop; logo?: string; tradingEnabled: boolean; onOpen: () => void; onRemove: () => void }) {
+function Row({
+  order,
+  stop,
+  logo,
+  tradingEnabled,
+  onOpen,
+  onEdit,
+  onRemove,
+}: {
+  order: string[];
+  stop: TrailingStop;
+  logo?: string;
+  tradingEnabled: boolean;
+  onOpen: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
   const paused = watching && !tradingEnabled;
@@ -75,6 +91,17 @@ function Row({ order, stop, logo, tradingEnabled, onOpen, onRemove }: { order: s
           actions: (
             <td className={TD_NUM}>
               <div className="flex justify-end gap-1.5">
+                {watching && (
+                  <button
+                    className={btn.secondary}
+                    type="button"
+                    onClick={onEdit}
+                    disabled={!tradingEnabled}
+                    title={tradingEnabled ? "Change the shares and the distance" : "Read-only mode: turn on Trading to edit"}
+                  >
+                    Edit
+                  </button>
+                )}
                 <button
                   className={btn.sell}
                   type="button"
@@ -108,6 +135,7 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
   const resized = resizedTable(layout.widths);
   const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<TrailingStop | null>(null);
   const [openedAt] = useState(() => Date.now());
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,6 +217,7 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
                     logo={logos.get(stop.isin.toUpperCase())}
                     tradingEnabled={tradingEnabled}
                     onOpen={() => onOpenSecurity({ isin: stop.isin, name: stop.name })}
+                    onEdit={() => setEditing(stop)}
                     onRemove={() => void remove(stop.id)}
                   />
                 ))}
@@ -197,6 +226,20 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
           </div>
         )}
       </Section>
+      {editing && (
+        <TrailingStopDialog
+          security={null}
+          portfolioId={editing.portfolioId ?? ""}
+          quantity=""
+          portfolios={portfolios}
+          held={held}
+          invoke={invoke}
+          tradingEnabled={tradingEnabled}
+          editing={editing}
+          onClose={() => setEditing(null)}
+          onAdded={() => void reload()}
+        />
+      )}
       {adding && (
         <TrailingStopDialog
           security={null}

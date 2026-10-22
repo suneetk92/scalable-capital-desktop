@@ -177,6 +177,56 @@ pub async fn add_trailing_stop(
     Ok(stop)
 }
 
+#[derive(Deserialize)]
+pub struct TrailingStopChange {
+    pub id: String,
+    pub shares: f64,
+    pub trail: Trail,
+}
+
+/// Changes the shares and the distance of an active stop. The high stays, so the stop keeps what it has
+/// learned. It changes what the app sells, so it needs the Trading switch like adding one.
+#[tauri::command]
+pub fn update_trailing_stop(
+    app: AppHandle,
+    gate: State<'_, TradingGate>,
+    state: State<'_, TrailingState>,
+    request: TrailingStopChange,
+) -> Result<TrailingStop, String> {
+    if !gate.is_on() {
+        return Err(TRADING_OFF.to_owned());
+    }
+    if !request.shares.is_finite() || request.shares <= 0.0 {
+        return Err("The number of shares must be greater than zero".to_owned());
+    }
+    let (previous, updated) = state.mutate(|stops| {
+        let stop = stops
+            .iter_mut()
+            .find(|stop| stop.id == request.id)
+            .ok_or("This trailing stop no longer exists.".to_owned())?;
+        if stop.status != Status::Active {
+            return Err("Only a stop that is watching can be changed.".to_owned());
+        }
+        valid_trail(request.trail, stop.high)?;
+        let previous = stop.clone();
+        stop.shares = request.shares;
+        stop.trail = request.trail;
+        stop.message = None;
+        Ok((previous, stop.clone()))
+    })?;
+    if let Err(error) = state.persist(&app) {
+        state.mutate(|stops| {
+            if let Some(stop) = stops.iter_mut().find(|stop| stop.id == previous.id) {
+                *stop = previous;
+            }
+        });
+        return Err(error);
+    }
+    state.wake();
+    announce_change(&app);
+    Ok(updated)
+}
+
 /// Needs no Trading switch: removing a stop only stops the app from selling.
 #[tauri::command]
 pub fn remove_trailing_stop(

@@ -6,7 +6,7 @@ import type { SecurityHit } from "./OrderDialog";
 import { formatNumber } from "./screener";
 import { invokeCommand } from "./commands";
 import { type Invoke } from "./tools";
-import { decimal, trailIssue, type TrailKind } from "./trailing";
+import { decimal, trailIssue, type TrailingStop, type TrailKind } from "./trailing";
 import type { HeldPosition, PagePortfolio } from "./types";
 import { Alert, btn, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "./ui";
 import { useBusyAction } from "./hooks/usePreviewFlow";
@@ -22,22 +22,28 @@ type Props = {
   tradingEnabled: boolean;
   onClose: () => void;
   onAdded?: () => void;
+  /** A stop that is watching: the dialog changes its shares and distance instead of starting a new one. */
+  editing?: TrailingStop;
 };
 
 /**
- * Starts a trailing stop loss. Scalable has no such order, so the app watches the price itself and
+ * Starts, or with `editing` changes, a trailing stop loss. Scalable has no such order, so the app watches the price itself and
  * sells at market, without a further confirmation: the tick in this form is that confirmation.
  */
-export function TrailingStopDialog({ security: initial, portfolioId: initialPortfolio, quantity: initialQuantity, portfolios, held, invoke, tradingEnabled, onClose, onAdded }: Props) {
-  const [security, setSecurity] = useState<SecurityHit | null>(initial);
-  const [portfolioId, setPortfolioIdState] = useState(initialPortfolio || portfolios[0]?.portfolioId || "");
+export function TrailingStopDialog({ security: initial, portfolioId: initialPortfolio, quantity: initialQuantity, portfolios, held, invoke, tradingEnabled, onClose, onAdded, editing }: Props) {
+  const [security, setSecurity] = useState<SecurityHit | null>(
+    editing
+      ? { isin: editing.isin, name: editing.name, symbol: "", currency: held.find((item) => item.portfolioId === editing.portfolioId && item.isin === editing.isin)?.currency ?? "EUR" }
+      : initial,
+  );
+  const [portfolioId, setPortfolioIdState] = useState((editing ? editing.portfolioId : initialPortfolio) || portfolios[0]?.portfolioId || "");
   const setPortfolioId = (id: string) => {
     setPortfolioIdState(id);
     setSecurity((current) => (current && held.some((item) => item.portfolioId === id && item.isin === current.isin) ? current : null));
   };
-  const [quantity, setQuantity] = useState(initialQuantity);
-  const [kind, setKind] = useState<TrailKind>("percent");
-  const [distance, setDistance] = useState("");
+  const [quantity, setQuantity] = useState(editing ? String(editing.quantity) : initialQuantity);
+  const [kind, setKind] = useState<TrailKind>(editing?.trail.kind ?? "percent");
+  const [distance, setDistance] = useState(editing ? String(editing.trail.value) : "");
   const [understood, setUnderstood] = useState(false);
   const action = useBusyAction();
   const { busy, error } = action;
@@ -64,6 +70,7 @@ export function TrailingStopDialog({ security: initial, portfolioId: initialPort
     if (issue || !security || quantityNumber === null || distanceNumber === null) return;
     await action.run(
       () => {
+        if (editing) return invokeCommand(invoke, "update_trailing_stop", { request: { id: editing.id, shares: quantityNumber, trail: { kind, value: distanceNumber } } });
         // The command's request field is named `shares`.
         return invokeCommand(invoke, "add_trailing_stop", { request: { isin: security.isin, name: security.name, portfolioId, shares: quantityNumber, trail: { kind, value: distanceNumber } } });
       },
@@ -80,25 +87,33 @@ export function TrailingStopDialog({ security: initial, portfolioId: initialPort
         if (!busy) onClose();
       }}
     >
-      <ModalTitle>New trailing stop loss</ModalTitle>
+      <ModalTitle>{editing ? "Edit trailing stop loss" : "New trailing stop loss"}</ModalTitle>
       <p className={`mb-4 ${MODAL_TEXT}`}>
-        Scalable has no trailing stop. The app follows the price instead: it remembers the highest price from now on and sells at market when the price falls by the distance you set below that high.
+        {editing
+          ? "The stop keeps the highest price it has seen. The new shares and distance apply from the next price check."
+          : "Scalable has no trailing stop. The app follows the price instead: it remembers the highest price from now on and sells at market when the price falls by the distance you set below that high."}
       </p>
       {error && <Alert>{error}</Alert>}
-      {!tradingEnabled && <Alert>Turn on Trading to start a trailing stop.</Alert>}
+      {!tradingEnabled && <Alert>Turn on Trading to {editing ? "change" : "start"} a trailing stop.</Alert>}
 
-      {portfolios.length > 1 && (
+      {!editing && portfolios.length > 1 && (
         <Field className={field.label}>
           <Label>Portfolio</Label>
           <Select value={portfolioId} onChange={setPortfolioId} options={portfolios.map((item) => ({ value: item.portfolioId, label: item.name }))} />
         </Field>
       )}
 
-      <HeldSecurityPicker
-        held={heldHere}
-        selected={holding ?? null}
-        onChange={(item) => setSecurity(item ? { isin: item.isin, name: item.name, symbol: item.symbol, currency: item.currency } : null)}
-      />
+      {editing ? (
+        <p className={`mb-3 ${MODAL_TEXT}`}>
+          <strong className="font-semibold text-ink-strong">{editing.isin}</strong> · {editing.name}
+        </p>
+      ) : (
+        <HeldSecurityPicker
+          held={heldHere}
+          selected={holding ?? null}
+          onChange={(item) => setSecurity(item ? { isin: item.isin, name: item.name, symbol: item.symbol, currency: item.currency } : null)}
+        />
+      )}
       {heldQuantity !== null && (
         <p className={`mb-3 ${field.hint}`}>
           You hold {formatNumber(heldQuantity)} shares.{" "}
@@ -154,7 +169,7 @@ export function TrailingStopDialog({ security: initial, portfolioId: initialPort
           Cancel
         </button>
         <button className={btn.danger} type="button" onClick={() => void start()} disabled={busy || !tradingEnabled || !understood || issue !== null}>
-          {busy ? "Starting…" : "Start trailing stop"}
+          {busy ? (editing ? "Saving…" : "Starting…") : editing ? "Save changes" : "Start trailing stop"}
         </button>
       </DialogFooter>
     </ModalFrame>

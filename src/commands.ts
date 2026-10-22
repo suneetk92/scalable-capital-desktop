@@ -39,6 +39,7 @@ type CommandMap = {
   list_trailing_stops: { args: undefined; result: unknown };
   check_trailing_stops_now: { args: undefined; result: unknown };
   add_trailing_stop: { args: { request: object }; result: unknown };
+  update_trailing_stop: { args: { request: object }; result: unknown };
   remove_trailing_stop: { args: { id: string }; result: unknown };
   set_trailing_interval: { args: { seconds: number }; result: void };
   get_background: { args: undefined; result: BackgroundStatus };
@@ -75,6 +76,7 @@ const REGISTRY: Record<Command, true> = {
   list_trailing_stops: true,
   check_trailing_stops_now: true,
   add_trailing_stop: true,
+  update_trailing_stop: true,
   remove_trailing_stop: true,
   set_trailing_interval: true,
   get_background: true,
