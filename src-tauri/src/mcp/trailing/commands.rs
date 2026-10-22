@@ -184,8 +184,9 @@ pub struct TrailingStopChange {
     pub trail: Trail,
 }
 
-/// Changes the shares and the distance of an active stop. The high stays, so the stop keeps what it has
-/// learned. It changes what the app sells, so it needs the Trading switch like adding one.
+/// Changes the shares and the distance of a stop that is watching, or one that needs the user, which then
+/// watches again. A watching stop keeps its high; one that needs the user starts over from the last price,
+/// because the old high is what triggered it. It changes what the app sells, so it needs the Trading switch.
 #[tauri::command]
 pub fn update_trailing_stop(
     app: AppHandle,
@@ -204,11 +205,20 @@ pub fn update_trailing_stop(
             .iter_mut()
             .find(|stop| stop.id == request.id)
             .ok_or("This trailing stop no longer exists.".to_owned())?;
-        if stop.status != Status::Active {
-            return Err("Only a stop that is watching can be changed.".to_owned());
+        if !matches!(stop.status, Status::Active | Status::Attention) {
+            return Err("Only a stop that is watching or needs you can be changed.".to_owned());
         }
-        valid_trail(request.trail, stop.high)?;
+        let high = if stop.status == Status::Attention {
+            stop.last_price
+                .filter(|price| *price > 0.0)
+                .unwrap_or(stop.high)
+        } else {
+            stop.high
+        };
+        valid_trail(request.trail, high)?;
         let previous = stop.clone();
+        stop.high = high;
+        stop.status = Status::Active;
         stop.shares = request.shares;
         stop.trail = request.trail;
         stop.message = None;

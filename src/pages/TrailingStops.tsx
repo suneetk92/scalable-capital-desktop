@@ -91,13 +91,13 @@ function Row({
           actions: (
             <td className={TD_NUM}>
               <div className="flex justify-end gap-1.5">
-                {watching && (
+                {(watching || stop.status === "attention") && (
                   <button
                     className={btn.trade}
                     type="button"
                     onClick={onEdit}
                     disabled={!tradingEnabled}
-                    title={tradingEnabled ? "Change the shares and the distance" : "Read-only mode: turn on Trading to edit"}
+                    title={tradingEnabled ? (watching ? "Change the shares and the distance" : "Change it and watch again") : "Read-only mode: turn on Trading to edit"}
                   >
                     Edit
                   </button>

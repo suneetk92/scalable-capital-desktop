@@ -90,7 +90,9 @@ export function TrailingStopDialog({ security: initial, portfolioId: initialPort
       <ModalTitle>{editing ? "Edit trailing stop loss" : "New trailing stop loss"}</ModalTitle>
       <p className={`mb-4 ${MODAL_TEXT}`}>
         {editing
-          ? "The stop keeps the highest price it has seen. The new shares and distance apply from the next price check."
+          ? editing.status === "attention"
+            ? "Check in Scalable that the shares were not sold. Saving starts watching again from the last price, with the shares and distance below."
+            : "The stop keeps the highest price it has seen. The new shares and distance apply from the next price check."
           : "Scalable has no trailing stop. The app follows the price instead: it remembers the highest price from now on and sells at market when the price falls by the distance you set below that high."}
       </p>
       {error && <Alert>{error}</Alert>}
@@ -169,7 +171,7 @@ export function TrailingStopDialog({ security: initial, portfolioId: initialPort
           Cancel
         </button>
         <button className={btn.danger} type="button" onClick={() => void start()} disabled={busy || !tradingEnabled || !understood || issue !== null}>
-          {busy ? (editing ? "Saving…" : "Starting…") : editing ? "Save changes" : "Start trailing stop"}
+          {busy ? (editing ? "Saving…" : "Starting…") : editing ? (editing.status === "attention" ? "Save and watch again" : "Save changes") : "Start trailing stop"}
         </button>
       </DialogFooter>
     </ModalFrame>
