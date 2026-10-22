@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTrailingList, trailIssue, trailLabel, triggerPrice } from "./trailing";
+import { parseTrailingList, trailIssue, trailLabel, triggerMargin, triggerPrice } from "./trailing";
 
 const stop = {
   id: "a",
@@ -20,6 +20,17 @@ describe("triggerPrice", () => {
   it("sits below the high by the percentage or the amount", () => {
     expect(triggerPrice(200, { kind: "percent", value: 10 })).toBe(180);
     expect(triggerPrice(200, { kind: "amount", value: 15 })).toBe(185);
+  });
+});
+
+describe("triggerMargin", () => {
+  it("is 1 at the high, 0 at the trigger and stays within that range", () => {
+    const trail = { kind: "percent", value: 10 } as const;
+    expect(triggerMargin(200, 200, trail)).toBe(1);
+    expect(triggerMargin(190, 200, trail)).toBeCloseTo(0.5);
+    expect(triggerMargin(180, 200, trail)).toBe(0);
+    expect(triggerMargin(170, 200, trail)).toBe(0);
+    expect(triggerMargin(210, 200, trail)).toBe(1);
   });
 });
 

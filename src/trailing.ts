@@ -29,6 +29,12 @@ export const STATUS_LABEL: Record<TrailingStatus, string> = {
   attention: "Needs you",
 };
 
+/** How much of the distance between the high and the trigger is left: 1 at the high, 0 at the trigger. */
+export function triggerMargin(price: number, high: number, trail: TrailingStop["trail"]): number {
+  const trigger = triggerPrice(high, trail);
+  return high > trigger ? Math.max(0, Math.min(1, (price - trigger) / (high - trigger))) : 0;
+}
+
 /** The price at or below which the stop sells. */
 export function triggerPrice(high: number, trail: TrailingStop["trail"]): number {
   return trail.kind === "percent" ? high * (1 - trail.value / 100) : high - trail.value;

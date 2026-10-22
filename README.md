@@ -327,7 +327,7 @@ non-read tool, including unknown tools, until Trading is on.
   tick that the app may sell without asking again. The app remembers the highest price from then on (the
   bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (Settings, Trailing stop losses: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at
   or below the high minus the distance it sells the shares at market with `preview_sell_order` and
-  `submit_sell_order`. With Trading off the **Now** price still follows the market, but the high is not raised and nothing is sold (the row shows "Paused, Trading is off" and **Stop watching** is disabled until Trading is on). Limits and safeguards:
+  `submit_sell_order`. A thin bar under **Now** shows how much of the distance between the high and the sell price is left. With Trading off the **Now** price still follows the market, but the high is not raised and nothing is sold (the row shows "Paused, Trading is off" and **Stop watching** is disabled until Trading is on). Limits and safeguards:
   - It works only while the app runs (the tray keeps it running), is signed in and **Trading is on**. It is
     not a Scalable order: nothing protects the position while the app is closed, offline or in Read-only mode,
     and a fast drop, a closed market or a price gap can fill well below the trigger.

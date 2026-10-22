@@ -8,9 +8,9 @@ import { useTrailingStops } from "../hooks/useTrailingStops";
 import { formatMoney } from "../screener";
 import { TrailingStopDialog } from "../TrailingStopDialog";
 import { errorText } from "../tools";
-import { STATUS_LABEL, trailLabel, triggerPrice, type TrailingStatus, type TrailingStop } from "../trailing";
+import { STATUS_LABEL, trailLabel, triggerMargin, triggerPrice, type TrailingStatus, type TrailingStop } from "../trailing";
 import { type Common } from "../types";
-import { EmptyState } from "../controls";
+import { EmptyState, ShareBar } from "../controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../ui";
 import { Section } from "./shared";
 
@@ -48,7 +48,20 @@ function Row({ order, stop, logo, tradingEnabled, onRemove }: { order: string[];
           trail: <td className={TD_NUM}>{trailLabel(stop.trail, money)}</td>,
           high: <td className={TD_NUM}>{money(stop.high)}</td>,
           trigger: <td className={TD_NUM}>{watching ? money(triggerPrice(stop.high, stop.trail)) : "—"}</td>,
-          now: <td className={TD_NUM}>{watching && stop.lastPrice !== null ? money(stop.lastPrice) : "—"}</td>,
+          now: (
+            <td className={TD_NUM}>
+              {watching && stop.lastPrice !== null ? (
+                <div className="grid justify-items-end gap-1">
+                  {money(stop.lastPrice)}
+                  <div className="w-16">
+                    <ShareBar share={triggerMargin(stop.lastPrice, stop.high, stop.trail)} label="Distance left to the sell price" />
+                  </div>
+                </div>
+              ) : (
+                "—"
+              )}
+            </td>
+          ),
           actions: (
             <td className={TD_NUM}>
               <div className="flex justify-end gap-1.5">
