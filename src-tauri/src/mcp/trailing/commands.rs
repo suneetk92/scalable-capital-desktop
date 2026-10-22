@@ -40,6 +40,7 @@ pub fn set_trailing_interval(state: State<'_, TrailingState>, seconds: u64) {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrailingList {
     stops: Vec<TrailingStop>,
     problem: Option<String>,
@@ -190,6 +191,19 @@ pub fn remove_trailing_stop(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_list_has_camel_case_keys_for_the_page() {
+        let list = TrailingList {
+            stops: Vec::new(),
+            problem: None,
+            cycle_started_at: Some(5),
+        };
+        assert_eq!(
+            serde_json::to_value(list).unwrap(),
+            serde_json::json!({ "stops": [], "problem": null, "cycleStartedAt": 5 })
+        );
+    }
 
     fn new_stop(isin: &str) -> NewTrailingStop {
         NewTrailingStop {
