@@ -71,6 +71,12 @@ async fn show_prices(
 
 /// One pass: reads the prices of the active stops, moves their highs up and sells the ones that were hit.
 pub(super) async fn check(app: &AppHandle) {
+    run_check(app).await;
+    app.state::<TrailingState>().stamp_check();
+    super::announce_change(app);
+}
+
+async fn run_check(app: &AppHandle) {
     let gate = app.state::<TradingGate>();
     let state = app.state::<TrailingState>();
     let trading = gate.is_on();

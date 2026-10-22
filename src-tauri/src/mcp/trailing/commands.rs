@@ -40,9 +40,11 @@ pub fn set_trailing_interval(state: State<'_, TrailingState>, seconds: u64) {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrailingList {
     stops: Vec<TrailingStop>,
     problem: Option<String>,
+    last_checked: Option<u64>,
 }
 
 #[tauri::command]
@@ -50,6 +52,7 @@ pub fn list_trailing_stops(state: State<'_, TrailingState>) -> TrailingList {
     TrailingList {
         stops: state.snapshot(),
         problem: state.problem(),
+        last_checked: state.last_checked(),
     }
 }
 

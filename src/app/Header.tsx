@@ -1,10 +1,10 @@
-import { ArrowPathIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { AVATAR } from "../Brand";
 import { initialsOf } from "../profile";
 import { pluralize } from "../format";
 import type { View } from "../nav";
-import { btn, cx, SPIN } from "../ui";
-import { useElapsedShare } from "../countdown";
+import { btn } from "../ui";
+import { RefreshButton } from "../controls";
 import { extension } from "../extensions";
 import { EXCHANGE_HOURS_NOTE } from "../marketHours";
 import type { AppCommands } from "./useAppCommands";
@@ -28,42 +28,6 @@ export function AccountHeader() {
 }
 
 const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "watchlist", "discover", "transactions"]);
-
-/** Refresh, with a thin bar along its bottom edge that drains to empty when the next automatic reload happens. */
-function RefreshButton({
-  auto,
-  label,
-  busy,
-  onRefresh,
-  lastLoadedAt,
-  intervalMs,
-}: {
-  auto: boolean;
-  label: string;
-  busy: boolean;
-  onRefresh: () => void;
-  lastLoadedAt: number | null;
-  intervalMs: number;
-}) {
-  const share = useElapsedShare(lastLoadedAt, intervalMs, auto && lastLoadedAt !== null && !busy);
-  return (
-    <button
-      className={cx(btn.mode(auto), "relative overflow-hidden")}
-      type="button"
-      onClick={onRefresh}
-      disabled={busy}
-      title={auto ? `Reload now. Data refreshes by itself every ${label}; the bar drains to empty when the next reload happens. Change this in Settings.` : "Reload the current data now."}
-    >
-      <ArrowPathIcon aria-hidden="true" className={busy ? SPIN : ""} /> Refresh
-      {auto && <span className="font-normal opacity-80">· every {label}</span>}
-      {auto && lastLoadedAt !== null && !busy && (
-        <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-heading/10">
-          <span className="block h-full bg-accent transition-[width] duration-1000 ease-linear" style={{ width: `${(1 - share) * 100}%` }} />
-        </span>
-      )}
-    </button>
-  );
-}
 
 /** The buttons next to the page title: the Trading switch, New order and Refresh. Each only appears where it does something. */
 export function pageActions(data: AppData, commands: AppCommands) {

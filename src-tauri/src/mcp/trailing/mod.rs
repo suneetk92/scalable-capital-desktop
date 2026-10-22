@@ -84,6 +84,8 @@ pub struct TrailingState {
     problem: Mutex<Option<String>>,
     /// Seconds between price checks; 0 until the app has passed its setting.
     check_seconds: AtomicU64,
+    /// When the last price check finished, in milliseconds since the epoch; 0 before the first.
+    last_check_ms: AtomicU64,
     /// Wakes the watcher when it may have work again. It holds one wake-up, so none is lost.
     wake: Notify,
 }
@@ -93,6 +95,20 @@ impl TrailingState {
         match self.check_seconds.load(Ordering::Relaxed) {
             0 => DEFAULT_CHECK_SECONDS,
             seconds => seconds,
+        }
+    }
+
+    fn stamp_check(&self) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_millis() as u64);
+        self.last_check_ms.store(now, Ordering::Relaxed);
+    }
+
+    fn last_checked(&self) -> Option<u64> {
+        match self.last_check_ms.load(Ordering::Relaxed) {
+            0 => None,
+            ms => Some(ms),
         }
     }
 

@@ -20,10 +20,11 @@ import {
 } from "@headlessui/react";
 import { ColumnHead } from "./ColumnHead";
 import type { ColumnLayout } from "./hooks/useTableLayout";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { useElapsedShare } from "./countdown";
+import { ArrowPathIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpDownIcon, MinusIcon } from "@heroicons/react/20/solid";
 import type { ComponentProps, ComponentType, InputHTMLAttributes, ReactNode, Ref, SVGProps } from "react";
-import { btn, cx, LoadBar, TH_NUM } from "./ui";
+import { btn, cx, LoadBar, SPIN, TH_NUM } from "./ui";
 import { selectionState, selectOptions } from "./selection";
 import type { SortState } from "./sorting";
 
@@ -609,5 +610,41 @@ export function FiltersPopover({ count, onClear, children }: { count: number; on
         )}
       </PopoverPanel>
     </Popover>
+  );
+}
+
+/** Refresh, with a thin bar along its bottom edge that drains to empty when the next automatic reload happens. */
+export function RefreshButton({
+  auto,
+  label,
+  busy,
+  onRefresh,
+  lastLoadedAt,
+  intervalMs,
+}: {
+  auto: boolean;
+  label: string;
+  busy: boolean;
+  onRefresh: () => void;
+  lastLoadedAt: number | null;
+  intervalMs: number;
+}) {
+  const share = useElapsedShare(lastLoadedAt, intervalMs, auto && lastLoadedAt !== null && !busy);
+  return (
+    <button
+      className={cx(btn.mode(auto), "relative overflow-hidden")}
+      type="button"
+      onClick={onRefresh}
+      disabled={busy}
+      title={auto ? `Reload now. Data refreshes by itself every ${label}; the bar drains to empty when the next reload happens. Change this in Settings.` : "Reload the current data now."}
+    >
+      <ArrowPathIcon aria-hidden="true" className={busy ? SPIN : ""} /> Refresh
+      {auto && <span className="font-normal opacity-80">· every {label}</span>}
+      {auto && lastLoadedAt !== null && !busy && (
+        <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-heading/10">
+          <span className="block h-full bg-accent transition-[width] duration-1000 ease-linear" style={{ width: `${(1 - share) * 100}%` }} />
+        </span>
+      )}
+    </button>
   );
 }
