@@ -58,6 +58,11 @@ export function withProgress(state: UpdateState, event: UpdateProgress): UpdateS
   return { status: "downloading", info, received: previous.total ?? previous.received, total: previous.total };
 }
 
+/** The check found the running version again: installing it is a reinstall. */
+export function isReinstall(info: UpdateInfo): boolean {
+  return info.version === info.currentVersion;
+}
+
 /** The version a notice or an install failure is about, if any. */
 export function pendingInfo(state: UpdateState): UpdateInfo | null {
   if (state.status === "available" || state.status === "downloading") return state.info;
@@ -86,7 +91,7 @@ export function statusMessage(state: UpdateState): string {
     case "upToDate":
       return "You're up to date.";
     case "available":
-      return `Version ${state.info.version} is available.`;
+      return isReinstall(state.info) ? `Version ${state.info.version} is ready to reinstall.` : `Version ${state.info.version} is available.`;
     case "downloading": {
       const percent = progressPercent(state.received, state.total);
       return percent === null ? `Downloading version ${state.info.version}… ${formatBytes(state.received)}` : `Downloading version ${state.info.version}… ${percent}%`;

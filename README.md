@@ -149,7 +149,9 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
 - **Updates**: on launch the app asks this repository's GitHub Releases once whether a newer signed version
   exists (installed copies only, never in `tauri dev`). A dismissible notice offers **Install and restart**;
   Settings, Keyboard and about has a **Check for updates** button and the "Check for updates on launch" switch.
-  The app offers stable releases only. See "Updates and signing" below.
+  The app offers stable releases only. **Reinstall** next to it downloads the current release again and installs it
+  over the running one, also when the version number is the same (for example after a release was uploaded again).
+  See "Updates and signing" below.
 - **Local only**: settings live in the webview's localStorage under the `scalable-capital-desktop.` prefix
   (`settings`, `nav-order`, `group-order`, `panel-width`, `panel-split`, `alerts-notified`), through the shared
   `src/storage.ts` helpers; the transaction history lives in IndexedDB (database `scalable-capital-desktop.cache`),

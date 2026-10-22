@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { UpdateChannelSetting } from "../settings";
 import { invokeCommand } from "../commands";
 import type { Invoke } from "../tools";
-import { checked, IDLE, pendingInfo, withProgress, type UpdateProgress, type UpdateState } from "../updates";
+import { checked, IDLE, isReinstall, pendingInfo, withProgress, type UpdateInfo, type UpdateProgress, type UpdateState } from "../updates";
 
 type Args = {
   invoke: Invoke;
@@ -15,6 +15,11 @@ type Args = {
   /** Reports a failure of "Open download page". */
   onError: (text: string) => void;
 };
+
+/** A reinstall is the user's own request, so it needs no notice. */
+function noticeInfo(info: UpdateInfo | null) {
+  return info && !isReinstall(info) ? info : null;
+}
 
 function message(error: unknown) {
   return typeof error === "string" ? error : error instanceof Error ? error.message : "The update check failed.";
@@ -33,12 +38,12 @@ export function useUpdater({ invoke, launchCheck, channel, onError }: Args) {
   const launched = useRef(false);
 
   const check = useCallback(
-    async (silent: boolean) => {
+    async (silent: boolean, reinstall = false) => {
       if (busy.current) return;
       busy.current = true;
       if (!silent) setState({ status: "checking" });
       try {
-        const next = checked(await invokeCommand(invoke, "check_for_update", { channel }));
+        const next = checked(await invokeCommand(invoke, "check_for_update", { channel, reinstall }));
         setDismissed(false);
         setState(next);
       } catch (error) {
@@ -91,8 +96,9 @@ export function useUpdater({ invoke, launchCheck, channel, onError }: Args) {
   return {
     state,
     /** The version the notice is about, until the user dismisses it. */
-    notice: dismissed ? null : pendingInfo(state),
+    notice: dismissed ? null : noticeInfo(pendingInfo(state)),
     check: useCallback(() => check(false), [check]),
+    reinstall: useCallback(() => check(false, true), [check]),
     install,
     openReleasePage,
     dismiss: useCallback(() => setDismissed(true), []),

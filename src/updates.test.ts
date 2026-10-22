@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checked, IDLE, parseUpdateInfo, pendingInfo, progressPercent, statusMessage, withProgress, type UpdateInfo, type UpdateState } from "./updates";
+import { checked, IDLE, isReinstall, parseUpdateInfo, pendingInfo, progressPercent, statusMessage, withProgress, type UpdateInfo, type UpdateState } from "./updates";
 
 const INFO: UpdateInfo = { version: "1.2.0", currentVersion: "1.1.0", notes: "Fixes", date: "2026-10-15", canInstall: true, releaseUrl: "https://updates.example.com/app/index.html" };
 
@@ -73,5 +73,14 @@ describe("statusMessage", () => {
   it("shows a percentage, or the size when the total is unknown", () => {
     expect(statusMessage({ status: "downloading", info: INFO, received: 500, total: 1000 })).toBe("Downloading version 1.2.0… 50%");
     expect(statusMessage({ status: "downloading", info: INFO, received: 3 * 1024 * 1024, total: null })).toBe("Downloading version 1.2.0… 3.0 MB");
+  });
+});
+
+describe("reinstall", () => {
+  it("is a check that found the running version again", () => {
+    const same: UpdateInfo = { ...INFO, version: "1.1.0" };
+    expect(isReinstall(same)).toBe(true);
+    expect(isReinstall(INFO)).toBe(false);
+    expect(statusMessage({ status: "available", info: same })).toBe("Version 1.1.0 is ready to reinstall.");
   });
 });

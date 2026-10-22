@@ -55,8 +55,15 @@ impl UpdateChannel {
     }
 }
 
-fn accepts_update(current: &Version, remote: &Version, channel: UpdateChannel) -> bool {
-    remote > current && (channel == UpdateChannel::ReleaseCandidate || remote.pre.is_empty())
+/// A reinstall also accepts the version that is already running, so the user can install it again.
+fn accepts_update(
+    current: &Version,
+    remote: &Version,
+    channel: UpdateChannel,
+    reinstall: bool,
+) -> bool {
+    (remote > current || (reinstall && remote == current))
+        && (channel == UpdateChannel::ReleaseCandidate || remote.pre.is_empty())
 }
 
 /// The update `check_for_update` found, waiting for `install_update`.
@@ -197,8 +204,9 @@ pub async fn check_for_update(
     app: AppHandle,
     pending: State<'_, PendingUpdate>,
     channel: Option<String>,
+    reinstall: Option<bool>,
 ) -> Result<Option<UpdateInfo>, String> {
-    check(app, pending, channel)
+    check(app, pending, channel, reinstall.unwrap_or(false))
         .await
         .inspect_err(|error| logging::log_failure("updates", "update check", error))
 }
@@ -207,13 +215,14 @@ async fn check(
     app: AppHandle,
     pending: State<'_, PendingUpdate>,
     channel: Option<String>,
+    reinstall: bool,
 ) -> Result<Option<UpdateInfo>, String> {
     *pending.0.lock().map_err(failure)? = None;
     let channel = UpdateChannel::parse(channel.as_deref());
     let configured = endpoints(&app);
     let mut builder = app.updater_builder();
     builder = builder.version_comparator(move |current, remote| {
-        accepts_update(&current, &remote.version, channel)
+        accepts_update(&current, &remote.version, channel, reinstall)
     });
     if channel != UpdateChannel::Stable {
         let url = configured
@@ -368,32 +377,51 @@ mod tests {
     }
 
     #[test]
+    fn a_reinstall_accepts_the_running_version_but_never_an_older_one() {
+        let current = Version::parse("1.2.0").unwrap();
+        let channel = UpdateChannel::Stable;
+        assert!(accepts_update(&current, &current, channel, true));
+        assert!(!accepts_update(&current, &current, channel, false));
+        assert!(!accepts_update(
+            &current,
+            &Version::parse("1.1.0").unwrap(),
+            channel,
+            true
+        ));
+    }
+
+    #[test]
     fn update_comparator_requires_newer_versions_and_keeps_stable_releases_stable() {
         let current = Version::parse("1.2.0").unwrap();
         assert!(accepts_update(
             &current,
             &Version::parse("1.2.1").unwrap(),
-            UpdateChannel::Stable
+            UpdateChannel::Stable,
+            false
         ));
         assert!(!accepts_update(
             &current,
             &Version::parse("1.2.0").unwrap(),
-            UpdateChannel::Stable
+            UpdateChannel::Stable,
+            false
         ));
         assert!(!accepts_update(
             &current,
             &Version::parse("1.3.0-rc.1").unwrap(),
-            UpdateChannel::Stable
+            UpdateChannel::Stable,
+            false
         ));
         assert!(accepts_update(
             &current,
             &Version::parse("1.3.0-rc.1").unwrap(),
-            UpdateChannel::ReleaseCandidate
+            UpdateChannel::ReleaseCandidate,
+            false
         ));
         assert!(!accepts_update(
             &Version::parse("1.3.0-rc.1").unwrap(),
             &Version::parse("1.3.0-rc.1").unwrap(),
-            UpdateChannel::ReleaseCandidate
+            UpdateChannel::ReleaseCandidate,
+            false
         ));
     }
 

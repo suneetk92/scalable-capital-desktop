@@ -43,7 +43,7 @@ type CommandMap = {
   get_background: { args: undefined; result: BackgroundStatus };
   set_background: { args: BackgroundStatus; result: BackgroundStatus };
   show_notification: { args: Titled; result: void };
-  check_for_update: { args: { channel: UpdateChannelSetting }; result: unknown };
+  check_for_update: { args: { channel: UpdateChannelSetting; reinstall?: boolean }; result: unknown };
   install_update: { args: { onProgress: Channel<UpdateProgress> }; result: void };
   export_diagnostics: { args: { updateChannel: UpdateChannelSetting }; result: string };
   open_log_folder: { args: undefined; result: void };

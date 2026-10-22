@@ -14,7 +14,7 @@ import type { View } from "./nav";
 import { ToolsPage } from "./pages/Tools";
 import { SessionPanel, type SessionState } from "./SessionPanel";
 import type { Common } from "./types";
-import { statusMessage } from "./updates";
+import { isReinstall, statusMessage } from "./updates";
 import { formatNumber, pluralize } from "./format";
 import { Alert, btn, cx, PANEL, Pills, PREVIEW_TABLE, SecurityCell, Switch } from "./ui";
 import {
@@ -449,7 +449,7 @@ export function SettingsPage({
               <div className="flex shrink-0 items-center gap-2">
                 {updater.state.status === "available" && updater.state.info.canInstall && (
                   <button className={btn.primary} type="button" onClick={() => void updater.install()}>
-                    Install and restart
+                    {isReinstall(updater.state.info) ? "Reinstall and restart" : "Install and restart"}
                   </button>
                 )}
                 {updater.state.status === "available" && !updater.state.info.canInstall && updater.state.info.releaseUrl && (
@@ -459,6 +459,15 @@ export function SettingsPage({
                 )}
                 <button className={btn.secondary} type="button" onClick={() => void updater.check()} disabled={updater.state.status === "checking" || updater.state.status === "downloading"}>
                   Check for updates
+                </button>
+                <button
+                  className={btn.secondary}
+                  type="button"
+                  onClick={() => void updater.reinstall()}
+                  disabled={updater.state.status === "checking" || updater.state.status === "downloading"}
+                  title="Downloads the current release again and installs it over this one, for example to repair a broken install"
+                >
+                  Reinstall
                 </button>
               </div>
             </Row>
