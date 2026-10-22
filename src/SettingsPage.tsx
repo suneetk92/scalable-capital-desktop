@@ -36,6 +36,7 @@ import {
 type Props = {
   settings: Settings;
   tradingEnabled: boolean;
+  marketOpen: boolean;
   onChange: (patch: Partial<Settings>) => void;
   onToggleTrading: () => void;
   onReset: () => void;
@@ -180,6 +181,7 @@ const PANEL_NARROW = "grid gap-4 focus:outline-none";
 export function SettingsPage({
   settings,
   tradingEnabled,
+  marketOpen,
   onChange,
   onToggleTrading,
   onReset,
@@ -417,7 +419,7 @@ export function SettingsPage({
             </Row>
             <Row
               label="Enable trading"
-              hint="Off keeps the app read-only: only ping and get, list, search or preview tools can run; every other tool is blocked, including unknown tools. It is never saved: the app starts read-only every time. Orders and savings plans also need the Full MCP access level."
+              hint={`Off keeps the app read-only: only ping and get, list, search or preview tools can run; every other tool is blocked, including unknown tools. It is never saved: the app starts read-only every time. Orders and savings plans also need the Full MCP access level. Trading also stays off outside the exchange hours (Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened)${marketOpen ? "" : ": the exchange is closed now"}.`}
             >
               <Switch label="Enable trading" checked={tradingEnabled} onToggle={onToggleTrading} />
             </Row>

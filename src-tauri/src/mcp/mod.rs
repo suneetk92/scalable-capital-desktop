@@ -6,6 +6,7 @@
 pub mod args;
 pub mod client;
 pub mod dashboard;
+mod hours;
 pub mod response;
 pub mod savings;
 pub mod session;

@@ -115,6 +115,7 @@ function SettingsRoute() {
     <SettingsPage
       settings={data.settings}
       tradingEnabled={data.tradingEnabled}
+      marketOpen={data.marketOpen}
       onChange={data.updateSettings}
       onToggleTrading={commands.toggleTrading}
       onReset={data.resetSettings}

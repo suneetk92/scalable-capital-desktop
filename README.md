@@ -274,6 +274,11 @@ non-read tool, including unknown tools, until Trading is on.
   `preview_` may run; every other tool, including unknown future tools, is denied, and a batch that is
   refused as a whole does not even open a session. The order and
   savings-plan dialogs also cannot preview while it is off.
+- Trading also counts as off outside the exchange hours of the European Investor Exchange (Monday to
+  Friday, 06:00 to 23:00 Berlin time; closed on its holidays, opening at 07:30 on some and closing at
+  14:00 on 30 December, see `src-tauri/src/mcp/hours.rs`, mirrored for display in `src/marketHours.ts`).
+  The gate checks the clock on every call, the switch cannot be turned on while the exchange is
+  closed, and it drops back to Read-only at closing time.
 - The submit tools (`submit_buy_order`, `submit_sell_order`, `submit_savings_plan`) can only be sent
   from their own dialogs, which preview first. The backend refuses them from the tool runner too, and
   Run is disabled for them in Settings, Scalable tools.

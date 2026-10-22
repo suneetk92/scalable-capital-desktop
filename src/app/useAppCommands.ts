@@ -37,6 +37,7 @@ export function useAppCommands(data: AppData) {
     setConfirmingSignOut,
     setConfirmingTrading,
     tradingEnabled,
+    marketOpen,
     setTradingEnabled,
     setOrderTarget,
     setSecurityTarget,
@@ -130,7 +131,7 @@ export function useAppCommands(data: AppData) {
   // Turning Trading off needs no question; turning it on asks first, from every switch.
   function toggleTrading() {
     if (tradingEnabled) setTradingEnabled(false);
-    else setConfirmingTrading(true);
+    else if (marketOpen) setConfirmingTrading(true);
   }
 
   function openOrder(side: OrderSide, row: ScreenerRow | null) {

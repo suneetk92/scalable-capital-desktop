@@ -18,6 +18,22 @@ pub(super) fn quote_price(quote: &Value) -> Option<f64> {
     })
 }
 
+/// The price in a `get_security_quote` answer, whose quote sits under `security.quote`. While the
+/// market is closed the bid can be missing, so the ask is the last resort.
+fn security_quote_price(answer: &Value) -> Option<f64> {
+    ["/security/quote", "/quote", ""]
+        .iter()
+        .filter_map(|path| answer.pointer(path))
+        .find_map(|quote| {
+            quote_price(quote).or_else(|| {
+                quote
+                    .get("askPrice")
+                    .and_then(finite_number)
+                    .filter(|price| *price > 0.0)
+            })
+        })
+}
+
 fn quote_arguments(isin: &str, portfolio_id: Option<&str>) -> Value {
     let mut arguments = Map::new();
     arguments.insert("isin".to_owned(), json!(isin));
@@ -41,7 +57,7 @@ pub(super) async fn quote_prices(
             for (isin, portfolio_id) in targets {
                 let arguments = quote_arguments(&isin, portfolio_id.as_deref());
                 let price = match mcp.call_tool("get_security_quote", arguments).await {
-                    Ok(quote) => quote_price(&quote),
+                    Ok(quote) => security_quote_price(&quote),
                     Err(error) if is_stale_session_error(&error) => return Err(error),
                     Err(_) => None,
                 };
@@ -71,6 +87,21 @@ mod tests {
         );
         assert_eq!(quote_price(&json!({ "bidPrice": "x" })), None);
         assert_eq!(quote_price(&json!({})), None);
+    }
+
+    #[test]
+    fn the_price_is_found_in_the_nested_security_quote() {
+        let nested = json!({ "security": { "quote": { "bidPrice": 9.5, "midPrice": 10 } } });
+        assert_eq!(security_quote_price(&nested), Some(9.5));
+        assert_eq!(
+            security_quote_price(&json!({ "quote": { "midPrice": 10 } })),
+            Some(10.0)
+        );
+        assert_eq!(security_quote_price(&json!({ "midPrice": 10 })), Some(10.0));
+        assert_eq!(
+            security_quote_price(&json!({ "security": { "quote": null } })),
+            None
+        );
     }
 
     #[test]

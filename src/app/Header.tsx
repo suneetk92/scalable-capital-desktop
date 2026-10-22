@@ -5,6 +5,7 @@ import { pluralize } from "../format";
 import type { View } from "../nav";
 import { btn, SPIN } from "../ui";
 import { extension } from "../extensions";
+import { EXCHANGE_HOURS_NOTE } from "../marketHours";
 import type { AppCommands } from "./useAppCommands";
 import { useApp } from "./AppContext";
 import type { AppData } from "./useAppData";
@@ -29,7 +30,7 @@ const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "
 
 /** The buttons next to the page title: the Trading switch, New order and Refresh. Each only appears where it does something. */
 export function pageActions(data: AppData, commands: AppCommands) {
-  const { view, tradingEnabled, autoRefresh, refreshLabel, syncing, marketTableOpen, market, extensionRuntime } = data;
+  const { view, tradingEnabled, marketOpen, autoRefresh, refreshLabel, syncing, marketTableOpen, market, extensionRuntime } = data;
   const { toggleTrading, openOrder, refreshAccount } = commands;
   const extensionView = extension.views?.some((item) => item.id === view) ?? false;
   const refreshExtension = extensionView && extensionRuntime.refresh !== undefined;
@@ -51,10 +52,13 @@ export function pageActions(data: AppData, commands: AppCommands) {
           role="switch"
           aria-checked={tradingEnabled}
           onClick={toggleTrading}
+          disabled={!marketOpen}
           title={
-            tradingEnabled
-              ? "Trading is on. Every order still needs a preview and your confirmation."
-              : "Read-only. Turn on to place orders, change watchlists, price alerts, groups and savings plans, or run other data-changing tools."
+            !marketOpen
+              ? EXCHANGE_HOURS_NOTE
+              : tradingEnabled
+                ? "Trading is on. Every order still needs a preview and your confirmation."
+                : "Read-only. Turn on to place orders, change watchlists, price alerts, groups and savings plans, or run other data-changing tools."
           }
         >
           <ShieldCheckIcon aria-hidden="true" /> {tradingEnabled ? "Trading on" : "Read-only"}

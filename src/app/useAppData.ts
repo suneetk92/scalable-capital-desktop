@@ -1,3 +1,4 @@
+import { exchangeOpen } from "../marketHours";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invokeCommand, TOOL } from "../commands";
 import { useAlertWatch } from "../hooks/useAlertWatch";
@@ -53,7 +54,14 @@ export function useAppData() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   // Never saved: every launch starts read-only, as the backend does.
-  const [tradingEnabled, setTradingEnabled] = useState(false);
+  const [tradingSwitch, setTradingEnabled] = useState(false);
+  // The exchange hours override the switch: outside them the app is read-only whatever the switch says.
+  const [marketOpen, setMarketOpen] = useState(() => exchangeOpen());
+  useEffect(() => {
+    const timer = window.setInterval(() => setMarketOpen(exchangeOpen()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const tradingEnabled = tradingSwitch && marketOpen;
   const [confirmingTrading, setConfirmingTrading] = useState(false);
   const [orderTarget, setOrderTarget] = useState<OrderTarget | null>(null);
   const nav = useNavOrder();
@@ -92,6 +100,10 @@ export function useAppData() {
       if (tradingEnabled) setTradingEnabled(false);
     });
   }, [tradingEnabled]);
+  // Closing time also drops the switch, so Trading does not come back on at the next opening.
+  useEffect(() => {
+    if (!marketOpen) setTradingEnabled(false);
+  }, [marketOpen]);
 
   // The trailing stop watcher runs in Rust; it uses 30 seconds until it is told the setting.
   useEffect(() => {
@@ -477,6 +489,7 @@ export function useAppData() {
     confirmingSignOut,
     setConfirmingSignOut,
     tradingEnabled,
+    marketOpen,
     setTradingEnabled,
     confirmingTrading,
     setConfirmingTrading,

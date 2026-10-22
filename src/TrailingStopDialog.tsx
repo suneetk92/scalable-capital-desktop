@@ -1,6 +1,7 @@
 import { Description, Field, Label } from "@headlessui/react";
 import { useState } from "react";
 import { CheckboxField, GroupInput, Select } from "./controls";
+import { HeldSecurityPicker } from "./HeldSecurityPicker";
 import type { SecurityHit } from "./OrderDialog";
 import { formatNumber } from "./screener";
 import { invokeCommand } from "./commands";
@@ -93,32 +94,24 @@ export function TrailingStopDialog({ security: initial, portfolioId: initialPort
         </Field>
       )}
 
-      <Field className={field.label}>
-        <Label>Security</Label>
-        <Select
-          value={holding?.isin ?? ""}
-          onChange={(isin) => {
-            const next = heldHere.find((item) => item.isin === isin);
-            setSecurity(next ? { isin: next.isin, name: next.name, symbol: next.symbol, currency: next.currency } : null);
-          }}
-          options={heldHere.map((item) => ({ value: item.isin, label: `${item.name} · ${item.isin}` }))}
-          placeholder={heldHere.length === 0 ? "No securities held" : "Choose a security you hold"}
-          disabled={heldHere.length === 0}
-        />
-      </Field>
+      <HeldSecurityPicker
+        held={heldHere}
+        selected={holding ?? null}
+        onChange={(item) => setSecurity(item ? { isin: item.isin, name: item.name, symbol: item.symbol, currency: item.currency } : null)}
+      />
+      {heldQuantity !== null && (
+        <p className={`mb-3 ${field.hint}`}>
+          You hold {formatNumber(heldQuantity)} shares.{" "}
+          <button type="button" className={btn.link} onClick={() => setQuantity(String(heldQuantity))}>
+            Sell all
+          </button>
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Field className={field.label}>
           <Label>Shares to sell</Label>
           <GroupInput inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.currentTarget.value)} placeholder="0" invalid={shownQuantityProblem !== null} />
-          {heldQuantity !== null && (
-            <Description className={field.hint}>
-              You hold {formatNumber(heldQuantity)} shares{" "}
-              <button type="button" className={btn.link} onClick={() => setQuantity(String(heldQuantity))}>
-                Sell all
-              </button>
-            </Description>
-          )}
           {shownQuantityProblem && (
             <Description className={field.error} role="alert">
               {shownQuantityProblem}

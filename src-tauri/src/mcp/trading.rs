@@ -1,6 +1,7 @@
 use super::{
     args::{is_isin, validate_arguments},
     client::{require_tool, McpClient},
+    hours::exchange_open,
     response::strings_at,
     savings::SavingsState,
     session,
@@ -28,7 +29,8 @@ pub(super) const TRADING_OFF: &str =
     "Trading is switched off. Turn on Trading (top right) to run tools that change Scalable data.";
 
 /// Whether the user has switched Trading on. Starts off on every launch; the UI sends its saved
-/// choice when it loads, so a reload or a missed message can only ever fail closed.
+/// choice when it loads, so a reload or a missed message can only ever fail closed. Outside the
+/// exchange hours (`hours.rs`) Trading counts as off whatever the switch says.
 #[derive(Default)]
 pub struct TradingGate {
     pub(super) enabled: Arc<AtomicBool>,
@@ -36,7 +38,7 @@ pub struct TradingGate {
 
 impl TradingGate {
     pub(super) fn is_on(&self) -> bool {
-        self.enabled.load(Ordering::SeqCst)
+        self.enabled.load(Ordering::SeqCst) && exchange_open()
     }
 }
 
