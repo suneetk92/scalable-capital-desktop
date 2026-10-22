@@ -1,7 +1,7 @@
 //! What the webview can call: list, add and remove a stop, and set the check interval.
 
 use super::{
-    announce_change, quotes::quote_prices, Status, Trail, TrailingState, TrailingStop,
+    announce_change, quotes::quote_prices, watcher, Status, Trail, TrailingState, TrailingStop,
     MAX_CHECK_SECONDS, MAX_NAME, MAX_STOPS, MIN_CHECK_SECONDS,
 };
 use crate::mcp::{
@@ -40,12 +40,9 @@ pub fn set_trailing_interval(state: State<'_, TrailingState>, seconds: u64) {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TrailingList {
     stops: Vec<TrailingStop>,
     problem: Option<String>,
-    /// When the wait for the next price check began (milliseconds since 1970); none while nothing is watched.
-    cycle_started_at: Option<u64>,
 }
 
 #[tauri::command]
@@ -53,8 +50,20 @@ pub fn list_trailing_stops(state: State<'_, TrailingState>) -> TrailingList {
     TrailingList {
         stops: state.snapshot(),
         problem: state.problem(),
-        cycle_started_at: state.cycle_started(),
     }
+}
+
+/// The Refresh button: one price check now, the same pass the watcher runs on its timer (it
+/// never sells with Trading off), instead of waiting out the interval. Nothing is checked while no stop is active.
+#[tauri::command]
+pub async fn check_trailing_stops_now(
+    app: AppHandle,
+    state: State<'_, TrailingState>,
+) -> Result<(), String> {
+    if state.watching() {
+        watcher::check(&app).await;
+    }
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -191,19 +200,6 @@ pub fn remove_trailing_stop(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_list_has_camel_case_keys_for_the_page() {
-        let list = TrailingList {
-            stops: Vec::new(),
-            problem: None,
-            cycle_started_at: Some(5),
-        };
-        assert_eq!(
-            serde_json::to_value(list).unwrap(),
-            serde_json::json!({ "stops": [], "problem": null, "cycleStartedAt": 5 })
-        );
-    }
 
     fn new_stop(isin: &str) -> NewTrailingStop {
         NewTrailingStop {

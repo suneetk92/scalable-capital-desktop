@@ -37,6 +37,7 @@ type CommandMap = {
   preview_savings_plan: { args: { request: object }; result: PreviewResponse };
   submit_savings_plan: { args: { previewId: string; request: object }; result: unknown };
   list_trailing_stops: { args: undefined; result: unknown };
+  check_trailing_stops_now: { args: undefined; result: unknown };
   add_trailing_stop: { args: { request: object }; result: unknown };
   remove_trailing_stop: { args: { id: string }; result: unknown };
   set_trailing_interval: { args: { seconds: number }; result: void };
@@ -72,6 +73,7 @@ const REGISTRY: Record<Command, true> = {
   preview_savings_plan: true,
   submit_savings_plan: true,
   list_trailing_stops: true,
+  check_trailing_stops_now: true,
   add_trailing_stop: true,
   remove_trailing_stop: true,
   set_trailing_interval: true,

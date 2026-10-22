@@ -84,8 +84,6 @@ pub struct TrailingState {
     problem: Mutex<Option<String>>,
     /// Seconds between price checks; 0 until the app has passed its setting.
     check_seconds: AtomicU64,
-    /// When the wait for the next price check began, in milliseconds since 1970; 0 while nothing is watched.
-    cycle_started: AtomicU64,
     /// Wakes the watcher when it may have work again. It holds one wake-up, so none is lost.
     wake: Notify,
 }
@@ -95,18 +93,6 @@ impl TrailingState {
         match self.check_seconds.load(Ordering::Relaxed) {
             0 => DEFAULT_CHECK_SECONDS,
             seconds => seconds,
-        }
-    }
-
-    fn start_cycle(&self, started: Option<u64>) {
-        self.cycle_started
-            .store(started.unwrap_or(0), Ordering::Relaxed);
-    }
-
-    fn cycle_started(&self) -> Option<u64> {
-        match self.cycle_started.load(Ordering::Relaxed) {
-            0 => None,
-            started => Some(started),
         }
     }
 
@@ -151,12 +137,6 @@ impl TrailingState {
     fn wake(&self) {
         self.wake.notify_one();
     }
-}
-
-fn now_ms() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_millis() as u64)
 }
 
 /// Tells the webview the stops changed, so it re-reads them instead of polling.

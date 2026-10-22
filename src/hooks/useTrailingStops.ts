@@ -12,7 +12,7 @@ const FALLBACK_MS = 60_000;
 
 /** The trailing stops the Rust backend keeps and watches; re-read on changes, focus and visibility, with a slow fallback while visible and active. */
 export function useTrailingStops(invoke: Invoke) {
-  const [list, setList] = useState<TrailingList>({ stops: [], problem: null, cycleStartedAt: null });
+  const [list, setList] = useState<TrailingList>({ stops: [], problem: null });
   const [loaded, setLoaded] = useState(false);
   const [visible, setVisible] = useState(() => document.visibilityState === "visible");
 

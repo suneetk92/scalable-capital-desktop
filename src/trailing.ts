@@ -20,7 +20,7 @@ export type TrailingStop = {
   createdAt: number;
 };
 
-export type TrailingList = { stops: TrailingStop[]; problem: string | null; cycleStartedAt: number | null };
+export type TrailingList = { stops: TrailingStop[]; problem: string | null };
 
 export const STATUS_LABEL: Record<TrailingStatus, string> = {
   active: "Watching",
@@ -79,7 +79,7 @@ function toStop(value: unknown): TrailingStop | null {
 
 /** The answer of `list_trailing_stops`, kept only as far as it has the expected shape. */
 export function parseTrailingList(payload: unknown): TrailingList {
-  if (!isRec(payload)) return { stops: [], problem: null, cycleStartedAt: null };
+  if (!isRec(payload)) return { stops: [], problem: null };
   const stops = (Array.isArray(payload.stops) ? payload.stops : []).map(toStop).filter((stop): stop is TrailingStop => stop !== null);
-  return { stops, problem: typeof payload.problem === "string" ? payload.problem : null, cycleStartedAt: typeof payload.cycleStartedAt === "number" ? payload.cycleStartedAt : null };
+  return { stops, problem: typeof payload.problem === "string" ? payload.problem : null };
 }

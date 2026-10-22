@@ -60,7 +60,7 @@ describe("parseTrailingList", () => {
   });
 
   it("copes with nothing useful", () => {
-    expect(parseTrailingList(null)).toEqual({ stops: [], problem: null, cycleStartedAt: null });
-    expect(parseTrailingList({ stops: "x" })).toEqual({ stops: [], problem: null, cycleStartedAt: null });
+    expect(parseTrailingList(null)).toEqual({ stops: [], problem: null });
+    expect(parseTrailingList({ stops: "x" })).toEqual({ stops: [], problem: null });
   });
 });

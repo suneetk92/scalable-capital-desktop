@@ -2,8 +2,7 @@
 //! waits for a wake-up (a stop was added, or the saved stops were loaded) and does not tick.
 
 use super::{
-    announce_change, now_ms, orders::sell, quotes::quote_prices, Status, Trail, TrailingState,
-    TrailingStop,
+    announce_change, orders::sell, quotes::quote_prices, Status, Trail, TrailingState, TrailingStop,
 };
 use crate::mcp::trading::TradingGate;
 use std::time::Duration;
@@ -71,7 +70,7 @@ async fn show_prices(
 }
 
 /// One pass: reads the prices of the active stops, moves their highs up and sells the ones that were hit.
-async fn check(app: &AppHandle) {
+pub(super) async fn check(app: &AppHandle) {
     let gate = app.state::<TradingGate>();
     let state = app.state::<TrailingState>();
     let trading = gate.is_on();
@@ -176,13 +175,10 @@ pub(super) fn spawn(app: &AppHandle) {
             if !state.watching() {
                 // Nothing is watched, so a price problem from before is stale.
                 report(&app, &state, None);
-                state.start_cycle(None);
                 state.wake.notified().await;
                 continue;
             }
             // Waits in short steps, so a changed setting applies without waiting out the old interval.
-            state.start_cycle(Some(now_ms()));
-            announce_change(&app);
             let mut waited = 0;
             while waited < state.check_seconds() && state.watching() {
                 tokio::time::sleep(Duration::from_secs(1)).await;

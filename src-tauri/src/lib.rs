@@ -34,6 +34,7 @@ fn core_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
         mcp::savings::preview_savings_plan,
         mcp::savings::submit_savings_plan,
         mcp::trailing::commands::list_trailing_stops,
+        mcp::trailing::commands::check_trailing_stops_now,
         mcp::trailing::commands::add_trailing_stop,
         mcp::trailing::commands::remove_trailing_stop,
         mcp::trailing::commands::set_trailing_interval,

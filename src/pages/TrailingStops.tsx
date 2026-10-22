@@ -1,9 +1,8 @@
-import { useElapsedShare } from "../countdown";
 import { intervalLabel } from "../settings";
 import { extension, useExtensionIsinLogos } from "../extensions";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { useTableLayout } from "../hooks/useTableLayout";
-import { ArrowTrendingDownIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowTrendingDownIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { invokeCommand } from "../commands";
 import { useTrailingStops } from "../hooks/useTrailingStops";
@@ -13,7 +12,7 @@ import { errorText } from "../tools";
 import { STATUS_LABEL, trailLabel, triggerMargin, triggerPrice, type TrailingStatus, type TrailingStop } from "../trailing";
 import { type Common } from "../types";
 import { EmptyState, ShareBar } from "../controls";
-import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../ui";
+import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, SPIN, TD_NUM, TH_NUM } from "../ui";
 import { Section } from "./shared";
 
 const COLUMNS = 8;
@@ -104,11 +103,12 @@ function Row({ order, stop, logo, tradingEnabled, onOpen, onRemove }: { order: s
 /** The trailing stops the app watches itself, with a form to start one. */
 export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
   const { invoke, portfolios, held, tradingEnabled, trailingSeconds } = common;
-  const { stops, problem, cycleStartedAt, reload } = useTrailingStops(invoke);
+  const { stops, problem, reload } = useTrailingStops(invoke);
   const { order, layout } = useTableLayout("trailing-stops", COLUMN_IDS);
   const resized = resizedTable(layout.widths);
   const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
   const [adding, setAdding] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function remove(id: string) {
@@ -122,7 +122,18 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
   }
 
   const active = stops.filter((stop) => stop.status === "active").length;
-  const untilCheck = 1 - useElapsedShare(cycleStartedAt, trailingSeconds * 1000, cycleStartedAt !== null && active > 0);
+
+  async function checkNow() {
+    setError(null);
+    setChecking(true);
+    try {
+      await invokeCommand(invoke, "check_trailing_stops_now");
+    } catch (checkError) {
+      setError(errorText(checkError));
+    }
+    setChecking(false);
+    void reload();
+  }
   return (
     <>
       <Section
@@ -132,14 +143,9 @@ export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOp
         hint={`${active} watching · checked every ${intervalLabel(trailingSeconds)}`}
         actions={
           <>
-            {cycleStartedAt !== null && active > 0 && (
-              <div className="flex items-center gap-2 text-[0.75rem] text-ink-muted" title="The bar drains to empty when the next price check happens.">
-                Next check
-                <div className="w-16">
-                  <ShareBar share={untilCheck} label="Time until the next price check" />
-                </div>
-              </div>
-            )}
+            <button className={btn.secondary} type="button" onClick={() => void checkNow()} disabled={checking || active === 0} title="Read the prices now instead of waiting for the next check">
+              <ArrowPathIcon aria-hidden="true" className={checking ? SPIN : ""} /> Refresh
+            </button>
             <button className={btn.primary} type="button" onClick={() => setAdding(true)} disabled={!tradingEnabled} title={tradingEnabled ? undefined : "Turn on Trading to start a trailing stop"}>
               New trailing stop
             </button>
