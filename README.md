@@ -233,7 +233,7 @@ setting scales everything (the root font size is 15px, so a former `18px` is `[1
 fails on new `-[12px]` arbitrary values, and only viewport breakpoints, shadows and 1px borders stay in px),
 and table density is a custom `compact:` variant. All dialogs go through `ModalFrame` (sizes `sm`, `md`, `lg`) with a
 `DialogFooter` (Cancel, Back or Close first, the primary action last); icon-only buttons are `IconButton`. Shared building blocks
-are based on Tailwind Plus Application UI templates and Headless UI. The price chart uses the open-source Lightweight Charts library (`lightweight-charts`, in `src/LineChart.tsx`), coloured from
+are based on Tailwind Plus Application UI templates and Headless UI. The Portfolio and Watchlist tables keep their sort and row selection in TanStack Table (`@tanstack/react-table`, headless, in `src/hooks/useScreenerTable.ts`); the markup, column resizing and ordering, grouping and paging are the app's own. The price chart uses the open-source Lightweight Charts library (`lightweight-charts`, in `src/LineChart.tsx`), coloured from
 the same theme variables.
 
 The content security policy in `src-tauri/tauri.conf.json` allows only the local app (`'self'`, plus `data:`

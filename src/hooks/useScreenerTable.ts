@@ -1,3 +1,4 @@
+import { createSortedRowModel, rowSelectionFeature, rowSortingFeature, tableFeatures, useTable, type RowSelectionState, type SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UNGROUPED_ID, type SecurityGroup } from "../groups";
 import type { View } from "../nav";
@@ -24,6 +25,15 @@ function sortValue(row: ScreenerRow, key: SortKey, records: Map<string, MarketRe
   return row[(key === "price" ? "lastPrice" : key) as RowSortKey];
 }
 
+const features = tableFeatures({ rowSortingFeature, rowSelectionFeature, sortedRowModel: createSortedRowModel() });
+
+/** Missing values sort as the smallest, text with the locale's rules. */
+function compareValues(a: unknown, b: unknown) {
+  return typeof a === "string" || typeof b === "string" ? String(a ?? "").localeCompare(String(b ?? "")) : compareNumbers(typeof a === "number" ? a : null, typeof b === "number" ? b : null);
+}
+
+const NO_ROWS: ScreenerRow[] = [];
+
 /** Everything the Portfolio/Watchlist table remembers (search, filters, sort, selection, page) and the rows derived from it. */
 export function useScreenerTable({
   view,
@@ -44,12 +54,13 @@ export function useScreenerTable({
   pageSize: number;
 }) {
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const tableScroll = useRef<HTMLDivElement>(null);
   const [groupFilter, setGroupFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("symbol");
-  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("ascending");
+  const [sorting, setSorting] = useState<SortingState>([{ id: "symbol", desc: false }]);
+  const sortKey: SortKey = sorting[0]?.id ?? "symbol";
+  const sortDirection: "ascending" | "descending" = sorting[0]?.desc ? "descending" : "ascending";
   const [changeFilter, setChangeFilter] = useState<ChangeFilter>("all");
   const [heldOnly, setHeldOnly] = useState(false);
   const [groupRows, setGroupRows] = useState(true);
@@ -61,21 +72,40 @@ export function useScreenerTable({
 
   const activeSortKey: SortKey = sortKey === "symbol" || columns.includes(sortKey) ? sortKey : "symbol";
 
-  const visibleRows = useMemo(() => {
-    const rows = (view === "portfolio" ? portfolioRows : watchlistRows)
-      .filter((row) => `${row.symbol} ${row.name} ${row.exchange}`.toLowerCase().includes(query.trim().toLowerCase()))
-      .filter((row) => changeFilter === "all" || (row.change !== null && (changeFilter === "gainers" ? row.change > 0 : row.change < 0)))
-      .filter((row) => view !== "watchlist" || !heldOnly || (row.quantity ?? 0) > 0 || (row.value ?? 0) > 0)
-      .filter((row) => !activeGroup || (activeGroup.isDefault ? !inRealGroup(row) : groupHas(activeGroup, row)));
-    rows.sort((left, right) => {
-      const a = sortValue(left, activeSortKey, marketRecords);
-      const b = sortValue(right, activeSortKey, marketRecords);
-      const compared =
-        typeof a === "string" || typeof b === "string" ? String(a ?? "").localeCompare(String(b ?? "")) : compareNumbers(typeof a === "number" ? a : null, typeof b === "number" ? b : null);
-      return sortDirection === "ascending" ? compared : -compared;
-    });
-    return rows;
-  }, [activeGroup, activeSortKey, changeFilter, heldOnly, inRealGroup, marketRecords, portfolioRows, query, sortDirection, view, watchlistRows]);
+  const filteredRows = useMemo(
+    () =>
+      (view === "portfolio" ? portfolioRows : watchlistRows)
+        .filter((row) => `${row.symbol} ${row.name} ${row.exchange}`.toLowerCase().includes(query.trim().toLowerCase()))
+        .filter((row) => changeFilter === "all" || (row.change !== null && (changeFilter === "gainers" ? row.change > 0 : row.change < 0)))
+        .filter((row) => view !== "watchlist" || !heldOnly || (row.quantity ?? 0) > 0 || (row.value ?? 0) > 0)
+        .filter((row) => !activeGroup || (activeGroup.isDefault ? !inRealGroup(row) : groupHas(activeGroup, row))),
+    [activeGroup, changeFilter, heldOnly, inRealGroup, portfolioRows, query, view, watchlistRows],
+  );
+
+  const tableColumns = useMemo(
+    () =>
+      ["symbol", ...columns].map((id) => ({
+        id,
+        accessorFn: (row: ScreenerRow) => sortValue(row, id, marketRecords),
+        sortFn: (left: { getValue: (id: string) => unknown }, right: { getValue: (id: string) => unknown }) => compareValues(left.getValue(id), right.getValue(id)),
+        sortDescFirst: id !== "symbol",
+      })),
+    [columns, marketRecords],
+  );
+
+  const table = useTable({
+    features,
+    columns: tableColumns,
+    data: filteredRows ?? NO_ROWS,
+    getRowId: (row: ScreenerRow) => row.rowId,
+    enableSortingRemoval: false,
+    state: { sorting: sorting.filter((entry) => entry.id === "symbol" || columns.includes(entry.id)), rowSelection },
+    onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+  });
+  const visibleRows = table.getRowModel().rows.map((row) => row.original);
+  const selected = useMemo(() => new Set(Object.keys(rowSelection).filter((id) => rowSelection[id])), [rowSelection]);
+  const setSelected = useCallback((ids: Set<string>) => setRowSelection(Object.fromEntries([...ids].map((id) => [id, true]))), []);
 
   const tableSections = useMemo(() => {
     if (view !== "portfolio" || !groupRows || !groups.some((group) => !group.isDefault)) return [];
@@ -113,7 +143,7 @@ export function useScreenerTable({
   const pageSomeSelected = pagedRows.some((row) => selected.has(row.rowId));
 
   useEffect(() => setPage(1), [view, query, changeFilter, heldOnly, groupFilter, groupRows, pageSize]);
-  useEffect(() => setSelected(new Set()), [view]);
+  useEffect(() => setRowSelection({}), [view]);
 
   const activeFilters = (changeFilter !== "all" ? 1 : 0) + (view === "watchlist" && heldOnly ? 1 : 0) + (activeGroup ? 1 : 0);
 
@@ -132,31 +162,25 @@ export function useScreenerTable({
   }
 
   function toggleRow(id: string, checked: boolean) {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
+    setRowSelection((current) => {
+      const { [id]: _removed, ...rest } = current;
+      return checked ? { ...rest, [id]: true } : rest;
     });
   }
 
   function togglePage(checked: boolean) {
-    setSelected((current) => {
-      const next = new Set(current);
+    setRowSelection((current) => {
+      const next = { ...current };
       for (const row of pagedRows) {
-        if (checked) next.add(row.rowId);
-        else next.delete(row.rowId);
+        if (checked) next[row.rowId] = true;
+        else delete next[row.rowId];
       }
       return next;
     });
   }
 
   function toggleSort(column: SortKey) {
-    if (column === activeSortKey) setSortDirection((direction) => (direction === "ascending" ? "descending" : "ascending"));
-    else {
-      setSortKey(column);
-      setSortDirection(column === "symbol" ? "ascending" : "descending");
-    }
+    table.getColumn(column)?.toggleSorting(column === activeSortKey ? sortDirection === "ascending" : undefined);
   }
 
   return {
