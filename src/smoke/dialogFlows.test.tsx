@@ -139,7 +139,18 @@ describe("mocked-invoke smoke flows", () => {
   it("creates a trailing stop only after the acknowledgement", async () => {
     const invoke = mockInvoke((command) => (command === "add_trailing_stop" ? { id: "stop-1" } : undefined));
     const onClose = vi.fn();
-    render(<TrailingStopDialog security={security} portfolioId="portfolio-1" quantity="2" portfolios={portfolios} held={[{ portfolioId: "portfolio-1", isin: security.isin, name: security.name, symbol: security.symbol, currency: security.currency, quantity: 5 }]} invoke={invoke} tradingEnabled onClose={onClose} />);
+    render(
+      <TrailingStopDialog
+        security={security}
+        portfolioId="portfolio-1"
+        quantity="2"
+        portfolios={portfolios}
+        held={[{ portfolioId: "portfolio-1", isin: security.isin, name: security.name, symbol: security.symbol, currency: security.currency, quantity: 5 }]}
+        invoke={invoke}
+        tradingEnabled
+        onClose={onClose}
+      />,
+    );
 
     expect(screen.getByText(/you hold 5 shares/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Sell all" }));

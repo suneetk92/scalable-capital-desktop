@@ -45,7 +45,18 @@ function easterSunday(year: number) {
 }
 
 function closedDay(year: number, month: number, day: number) {
-  const fixed = [[1, 1], [5, 1], [8, 15], [10, 3], [10, 31], [11, 1], [12, 24], [12, 25], [12, 26], [12, 31]];
+  const fixed = [
+    [1, 1],
+    [5, 1],
+    [8, 15],
+    [10, 3],
+    [10, 31],
+    [11, 1],
+    [12, 24],
+    [12, 25],
+    [12, 26],
+    [12, 31],
+  ];
   if (fixed.some(([m, d]) => m === month && d === day)) return true;
   const easter = easterSunday(year);
   const sunday = Date.UTC(year, easter.month - 1, easter.day);
