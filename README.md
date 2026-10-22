@@ -262,7 +262,7 @@ minutes; it starts a new one after an authorisation error, on sign-out and on "R
 ## Trading (buy and sell)
 
 Trading is **off by default**. Turning it on, from any switch or the command palette, asks for
-confirmation first; turning it off does not. Turn on the "Read-only / Trading on" switch in the top bar (or
+confirmation first; turning it off does not. The top bar switch and the command palette change only the current session; Settings, Trading, **Enable trading at start** is the one saved choice (it also switches Trading on or off right away), and with it on every launch starts with Trading on while the exchange is open. Turn on the "Read-only / Trading on" switch in the top bar (or
 Settings, Trading; the switch is on every page except Settings, and all of them show one shared state) to show **Buy** and **Sell** buttons per row and a **New order** button with
 security search (on Overview, Portfolio, Watchlist, Discover and Transactions; Groups, Alerts and Savings have
 their own "New …" button instead). The same switch shows the buttons that create, change or delete data (watchlist,
@@ -270,10 +270,10 @@ price alerts, portfolio groups, savings plans); while it is off they are hidden 
 Scalable tools is disabled. Hiding is a convenience in the UI; the Rust backend also refuses every
 non-read tool, including unknown tools, until Trading is on.
 
-- The switch is a backend-enforced **kill switch**, not just a UI preference. It is never saved: every
-  launch, and every reload of the window, starts read-only, and the UI tells the backend on every
+- The switch is a backend-enforced **kill switch**, not just a UI preference. The switch itself is not saved: every
+  launch, and every reload of the window, starts read-only unless Enable trading at start is on, and the UI tells the backend on every
   change. Signing out also switches it off (in Rust and in the UI) and drops all pending previews, so
-  the next sign-in starts read-only too. While it is off, only `ping` and tools whose names start with `get_`, `list_`, `search_` or
+  the next sign-in starts read-only too, until the next launch. While it is off, only `ping` and tools whose names start with `get_`, `list_`, `search_` or
   `preview_` may run; every other tool, including unknown future tools, is denied, and a batch that is
   refused as a whole does not even open a session. The order and
   savings-plan dialogs also cannot preview while it is off.
@@ -334,8 +334,8 @@ non-read tool, including unknown tools, until Trading is on.
   - It works only while the app runs (the tray keeps it running), is signed in and **Trading is on**. It is
     not a Scalable order: nothing protects the position while the app is closed, offline or in Read-only mode,
     and a fast drop, a closed market or a price gap can fill well below the trigger.
-  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens), but Trading is never
-    saved, so after a restart they wait until Trading is switched on again.
+  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens), but the Trading switch is not
+    saved, so after a restart they wait until Trading is on again (automatically with Enable trading at start).
   - It never accepts a warning for you: when the sell preview asks for an acknowledgement or a questionnaire,
     the stop is marked "Needs you" and a notification is shown. An outdated quote or an untradable security
     makes it wait and try again at the next check; a preview price more than 25% below the price that triggered the stop

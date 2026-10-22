@@ -52,7 +52,7 @@ export function useAppData() {
   if (view === "transactions" && !transactionsOpened) setTransactionsOpened(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
-  // Never saved: every launch starts read-only, as the backend does.
+  // The switch of this session; it starts from the "Trading at start" setting and no other switch changes that setting.
   const [tradingSwitch, setTradingEnabled] = useState(false);
   // The exchange hours override the switch: outside them the app is read-only whatever the switch says.
   const [marketOpen, setMarketOpen] = useState(() => exchangeOpen());
@@ -62,6 +62,7 @@ export function useAppData() {
   }, []);
   const tradingEnabled = tradingSwitch && marketOpen;
   const [confirmingTrading, setConfirmingTrading] = useState(false);
+  const [confirmingStartupTrading, setConfirmingStartupTrading] = useState(false);
   const [orderTarget, setOrderTarget] = useState<OrderTarget | null>(null);
   const nav = useNavOrder();
   const { groupOrder, moveGroup: moveGroupIn } = useGroupOrder();
@@ -99,9 +100,11 @@ export function useAppData() {
       if (tradingEnabled) setTradingEnabled(false);
     });
   }, [tradingEnabled]);
-  // Closing time also drops the switch, so Trading does not come back on at the next opening.
+  // Closing time also drops the switch. At launch and at the next opening it follows the "Trading at start" setting.
+  const tradingAtStartRef = useRef(settings.tradingAtStart);
+  tradingAtStartRef.current = settings.tradingAtStart;
   useEffect(() => {
-    if (!marketOpen) setTradingEnabled(false);
+    setTradingEnabled(marketOpen && tradingAtStartRef.current);
   }, [marketOpen]);
 
   const trailing = useTrailingStops(invoke);
@@ -496,6 +499,8 @@ export function useAppData() {
     setTradingEnabled,
     confirmingTrading,
     setConfirmingTrading,
+    confirmingStartupTrading,
+    setConfirmingStartupTrading,
     orderTarget,
     setOrderTarget,
     nav,

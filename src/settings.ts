@@ -43,6 +43,8 @@ export type Settings = {
   updateChannel: UpdateChannelSetting;
   /** Venue preselected for new orders. */
   orderVenue: VenueSetting;
+  /** Starts every launch with Trading on. Only the Settings switch changes it; the other Trading switches affect the current session only. */
+  tradingAtStart: boolean;
 };
 
 /** Saved with the settings; raise it and add a step to `SETTINGS_MIGRATIONS` when a saved field changes meaning. */
@@ -97,6 +99,7 @@ export const DEFAULT_SETTINGS: Settings = {
   checkUpdates: true,
   updateChannel: "stable",
   orderVenue: "eix",
+  tradingAtStart: false,
 };
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -129,6 +132,7 @@ export function sanitizeSettings(raw: Partial<Record<keyof Settings, unknown>>):
     checkUpdates: typeof raw.checkUpdates === "boolean" ? raw.checkUpdates : DEFAULT_SETTINGS.checkUpdates,
     updateChannel: oneOf(raw.updateChannel, ["stable", "rc"], DEFAULT_SETTINGS.updateChannel),
     orderVenue: oneOf(raw.orderVenue, ["eix", "gettex", "xetra"], DEFAULT_SETTINGS.orderVenue),
+    tradingAtStart: typeof raw.tradingAtStart === "boolean" ? raw.tradingAtStart : DEFAULT_SETTINGS.tradingAtStart,
   };
 }
 

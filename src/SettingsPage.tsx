@@ -35,7 +35,6 @@ import {
 
 type Props = {
   settings: Settings;
-  tradingEnabled: boolean;
   marketOpen: boolean;
   onChange: (patch: Partial<Settings>) => void;
   onToggleTrading: () => void;
@@ -180,7 +179,6 @@ const PANEL_NARROW = "grid gap-4 focus:outline-none";
 
 export function SettingsPage({
   settings,
-  tradingEnabled,
   marketOpen,
   onChange,
   onToggleTrading,
@@ -418,10 +416,10 @@ export function SettingsPage({
               <Select size="compact" value={settings.orderVenue} onChange={(orderVenue: VenueSetting) => onChange({ orderVenue })} options={VENUE_OPTIONS} />
             </Row>
             <Row
-              label="Enable trading"
-              hint={`Off keeps the app read-only: only ping and get, list, search or preview tools can run; every other tool is blocked, including unknown tools. It is never saved: the app starts read-only every time. Orders and savings plans also need the Full MCP access level. Trading also stays off outside the exchange hours (Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened)${marketOpen ? "" : ": the exchange is closed now"}.`}
+              label="Enable trading at start"
+              hint={`Off keeps the app read-only at every start: only ping and get, list, search or preview tools can run; every other tool is blocked, including unknown tools. On is saved and starts every launch with Trading on. The Trading switch in the top bar and the command palette change only the current session and never this setting. Orders and savings plans also need the Full MCP access level. Trading also stays off outside the exchange hours (Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened)${marketOpen ? "" : ": the exchange is closed now"}.`}
             >
-              <Switch label="Enable trading" checked={tradingEnabled} onToggle={onToggleTrading} />
+              <Switch label="Enable trading at start" checked={settings.tradingAtStart} onToggle={onToggleTrading} />
             </Row>
           </SectionCard>
         </TabPanel>

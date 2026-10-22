@@ -10,7 +10,21 @@ import { invoke } from "./invoke";
 /** The dialogs that can open on any page: the tool runner, the order, the command palette and the Trading and sign-out questions. */
 export function GlobalDialogs() {
   const { data, commands } = useApp();
-  const { toolUi, orderTarget, setOrderTarget, loadDashboard, paletteOpen, setPaletteOpen, confirmingTrading, setConfirmingTrading, setTradingEnabled, confirmingSignOut, setConfirmingSignOut } = data;
+  const {
+    toolUi,
+    orderTarget,
+    setOrderTarget,
+    loadDashboard,
+    paletteOpen,
+    setPaletteOpen,
+    confirmingTrading,
+    setConfirmingTrading,
+    confirmingStartupTrading,
+    setConfirmingStartupTrading,
+    setTradingEnabled,
+    confirmingSignOut,
+    setConfirmingSignOut,
+  } = data;
   const { orderPortfolios, paletteItems, signOut } = commands;
   return (
     <>
@@ -31,13 +45,26 @@ export function GlobalDialogs() {
       {confirmingTrading && (
         <ConfirmDialog
           title="Enable trading?"
-          text="Trading turns off read-only mode. You will be able to place buy and sell orders, change watchlists, price alerts, portfolio groups and savings plans, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation. Trading switches back to read-only the next time the app starts."
+          text="Trading turns off read-only mode. You will be able to place buy and sell orders, change watchlists, price alerts, portfolio groups and savings plans, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation. Trading switches back to read-only the next time the app starts, unless you turn on Trading at start in Settings."
           confirmLabel="Enable trading"
           onConfirm={() => {
             setConfirmingTrading(false);
             setTradingEnabled(true);
           }}
           onCancel={() => setConfirmingTrading(false)}
+        />
+      )}
+      {confirmingStartupTrading && (
+        <ConfirmDialog
+          title="Enable trading at start?"
+          text="Trading will be on now and every time the app starts, while the exchange is open. You will be able to place buy and sell orders, change watchlists, price alerts, portfolio groups and savings plans, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation."
+          confirmLabel="Enable trading at start"
+          onConfirm={() => {
+            setConfirmingStartupTrading(false);
+            data.updateSettings({ tradingAtStart: true });
+            if (data.marketOpen) setTradingEnabled(true);
+          }}
+          onCancel={() => setConfirmingStartupTrading(false)}
         />
       )}
       {confirmingSignOut && (

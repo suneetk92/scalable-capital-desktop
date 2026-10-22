@@ -36,6 +36,7 @@ export function useAppCommands(data: AppData) {
     setLoginPending,
     setConfirmingSignOut,
     setConfirmingTrading,
+    setConfirmingStartupTrading,
     tradingEnabled,
     marketOpen,
     setTradingEnabled,
@@ -135,6 +136,14 @@ export function useAppCommands(data: AppData) {
   function toggleTrading() {
     if (tradingEnabled) setTradingEnabled(false);
     else if (marketOpen) setConfirmingTrading(true);
+  }
+
+  // The Settings switch is the only one that is saved: it also changes the current session, and turning it on asks first.
+  function toggleTradingAtStart() {
+    if (settings.tradingAtStart) {
+      updateSettings({ tradingAtStart: false });
+      setTradingEnabled(false);
+    } else setConfirmingStartupTrading(true);
   }
 
   function openOrder(side: OrderSide, row: ScreenerRow | null) {
@@ -338,6 +347,7 @@ export function useAppCommands(data: AppData) {
     copyToken,
     copyCsv,
     toggleTrading,
+    toggleTradingAtStart,
     openOrder,
     orderPortfolios,
     signIn,

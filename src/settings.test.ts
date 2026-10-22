@@ -75,6 +75,7 @@ describe("sanitizeSettings", () => {
       checkUpdates: false,
       updateChannel: "rc",
       orderVenue: "xetra",
+      tradingAtStart: true,
     } as const;
     expect(sanitizeSettings(valid)).toEqual(valid);
   });
