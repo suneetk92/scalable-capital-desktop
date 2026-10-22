@@ -145,15 +145,28 @@ function textAt(record: Rec, paths: string[]): string | undefined {
 }
 
 /** A security name is a symbol-over-name cell and a security type a coloured badge, like the Portfolio table's; every other value is plain text. */
-function cellOf(record: Rec, path: string, logos?: ReadonlyMap<string, string>): ReactNode {
+function cellOf(record: Rec, path: string, logos?: ReadonlyMap<string, string>, onOpenSecurity?: (security: { isin: string; name: string }) => void): ReactNode {
   const value = valueAt(record, path);
   if (isSecurityName(path) && typeof value === "string" && value !== "") {
     const scope = path.includes(".") ? path.slice(0, path.lastIndexOf(".") + 1) : "";
     const symbol = textAt(record, [`${scope}symbol`, `${scope}ticker`, "symbol", "ticker"]);
     const isin = textAt(record, [`${scope}isin`, `${scope}identifier`, "isin"]);
     const title = symbol ?? isin ?? value;
+    const label =
+      isin && onOpenSecurity ? (
+        <button
+          className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline"
+          type="button"
+          onClick={() => onOpenSecurity({ isin, name: value })}
+          title="Open details, chart and news"
+        >
+          {title}
+        </button>
+      ) : (
+        title
+      );
     return (
-      <SecurityCell initials={(symbol ?? value).slice(0, 2).toUpperCase()} logo={isin ? logos?.get(isin.toUpperCase()) : undefined} title={title} subtitle={title === value ? undefined : value} />
+      <SecurityCell initials={(symbol ?? value).slice(0, 2).toUpperCase()} logo={isin ? logos?.get(isin.toUpperCase()) : undefined} title={label} subtitle={title === value ? undefined : value} />
     );
   }
   if (path.split(".").slice(-1)[0].toLowerCase() === "securitytype" && typeof value === "string" && value !== "") return <Badge tone={securityTypeTone(value)}>{value.replace(/_/g, " ")}</Badge>;
@@ -175,6 +188,7 @@ export function RecordTable({
   emptyIcon,
   emptyAction,
   onRow,
+  onOpenSecurity,
   pageSize = DEFAULT_RECORD_PAGE_SIZE,
   invoke,
 }: {
@@ -185,6 +199,8 @@ export function RecordTable({
   emptyIcon?: ComponentType<SVGProps<SVGSVGElement>>;
   emptyAction?: ReactNode;
   onRow?: (record: Rec) => void;
+  /** Makes the security names open the security details. */
+  onOpenSecurity?: (security: { isin: string; name: string }) => void;
   /** Rows per page; 0 shows every row. */
   pageSize?: number;
   /** Lets the extension supply ISIN logos for the securities shown. */
@@ -243,7 +259,7 @@ export function RecordTable({
                       <div className="flex justify-end gap-1.5">{actions(record)}</div>
                     </td>
                   ) : (
-                    <td key={id}>{cellOf(record, id, logos)}</td>
+                    <td key={id}>{cellOf(record, id, logos, onOpenSecurity)}</td>
                   ),
                 )}
               </tr>

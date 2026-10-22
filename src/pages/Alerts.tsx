@@ -20,7 +20,7 @@ function removedNotice(record: Rec) {
   return alertRemovedNotice({ name: alert?.name, price: alert?.targetPrice, direction: alert?.direction });
 }
 
-export function AlertsPage({ common }: { common: Common }) {
+export function AlertsPage({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
   const { actions, portfolios } = common;
   const query = useToolQuery(common.invoke, common.defs, TOOL.listPriceAlerts, actions.has(TOOL.listPriceAlerts) ? perPortfolio(portfolios) : null, common.reloadKey);
   const { records, portfolioOf } = useMemo(() => collect(query.entries), [query.entries]);
@@ -43,6 +43,7 @@ export function AlertsPage({ common }: { common: Common }) {
         {query.entries.some((entry) => entry.outcome.ok) && (
           <RecordTable
             invoke={common.invoke}
+            onOpenSecurity={onOpenSecurity}
             records={records}
             pageSize={common.pageSize}
             emptyTitle="No price alerts"
@@ -80,7 +81,7 @@ export function AlertsPage({ common }: { common: Common }) {
           />
         )}
       </Section>
-      <TrailingStops common={common} />
+      <TrailingStops common={common} onOpenSecurity={onOpenSecurity} />
     </>
   );
 }

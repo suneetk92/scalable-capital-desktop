@@ -30,7 +30,7 @@ const HEADS: Record<string, { label: string; className?: string }> = {
   actions: { label: "Actions", className: TH_NUM },
 };
 
-function Row({ order, stop, logo, tradingEnabled, onRemove }: { order: string[]; stop: TrailingStop; logo?: string; tradingEnabled: boolean; onRemove: () => void }) {
+function Row({ order, stop, logo, tradingEnabled, onOpen, onRemove }: { order: string[]; stop: TrailingStop; logo?: string; tradingEnabled: boolean; onOpen: () => void; onRemove: () => void }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
   const paused = watching && !tradingEnabled;
@@ -40,7 +40,16 @@ function Row({ order, stop, logo, tradingEnabled, onRemove }: { order: string[];
         {inOrder(order, {
           name: (
             <td>
-              <SecurityCell initials={stop.name.slice(0, 2).toUpperCase()} logo={logo} title={stop.isin} subtitle={stop.name} />
+              <SecurityCell
+                initials={stop.name.slice(0, 2).toUpperCase()}
+                logo={logo}
+                title={
+                  <button className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline" type="button" onClick={onOpen} title="Open details, chart and news">
+                    {stop.isin}
+                  </button>
+                }
+                subtitle={stop.name}
+              />
             </td>
           ),
           status: <td>{paused ? <Badge tone="yellow">Paused, Trading is off</Badge> : <Badge tone={TONE[stop.status]}>{STATUS_LABEL[stop.status]}</Badge>}</td>,
@@ -91,7 +100,7 @@ function Row({ order, stop, logo, tradingEnabled, onRemove }: { order: string[];
 }
 
 /** The trailing stops the app watches itself, with a form to start one. */
-export function TrailingStops({ common }: { common: Common }) {
+export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
   const { invoke, portfolios, held, tradingEnabled } = common;
   const { stops, problem, reload } = useTrailingStops(invoke);
   const { order, layout } = useTableLayout("trailing-stops", COLUMN_IDS);
@@ -148,7 +157,15 @@ export function TrailingStops({ common }: { common: Common }) {
               </thead>
               <tbody>
                 {stops.map((stop) => (
-                  <Row key={stop.id} order={order} stop={stop} logo={logos.get(stop.isin.toUpperCase())} tradingEnabled={tradingEnabled} onRemove={() => void remove(stop.id)} />
+                  <Row
+                    key={stop.id}
+                    order={order}
+                    stop={stop}
+                    logo={logos.get(stop.isin.toUpperCase())}
+                    tradingEnabled={tradingEnabled}
+                    onOpen={() => onOpenSecurity({ isin: stop.isin, name: stop.name })}
+                    onRemove={() => void remove(stop.id)}
+                  />
                 ))}
               </tbody>
             </table>

@@ -87,8 +87,8 @@ export function AppRouter() {
       {view === "overview" && <OverviewExtras common={common} currency={totalCurrency} logosEnabled={Boolean(extension.logos?.useIsinLogos)} />}
       {view === "groups" && <GroupsPage common={common} data={groupData} defaultGroup={defaultGroup} errors={groupErrors} offered={groupsOffered} formatMoney={formatMoney} onShowGroup={openGroup} />}
       {view === "discover" && <DiscoverPage common={common} watched={watchedIsins} held={heldIsins} onOpen={openFound} onTrade={(found) => tradeFound(found)} />}
-      {view === "alerts" && <AlertsPage common={common} />}
-      {view === "savings" && <SavingsPage common={common} />}
+      {view === "alerts" && <AlertsPage common={common} onOpenSecurity={openFound} />}
+      {view === "savings" && <SavingsPage common={common} onOpenSecurity={openFound} />}
       {transactionsOpened && (
         <div hidden={view !== "transactions"}>
           <TransactionsPage

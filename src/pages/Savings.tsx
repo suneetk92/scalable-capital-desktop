@@ -11,7 +11,7 @@ import { SavingsPlanDialog } from "./SavingsPlanDialog";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
 
-export function SavingsPage({ common }: { common: Common }) {
+export function SavingsPage({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
   const { actions, portfolios } = common;
   const query = useToolQuery(common.invoke, common.defs, TOOL.listSavingsPlans, actions.has(TOOL.listSavingsPlans) ? perPortfolio(portfolios) : null, common.reloadKey);
   const { records, portfolioOf } = useMemo(() => collect(query.entries), [query.entries]);
@@ -46,6 +46,7 @@ export function SavingsPage({ common }: { common: Common }) {
         {query.entries.some((entry) => entry.outcome.ok) && (
           <RecordTable
             invoke={common.invoke}
+            onOpenSecurity={onOpenSecurity}
             records={records}
             pageSize={common.pageSize}
             emptyTitle="No savings plans"
