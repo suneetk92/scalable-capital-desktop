@@ -475,7 +475,7 @@ export const LIST_ITEM =
 
 const TABLE_BASE =
   "w-full border-collapse text-right whitespace-nowrap text-ink-body " +
-  "[&_td_.flex]:justify-end " +
+  "[&_td_.flex]:justify-end [&_td_[data-security-logo]]:order-last " +
   "[&_th]:h-[2.6rem] [&_th]:border-b [&_th]:border-line [&_th]:px-4 [&_th]:font-label [&_th]:text-ink-muted " +
   "[&_td]:h-14 [&_td]:border-b [&_td]:border-line [&_td]:px-4 [&_td]:align-middle " +
   "[&_tbody_tr:last-child_td]:border-b-0 [&_tbody_tr:hover]:bg-raised " +
@@ -540,7 +540,7 @@ function SecurityLogo({ initials, logo }: { initials: string; logo?: string }) {
   const [failed, setFailed] = useState<string | null>(null);
   const shown = logo && failed !== logo;
   return (
-    <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-control border border-line-strong bg-hover font-bold text-ink-body compact:size-6">
+    <span data-security-logo="" className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-control border border-line-strong bg-hover font-bold text-ink-body compact:size-6">
       {shown ? <img className="size-full object-contain" src={logo} alt="" onError={() => setFailed(logo)} /> : initials}
     </span>
   );
