@@ -9,7 +9,8 @@ import { btn, cx, EMPTY, RECORD_TABLE, SCROLL_X } from "../ui";
 import { invokeCommand, TOOL } from "../commands";
 import { isTradingTool, isWriteTool, callTools, BACKEND_TOOLS, DIALOG_ONLY_TOOLS, subscribeToolStats, toolStats, TOOL_USAGE } from "../tools";
 import { type PublishedTool } from "../toolSchema";
-import { Section } from "./shared";
+import { SearchToolbar, Section } from "./shared";
+import { matchesText } from "../textSearch";
 import { ToolSchemaModal } from "./ToolSchema";
 import { pluralize } from "../format";
 import { useAsyncQuery } from "../hooks/useAsyncQuery";
@@ -41,12 +42,13 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
   const { order, layout } = useTableLayout("tools", COLUMN_IDS);
   const resized = resizedTable(layout.widths);
   const [onlyUnused, setOnlyUnused] = useState(false);
+  const [search, setSearch] = useState("");
   const [ping, setPing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [page, setPage] = useState(1);
   const [schemaTool, setSchemaTool] = useState<string | null>(null);
   const schemas = useAsyncQuery(async () => (await invokeCommand(invoke, "load_tool_schemas")) as PublishedTool[], [invoke], schemaTool !== null);
-  useEffect(() => setPage(1), [common.pageSize, onlyUnused]);
+  useEffect(() => setPage(1), [common.pageSize, onlyUnused, search]);
   useEffect(() => subscribeToolStats(() => force((value) => value + 1)), []);
 
   const offered = useMemo(() => new Set(defs.map((tool) => tool.name)), [defs]);
@@ -63,7 +65,9 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
   );
   const used = rows.filter((row) => row.usage && row.offered).length;
   const unused = rows.filter((row) => row.offered && !row.usage).length;
-  const shown = onlyUnused ? rows.filter((row) => !row.usage || !row.offered) : rows;
+  const shown = rows.filter(
+    (row) => (!onlyUnused || !row.usage || !row.offered) && matchesText(search, [row.name, row.description, row.access, row.usage?.category, row.usage?.feature, row.usage?.where]),
+  );
   const stats = toolStats();
   const rowsPerPage = common.pageSize > 0 ? common.pageSize : Math.max(shown.length, 1);
   const pageCount = Math.max(1, Math.ceil(shown.length / rowsPerPage));
@@ -103,6 +107,7 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
   return (
     <Section
       title="Scalable MCP tools"
+      toolbar={<SearchToolbar value={search} onChange={setSearch} placeholder="Search tools" label="Search Scalable tools by name, group or use" />}
       hint={`${used} of ${rows.filter((row) => row.offered).length} offered tools used · ${unused} not used`}
       actions={
         <>
@@ -205,6 +210,7 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
           </tbody>
         </table>
       </div>
+      {shown.length === 0 && <p className={EMPTY}>No tools match.</p>}
       <Pagination page={currentPage} pageCount={pageCount} total={shown.length} pageSize={rowsPerPage} onPage={setPage} />
       <p className={EMPTY}>
         A tool name in green is used by the app; red means it is not used or not offered. The link opens the page where the tool is used. Under each name are its group, its access level and how many

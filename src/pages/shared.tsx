@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { useLastUpdated } from "../app/AppContext";
 import { formatDate } from "../format";
-import { SkeletonRows } from "../controls";
+import { SearchBox, SkeletonRows } from "../controls";
 import { useToolQuery, type QueryEntry } from "../toolActions";
 import { type Common, type PagePortfolio } from "../types";
 import { Alert, PANEL, PANEL_BODY, PanelHeader } from "../ui";
@@ -55,6 +55,15 @@ export function perPortfolio(portfolios: PagePortfolio[], extra: Rec = {}): Rec[
 export function UpdatedAt() {
   const lastUpdated = useLastUpdated();
   return lastUpdated ? <span>Updated {formatDate(lastUpdated, { hour: "2-digit", minute: "2-digit" })}</span> : null;
+}
+
+/** The search bar for a table panel; pass it as the `toolbar` of a Section. */
+export function SearchToolbar({ value, onChange, placeholder, label }: { value: string; onChange: (value: string) => void; placeholder: string; label: string }) {
+  return (
+    <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4" role="search" aria-label={label}>
+      <SearchBox value={value} onChange={onChange} placeholder={placeholder} label={label} />
+    </div>
+  );
 }
 
 /** A panel with a title bar like the Portfolio table's. `flush` is for a table, which sits against the panel edges; `footer` ends the panel with a PanelFooter. */

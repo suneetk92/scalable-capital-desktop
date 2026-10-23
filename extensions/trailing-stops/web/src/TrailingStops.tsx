@@ -12,7 +12,8 @@ import { statusLabel, trailLabel, triggerMargin, triggerPrice, type TrailingStat
 import { type Common } from "../../../../src/types";
 import { EmptyState, ShareBar } from "../../../../src/controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
-import { Section } from "../../../../src/pages/shared";
+import { SearchToolbar, Section } from "../../../../src/pages/shared";
+import { matchesText } from "../../../../src/textSearch";
 
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
@@ -197,9 +198,12 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
   const resized = resizedTable(layout.widths);
   const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
   const active = stops.filter((stop) => stop.status === "active").length;
+  const [search, setSearch] = useState("");
+  const shown = stops.filter((stop) => matchesText(search, [stop.name, stop.isin, statusLabel(side, stop.status)]));
   return (
     <Section
       title={copy.title}
+      toolbar={stops.length > 0 && <SearchToolbar value={search} onChange={setSearch} placeholder="Search name or ISIN" label={`Search ${copy.title.toLowerCase()}`} />}
       flush
       footer={<PanelFooter tradingEnabled={tradingEnabled} />}
       hint={`${active} watching`}
@@ -229,7 +233,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
               </tr>
             </thead>
             <tbody>
-              {stops.map((stop) => (
+              {shown.map((stop) => (
                 <Row
                   key={stop.id}
                   order={order}
@@ -245,6 +249,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
           </table>
         </div>
       )}
+      {stops.length > 0 && shown.length === 0 && <p className={`${PANEL_BODY} text-ink-muted`}>No trailing stops match “{search.trim()}”.</p>}
     </Section>
   );
 }
