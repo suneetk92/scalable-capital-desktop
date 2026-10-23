@@ -13,7 +13,7 @@ function changeTone(change: number | null) {
 }
 
 export const TONE_CLASS: Record<Tone, string> = { "": "", up: "text-up!", down: "text-down!", muted: "text-ink-muted!" };
-export const isTextColumn = (column: TableColumn) => column.format === "text" || column.format === "bool" || column.text === true;
+const isTextColumn = (column: TableColumn) => column.format === "text" || column.format === "bool" || column.text === true;
 
 export const ScreenerRowView = memo(function ScreenerRowView({
   row,
