@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { addNotification, alertAddedNotice, alertRemovedNotice, formatAge, NOTIFICATION_LIMIT, removeNotification, toolSuccessNotice } from "./notifications";
 
 describe("notification list", () => {

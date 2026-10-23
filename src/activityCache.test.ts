@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { boundHistory, createHistoryStore, MAX_STORED_PER_PORTFOLIO, parsePage, syncHistory, type CachedHistory, type LegacyStorage, type PageRequest, type TransactionPage } from "./activityCache";
 import { memoryAdapter } from "./kvStore";
 import type { Rec } from "./response";

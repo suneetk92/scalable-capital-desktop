@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { describeAccessToken, describeRefreshToken, formatDuration, type SessionInfo } from "./session";
 
 const base: SessionInfo = { signedIn: true, signedInAt: 0, accessExpiresAt: 1845, refreshIssuedAt: 1000, refreshExpiresAt: null };

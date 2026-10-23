@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { formatDate, formatDateTime, formatMoney, formatNumber, formatPercent, LOCALE, parseDecimal, pluralize } from "./format";
 
 describe("shared formatters", () => {

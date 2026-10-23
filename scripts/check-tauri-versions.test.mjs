@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { checkTauriVersions } from "./check-tauri-versions.mjs";
 
 const packageLock = (versions) =>

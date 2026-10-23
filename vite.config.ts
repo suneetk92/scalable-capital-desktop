@@ -5,8 +5,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
-import type { Plugin, PluginOption } from "vite";
-import { defineConfig } from "vitest/config";
+import type { Plugin, PluginOption } from "vite-plus";
+import { defineConfig } from "vite-plus";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -88,6 +88,28 @@ export default defineConfig(async ({ mode }) => {
   return {
     plugins: [react(), tailwindcss(), appExtensions(extensions.entries), ...extensions.plugins],
     clearScreen: false,
+    fmt: {
+      printWidth: 200,
+      tabWidth: 2,
+      useTabs: false,
+      semi: true,
+      singleQuote: false,
+      trailingComma: "all",
+      ignorePatterns: ["dist/", "node_modules/", "src-tauri/target/"],
+    },
+    lint: {
+      plugins: ["typescript", "react"],
+      ignorePatterns: ["dist/**", "node_modules/**", "src-tauri/**"],
+      rules: {
+        "no-unused-vars": ["error", { argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn",
+        "react/refs": "off",
+        "react/set-state-in-effect": "off",
+        "react/only-export-components": ["warn", { allowConstantExport: true }],
+      },
+      overrides: [{ files: ["src/kvStore.ts"], rules: { "react/rules-of-hooks": "off" } }],
+    },
     build: {
       // The bundle loads from local disk, so the 500 kB web default does not apply.
       chunkSizeWarningLimit: 3000,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { dedupeRows, distinctValues, isFiltering, matchesFilter, newestFirst, NO_FILTER, type TransactionRow } from "./transactions";
 
 const row = (id: string | undefined, portfolioId = "p1"): TransactionRow => ({ record: id === undefined ? { note: "x" } : { transactionId: id }, portfolioId });

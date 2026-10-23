@@ -448,12 +448,12 @@ shapes, or change access rules. The app is not an official integration.
 ```bash
 npm ci                                   # install exactly what package-lock.json pins
 npm run typecheck                        # tsc --noEmit
-npm run lint                             # ESLint (React hooks and TypeScript rules)
-npm run format:check                     # Prettier
+npm run lint                             # Oxlint through Vite+ (React hooks rules)
+npm run format:check                     # Oxfmt through Vite+ (Prettier-compatible)
 npm run check:tauri                      # Tauri npm/Cargo major.minor versions match
 npm run check:exports                    # no unused exports in src/
 npm test                                 # Vitest: colocated src/*.test.ts(x) and scripts/*.test.mjs
-npx vite build                           # production frontend bundle
+npx vp build                             # production frontend bundle
 npm audit --audit-level=high
 npm audit signatures
 (cd src-tauri && cargo test --offline)   # trading gate, order validation, argument mapping, session cache

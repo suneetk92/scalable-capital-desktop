@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { readStored, readStoredJson, storageKey, writeStored, writeStoredJson } from "./storage";
 
 const memory = new Map<string, string>();

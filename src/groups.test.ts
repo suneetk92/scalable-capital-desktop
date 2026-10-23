@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { canMoveHolding, loadGroupOrder, orderGroups, parseGroupData, ungroupedGroup, UNGROUPED_ID, type SecurityGroup } from "./groups";
 
 const ISINS = [

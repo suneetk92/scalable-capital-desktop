@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { initialPlanForm, monthsFor, parsePlanConfig, planOf, planRequest } from "./savingsPlan";
 
 // The shape `get_savings_plan_config` publishes in its output schema.

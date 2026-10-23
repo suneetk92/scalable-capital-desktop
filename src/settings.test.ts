@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, loadSettings, migrateSettings, parseStoredSettings, sanitizeSettings, serializeSettings, SETTINGS_VERSION } from "./settings";
 import { storageKey } from "./storage";
 

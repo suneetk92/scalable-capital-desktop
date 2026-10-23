@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { INITIAL_STATUSES, reduceProviderStatus, sanitizeError, statusLines, type ProviderEvent, type ProviderStatuses } from "./providerStatus";
 
 const run = (events: ProviderEvent[]): ProviderStatuses => events.reduce(reduceProviderStatus, INITIAL_STATUSES);

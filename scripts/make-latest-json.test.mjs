@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { buildIndexHtml, buildLatest, PLATFORMS, siteFiles } from "./make-latest-json.mjs";
 
 const FILES = [

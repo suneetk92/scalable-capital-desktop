@@ -1,5 +1,5 @@
 import toolList from "../tests/fixtures/mcp-tool-list.json";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import toolPolicy from "../tests/fixtures/tool-policy.json";
 import trading from "../src-tauri/src/mcp/trading.rs?raw";
 import {

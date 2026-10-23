@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { parseTrailingList, statusLabel, trailIssue, trailLabel, triggerMargin, triggerPrice } from "./trailing";
 
 const stop = {

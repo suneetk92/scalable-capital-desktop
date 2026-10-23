@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ALIASES, decimalNumber, findRecords, finiteNumber, isRec, parseMaybeJson, pick, pickNumber, pickString, recordsOf, stringsOf } from "./response";
 
 describe("parseMaybeJson", () => {

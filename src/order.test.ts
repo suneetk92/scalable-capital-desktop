@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { amountExceedsBuyingPower, amountIssue, decimalPlaces, holdingsByIsin, limitPriceHint, previewFailureHint, priceIssue, quantityExceedsHolding, stopPriceIssue } from "./order";
 
 describe("order limits", () => {

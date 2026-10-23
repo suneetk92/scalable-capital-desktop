@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { withGroupExtras } from "./groupFigures";
 import type { SecurityGroup } from "./groups";
 import type { ExistingPlan } from "./savingsPlan";

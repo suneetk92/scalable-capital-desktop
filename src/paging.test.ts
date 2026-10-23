@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { paginate } from "./paging";
 
 const items = [1, 2, 3, 4, 5];

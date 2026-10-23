@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { connectionCheckDue, MAX_REFRESH_BACKOFF_MS, nextRefreshDelay, wokeFromSleep } from "./refreshSchedule";
 
 describe("refresh schedule", () => {

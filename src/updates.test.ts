@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { checked, IDLE, isReinstall, parseUpdateInfo, pendingInfo, progressPercent, statusMessage, withProgress, type UpdateInfo, type UpdateState } from "./updates";
 
 const INFO: UpdateInfo = { version: "1.2.0", currentVersion: "1.1.0", notes: "Fixes", date: "2026-10-15", canInstall: true, releaseUrl: "https://updates.example.com/app/index.html" };

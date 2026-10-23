@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { clampPanelWidth, clampSplit, loadPanelWidth, loadSplit, PANEL_DEFAULT_WIDTH, PANEL_MIN_WIDTH, saveSplit, savePanelWidth, SPLIT_DEFAULT } from "./panel";
 
 describe("clampPanelWidth", () => {

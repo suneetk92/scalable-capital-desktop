@@ -40,7 +40,7 @@ npm test                                                                # Vitest
 (cd src-tauri && cargo fmt --check && cargo clippy --offline --all-targets -- -D warnings)
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same checks plus `vite build` and installer builds for Windows,
+CI (`.github/workflows/ci.yml`) runs the same checks plus `vp build` and installer builds for Windows,
 macOS and Linux. Run only the checks that match what you changed, but run all of them if you touched
 shared code.
 
