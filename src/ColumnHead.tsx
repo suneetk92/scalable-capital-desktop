@@ -23,6 +23,26 @@ function measure(head: HTMLElement): ColumnWidths {
   return widths;
 }
 
+/** The widths every column needs to show its widest content, in rem: the table is laid out automatically and as narrow as possible for a moment. */
+function fit(head: HTMLElement): ColumnWidths {
+  const table = head.closest("table");
+  if (!table) return {};
+  const cells = [...table.querySelectorAll<HTMLElement>("th[data-col]")];
+  const saved = cells.map((cell) => cell.style.width);
+  const { width, minWidth } = table.style;
+  const wasFixed = table.classList.contains("table-fixed");
+  table.classList.remove("table-fixed");
+  table.style.width = "0";
+  table.style.minWidth = "0";
+  cells.forEach((cell) => (cell.style.width = ""));
+  const widths = measure(head);
+  cells.forEach((cell, index) => (cell.style.width = saved[index] ?? ""));
+  table.style.width = width;
+  table.style.minWidth = minWidth;
+  if (wasFixed) table.classList.add("table-fixed");
+  return widths;
+}
+
 /** Table attributes for a table whose columns have been resized: fixed layout, `extra` rem for the columns that are not resizable. */
 export function resizedTable(widths: ColumnWidths | null, extra = 0) {
   if (!widths) return { className: undefined, style: undefined };
@@ -37,7 +57,7 @@ export function inOrder(order: readonly string[], cells: Record<string, ReactNod
 
 /**
  * A column header that can be dragged to another place in its row and resized by the handle on its right edge (double-click
- * restores the automatic widths of the table, arrow keys on the handle adjust it). Pointer events are used instead of HTML drag and drop, which the
+ * fits all columns to their content, arrow keys on the handle adjust it). Pointer events are used instead of HTML drag and drop, which the
  * Tauri window takes for file drops on Windows.
  */
 export function ColumnHead({
@@ -152,9 +172,10 @@ export function ColumnHead({
       aria-sort={sortState}
       className={cx(
         "relative cursor-grab data-dragging:opacity-50 data-[drop=after]:shadow-[inset_-0.1875rem_0_0_var(--color-accent)] data-[drop=before]:shadow-[inset_0.1875rem_0_0_var(--color-accent)]",
+        width !== null && "min-w-0!",
         className,
       )}
-      style={width === null ? undefined : { width: `${width}rem`, minWidth: `${width}rem`, maxWidth: `${width}rem` }}
+      style={width === null ? undefined : { width: `${width}rem` }}
       onPointerDown={startMove}
     >
       {children}
@@ -167,7 +188,8 @@ export function ColumnHead({
         className="absolute inset-y-0 right-0 z-[2] w-2 cursor-col-resize touch-none hover:bg-accent/40 focus-visible:bg-accent/40"
         onPointerDown={startResize}
         onKeyDown={resizeByKey}
-        onDoubleClick={() => layout.setWidths(null)}
+        onDoubleClick={() => head.current && layout.setWidths(fit(head.current))}
+        title="Drag to resize, double-click to fit all columns to their content"
       />
     </th>
   );

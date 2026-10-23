@@ -46,12 +46,13 @@ describe("column header", () => {
     expect(screen.getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["B", "C", "A"]);
   });
 
-  it("resizes with the arrow keys and restores on double-click", () => {
+  it("resizes with the arrow keys and fits to content on double-click", () => {
     render(<Harness />);
     const handle = screen.getByLabelText("Resize a");
     fireEvent.keyDown(handle, { key: "ArrowRight" });
     expect(document.querySelector("table")!.className).toContain("table-fixed");
     fireEvent.doubleClick(handle);
-    expect(document.querySelector("table")!.className).not.toContain("table-fixed");
+    expect(document.querySelector("table")!.className).toContain("table-fixed");
+    expect(document.querySelector("table")!.style.width).not.toBe("0px");
   });
 });

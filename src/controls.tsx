@@ -435,7 +435,7 @@ export function SortButton({
 }) {
   return (
     <button
-      className={cx("inline-flex cursor-pointer items-center gap-[0.3333rem] hover:text-ink-body", start ? "justify-start" : "justify-end", active && "text-ink-body")}
+      className={cx("inline-flex cursor-pointer items-center gap-[0.3333rem] hover:text-ink-body", start ? "justify-start" : "flex-row-reverse", active && "text-ink-body")}
       type="button"
       title={title}
       aria-label={`Sort by ${label}`}
