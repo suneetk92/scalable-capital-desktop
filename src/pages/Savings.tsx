@@ -1,6 +1,7 @@
 import { BanknotesIcon } from "@heroicons/react/24/outline";
-import { useMemo, useState } from "react";
-import { planOf, type ExistingPlan } from "../savingsPlan";
+import { useDeferredValue, useMemo, useState, type Ref } from "react";
+import { isPlanFiltering, matchesPlan, NO_PLAN_FILTER, planOf, type PlanDialogState, type PlanFilter } from "../savingsPlan";
+import { FILTER_TITLE, FiltersPopover, RadioList, SearchBox } from "../controls";
 import { parseSearch } from "../screener";
 import { useToolQuery } from "../toolActions";
 import { type Common } from "../types";
@@ -11,32 +12,59 @@ import { SavingsPlanDialog } from "./SavingsPlanDialog";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
 
-export function SavingsPage({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
+const frequencyLabel = (value: string) => {
+  const text = value.replace(/_/g, " ").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+export function SavingsPage({
+  common,
+  searchInput,
+  dialog,
+  onDialog,
+  onOpenSecurity,
+}: {
+  common: Common;
+  searchInput?: Ref<HTMLInputElement>;
+  dialog: PlanDialogState | null;
+  onDialog: (dialog: PlanDialogState | null) => void;
+  onOpenSecurity: (security: { isin: string; name: string }) => void;
+}) {
   const { actions, portfolios } = common;
   const query = useToolQuery(common.invoke, common.defs, TOOL.listSavingsPlans, actions.has(TOOL.listSavingsPlans) ? perPortfolio(portfolios) : null, common.reloadKey);
   const { records, portfolioOf } = useMemo(() => collect(query.entries), [query.entries]);
   const [config, setConfig] = useState(false);
-  const [dialog, setDialog] = useState<{ existing: ExistingPlan | null; portfolioId: string } | null>(null);
+  const [filter, setFilter] = useState<PlanFilter>(NO_PLAN_FILTER);
+  const shownFilter = useDeferredValue(filter);
+  const filtering = isPlanFiltering(shownFilter);
+  const visible = useMemo(() => (filtering ? records.filter((record) => matchesPlan(record, shownFilter)) : records), [filtering, records, shownFilter]);
+  const frequencies = useMemo(() => [...new Set(records.map((record) => planOf(record).frequency).filter((value) => value !== ""))].sort(), [records]);
+  const change = (next: Partial<PlanFilter>) => setFilter((current) => ({ ...current, ...next }));
   // Plans are created and changed with preview_savings_plan and submit_savings_plan, one after the other.
   const canCreate = actions.has("preview_savings_plan") && actions.has("submit_savings_plan");
-  const newPlan = () => setDialog({ existing: null, portfolioId: portfolios[0]?.portfolioId ?? "" });
   return (
     <>
       <Section
         title="Savings plans"
         flush
         footer={<PanelFooter tradingEnabled={common.tradingEnabled} />}
-        hint={pluralize(records.length, "plan")}
+        hint={filtering ? `${pluralize(visible.length, "plan")} match${records.length !== visible.length ? ` (of ${records.length})` : ""}` : pluralize(records.length, "plan")}
+        toolbar={
+          <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
+            <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter savings plans">
+              <SearchBox inputRef={searchInput} value={filter.text} onChange={(text) => change({ text })} placeholder="Search symbol or name" label="Search savings plans by symbol or name" shortcut={searchInput !== undefined} />
+              <FiltersPopover count={filter.frequency !== "" ? 1 : 0} onClear={() => change({ frequency: "" })}>
+                <div className={FILTER_TITLE}>Frequency</div>
+                <RadioList<string> label="Frequency" value={filter.frequency} onChange={(frequency) => change({ frequency })} options={[["", "All"], ...frequencies.map((value): [string, string] => [value, frequencyLabel(value)])]} />
+              </FiltersPopover>
+            </div>
+          </div>
+        }
         actions={
           <>
             {actions.has(TOOL.getSavingsPlanConfig) && (
               <button className={btn.secondary} type="button" onClick={() => setConfig(true)}>
                 Plan options
-              </button>
-            )}
-            {canCreate && (
-              <button className={btn.primary} type="button" onClick={newPlan}>
-                New plan
               </button>
             )}
           </>
@@ -47,18 +75,11 @@ export function SavingsPage({ common, onOpenSecurity }: { common: Common; onOpen
           <RecordTable
             invoke={common.invoke}
             onOpenSecurity={onOpenSecurity}
-            records={records}
+            records={visible}
             pageSize={common.pageSize}
-            emptyTitle="No savings plans"
+            emptyTitle={filtering && records.length > 0 ? "No matching plans" : "No savings plans"}
             emptyIcon={BanknotesIcon}
-            emptyAction={
-              canCreate && (
-                <button className={btn.primary} type="button" onClick={newPlan}>
-                  New plan
-                </button>
-              )
-            }
-            empty="Savings plans buy a security on a schedule. You have none yet."
+            empty={filtering && records.length > 0 ? "Try another search or clear the filters." : "Savings plans buy a security on a schedule. You have none yet. Use New plan at the top to add one."}
             actions={
               canCreate || actions.has("remove_savings_plan")
                 ? (record) => {
@@ -69,7 +90,7 @@ export function SavingsPage({ common, onOpenSecurity }: { common: Common; onOpen
                     return (
                       <>
                         {canCreate && (
-                          <button className={btn.trade} type="button" onClick={() => setDialog({ existing: plan, portfolioId })}>
+                          <button className={btn.trade} type="button" onClick={() => onDialog({ existing: plan, portfolioId })}>
                             Edit
                           </button>
                         )}
@@ -108,7 +129,7 @@ export function SavingsPage({ common, onOpenSecurity }: { common: Common; onOpen
           invoke={common.invoke}
           parseSearch={parseSearch}
           tradingEnabled={common.tradingEnabled}
-          onClose={() => setDialog(null)}
+          onClose={() => onDialog(null)}
           onSaved={() => query.reload()}
         />
       )}

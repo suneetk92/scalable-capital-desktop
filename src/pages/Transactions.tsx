@@ -302,8 +302,8 @@ export function TransactionsPage({
               inputRef={searchInput}
               value={filter.text}
               onChange={(text) => changeFilter({ text })}
-              placeholder="Search ISIN or name"
-              label="Search transactions by ISIN or name"
+              placeholder="Search symbol or name"
+              label="Search transactions by symbol or name"
               shortcut={searchInput !== undefined}
             />
             <FiltersPopover count={activeFilters} onClear={() => changeFilter({ kind: "", status: "" })}>

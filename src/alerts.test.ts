@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { alertMessage, alertNotices, checkAlerts, parseAlerts } from "./alerts";
+import { alertMessage, alertNotices, checkAlerts, matchesAlert, NO_ALERT_FILTER, parseAlerts } from "./alerts";
 
 const open = {
   alertId: "a1",
@@ -67,5 +67,17 @@ describe("alertNotices", () => {
     expect(notices[0]).toMatchObject({ kind: "info", title: "Price alert triggered", text: "BMW St. fell to 44" });
     expect(notices[0]?.detail).toMatch(/^Triggered /);
     expect(notices[1]?.text).toBe("BMW St. rose to 120");
+  });
+});
+
+describe("matchesAlert", () => {
+  it("filters by text, direction and status", () => {
+    expect(matchesAlert(open, NO_ALERT_FILTER)).toBe(true);
+    expect(matchesAlert(open, { ...NO_ALERT_FILTER, text: "bmw" })).toBe(true);
+    expect(matchesAlert(open, { ...NO_ALERT_FILTER, text: "de000519" })).toBe(true);
+    expect(matchesAlert(open, { ...NO_ALERT_FILTER, text: "sap" })).toBe(false);
+    expect(matchesAlert(open, { ...NO_ALERT_FILTER, direction: "up" })).toBe(true);
+    expect(matchesAlert(open, { ...NO_ALERT_FILTER, direction: "down" })).toBe(false);
+    expect(matchesAlert(open, { ...NO_ALERT_FILTER, status: "triggered" })).toBe(false);
   });
 });

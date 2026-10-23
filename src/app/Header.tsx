@@ -4,6 +4,7 @@ import { initialsOf } from "../profile";
 import { pluralize } from "../format";
 import type { View } from "../nav";
 import { btn } from "../ui";
+import { TOOL } from "../commands";
 import { RefreshButton } from "../controls";
 import { extension } from "../extensions";
 import { EXCHANGE_HOURS_NOTE } from "../marketHours";
@@ -38,7 +39,7 @@ export function pageActions(data: AppData, commands: AppCommands) {
   const ownRefresh = ownView?.refresh?.({ data, commands });
   const refreshExtension = extensionView && !ownRefresh && extensionRuntime.refresh !== undefined;
   const showTrading = view !== "settings" && (!extensionView || ownView.trading === true);
-  // New order belongs to the pages about securities and orders; Groups, Alerts and Savings have their own "New …" action.
+  // New order belongs to the pages about securities and orders; Groups and Savings have their own "New …" action in the panel; New alert and New plan sit here.
   const showNewOrder = showTrading && tradingEnabled && ORDER_VIEWS.has(view);
   const showRefresh = view !== "settings";
   const headerAuto = ownRefresh ? ownRefresh.auto : refreshExtension ? (extensionRuntime.autoRefresh ?? false) : autoRefresh;
@@ -72,6 +73,16 @@ export function pageActions(data: AppData, commands: AppCommands) {
       {showNewOrder && (
         <button className={btn.primary} type="button" onClick={() => openOrder("buy", null)}>
           New order
+        </button>
+      )}
+      {view === "alerts" && data.toolActions.has(TOOL.createPriceAlert) && (
+        <button className={btn.primary} type="button" onClick={() => data.toolActions.openRunner(TOOL.createPriceAlert, { portfolioId: data.pagePortfolioList[0]?.portfolioId })}>
+          New alert
+        </button>
+      )}
+      {view === "savings" && data.toolActions.has("preview_savings_plan") && data.toolActions.has("submit_savings_plan") && (
+        <button className={btn.primary} type="button" onClick={() => data.setPlanDialog({ existing: null, portfolioId: data.pagePortfolioList[0]?.portfolioId ?? "" })}>
+          New plan
         </button>
       )}
       {showRefresh && <RefreshButton auto={headerAuto} label={headerLabel} busy={refreshBusy} onRefresh={refreshNow} lastLoadedAt={lastLoadedAt} intervalMs={intervalMs} />}

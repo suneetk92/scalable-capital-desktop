@@ -111,6 +111,27 @@ export function planRequest(isin: string, portfolioId: string, form: PlanForm, c
   };
 }
 
+export type PlanDialogState = { existing: ExistingPlan | null; portfolioId: string };
+
+export type PlanFilter = { text: string; frequency: string };
+
+export const NO_PLAN_FILTER: PlanFilter = { text: "", frequency: "" };
+
+export function isPlanFiltering(filter: PlanFilter) {
+  return filter.text.trim() !== "" || filter.frequency !== "";
+}
+
+/** Whether a plan record passes the filter: `text` matches the symbol (ISIN) or name. */
+export function matchesPlan(record: Rec, filter: PlanFilter): boolean {
+  const plan = planOf(record);
+  const text = filter.text.trim().toLowerCase();
+  if (text !== "") {
+    const identifier = isRec(record.instrument) ? str(record.instrument.identifier) : "";
+    if (![plan.isin ?? identifier, plan.name].some((value) => value.toLowerCase().includes(text))) return false;
+  }
+  return filter.frequency === "" || plan.frequency === filter.frequency;
+}
+
 /** A plan from `list_savings_plans`, read the way the published output schema lays it out. */
 export function planOf(record: Rec): ExistingPlan {
   const instrument = isRec(record.instrument) ? record.instrument : {};

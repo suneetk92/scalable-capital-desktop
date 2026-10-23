@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { initialPlanForm, monthsFor, parsePlanConfig, planOf, planRequest } from "./savingsPlan";
+import { initialPlanForm, matchesPlan, monthsFor, NO_PLAN_FILTER, parsePlanConfig, planOf, planRequest } from "./savingsPlan";
 
 // The shape `get_savings_plan_config` publishes in its output schema.
 const CONFIG = {
@@ -100,5 +100,17 @@ describe("planOf", () => {
   it("has no ISIN for crypto plans or a missing instrument", () => {
     expect(planOf({ kind: "crypto", instrument: { identifier: "BTC", name: "Bitcoin" }, amount: "10", configuration: null }).isin).toBeNull();
     expect(planOf({ amount: "10" }).isin).toBeNull();
+  });
+});
+
+describe("matchesPlan", () => {
+  const record = { kind: "security", instrument: { identifier: "IE00B4L5Y983", name: "iShares Core MSCI World" }, amount: 50, configuration: { frequency: "MONTHLY" } };
+  it("filters by text and frequency", () => {
+    expect(matchesPlan(record, NO_PLAN_FILTER)).toBe(true);
+    expect(matchesPlan(record, { ...NO_PLAN_FILTER, text: "msci" })).toBe(true);
+    expect(matchesPlan(record, { ...NO_PLAN_FILTER, text: "ie00b4" })).toBe(true);
+    expect(matchesPlan(record, { ...NO_PLAN_FILTER, text: "sap" })).toBe(false);
+    expect(matchesPlan(record, { ...NO_PLAN_FILTER, frequency: "MONTHLY" })).toBe(true);
+    expect(matchesPlan(record, { ...NO_PLAN_FILTER, frequency: "WEEKLY" })).toBe(false);
   });
 });

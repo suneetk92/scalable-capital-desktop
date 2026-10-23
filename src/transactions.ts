@@ -52,7 +52,7 @@ export function isFiltering(filter: TransactionFilter): boolean {
   return filter.text.trim() !== "" || filter.kind !== "" || filter.status !== "";
 }
 
-/** Whether a transaction passes the filter: `text` matches the ISIN or name, `kind` and `status` match exactly (ignoring case). */
+/** Whether a transaction passes the filter: `text` matches the symbol (ISIN) or name, `kind` and `status` match exactly (ignoring case). */
 export function matchesFilter(fields: { kind: string; status?: string; isin?: string; name?: string }, filter: TransactionFilter): boolean {
   if (filter.kind !== "" && fields.kind.toLowerCase() !== filter.kind.toLowerCase()) return false;
   if (filter.status !== "" && (fields.status ?? "").toLowerCase() !== filter.status.toLowerCase()) return false;

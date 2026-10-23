@@ -44,6 +44,25 @@ export function parseAlerts(records: Rec[]): PriceAlert[] {
   return alerts;
 }
 
+export type AlertFilter = { text: string; direction: "" | "up" | "down"; status: "" | "active" | "triggered" };
+
+export const NO_ALERT_FILTER: AlertFilter = { text: "", direction: "", status: "" };
+
+export function isAlertFiltering(filter: AlertFilter) {
+  return filter.text.trim() !== "" || filter.direction !== "" || filter.status !== "";
+}
+
+/** Whether an alert record passes the filter: `text` matches the symbol (ISIN) or name. */
+export function matchesAlert(record: Rec, filter: AlertFilter): boolean {
+  const [alert] = parseAlerts([{ ...record, id: pickString(record, ["alertId", "priceAlertId", "id"]) ?? "alert" }]);
+  if (!alert) return false;
+  const text = filter.text.trim().toLowerCase();
+  if (text !== "" && ![alert.isin, alert.name].some((value) => value?.toLowerCase().includes(text))) return false;
+  if (filter.direction !== "" && alert.direction !== filter.direction) return false;
+  if (filter.status !== "" && isTriggered(alert) !== (filter.status === "triggered")) return false;
+  return true;
+}
+
 function isTriggered(alert: PriceAlert) {
   return alert.triggeredAt !== undefined;
 }

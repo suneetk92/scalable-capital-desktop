@@ -1,4 +1,5 @@
 import { exchangeOpen } from "../marketHours";
+import { type PlanDialogState } from "../savingsPlan";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invokeCommand, TOOL } from "../commands";
 import { useAlertWatch } from "../hooks/useAlertWatch";
@@ -76,6 +77,7 @@ export function useAppData() {
   const refreshMs = settings.refreshSeconds * 1000;
   const refreshLabel = intervalLabel(settings.refreshSeconds);
   const [securityTarget, setSecurityTarget] = useState<DrawerTarget | null>(null);
+  const [planDialog, setPlanDialog] = useState<PlanDialogState | null>(null);
   // The security details belong to the page they were opened on: switching pages closes them.
   const [targetView, setTargetView] = useState(view);
   if (targetView !== view) {
@@ -520,11 +522,14 @@ export function useAppData() {
     extensionRuntime,
     securityTarget,
     setSecurityTarget,
+    planDialog,
+    setPlanDialog,
     searchInput,
     loadDashboard,
     checkConnection,
     setDashboard,
     toolActions,
+    pagePortfolioList,
     toolUi,
     notifications,
     updater,

@@ -1,11 +1,12 @@
 import { BellAlertIcon } from "@heroicons/react/24/outline";
-import { useMemo } from "react";
+import { useDeferredValue, useMemo, useState, type Ref } from "react";
 import { useToolQuery } from "../toolActions";
 import { type Common } from "../types";
 import { btn, PanelFooter } from "../ui";
+import { FILTER_TITLE, FiltersPopover, RadioList, SearchBox } from "../controls";
 import { RecordTable } from "../ToolViews";
 import { alertRemovedNotice } from "../notifications";
-import { parseAlerts } from "../alerts";
+import { isAlertFiltering, matchesAlert, NO_ALERT_FILTER, parseAlerts, type AlertFilter } from "../alerts";
 import { pickString, type Rec } from "../response";
 import { QueryPanel, collect, perPortfolio, Section } from "./shared";
 import { pluralize } from "../format";
@@ -19,23 +20,53 @@ function removedNotice(record: Rec) {
   return alertRemovedNotice({ name: alert?.name, price: alert?.targetPrice, direction: alert?.direction });
 }
 
-export function AlertsPage({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
+export function AlertsPage({ common, searchInput, onOpenSecurity }: { common: Common; searchInput?: Ref<HTMLInputElement>; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
   const { actions, portfolios } = common;
   const query = useToolQuery(common.invoke, common.defs, TOOL.listPriceAlerts, actions.has(TOOL.listPriceAlerts) ? perPortfolio(portfolios) : null, common.reloadKey);
   const { records, portfolioOf } = useMemo(() => collect(query.entries), [query.entries]);
+  const [filter, setFilter] = useState<AlertFilter>(NO_ALERT_FILTER);
+  const shownFilter = useDeferredValue(filter);
+  const filtering = isAlertFiltering(shownFilter);
+  const visible = useMemo(() => (filtering ? records.filter((record) => matchesAlert(record, shownFilter)) : records), [filtering, records, shownFilter]);
+  const activeFilters = (filter.direction !== "" ? 1 : 0) + (filter.status !== "" ? 1 : 0);
+  const change = (next: Partial<AlertFilter>) => setFilter((current) => ({ ...current, ...next }));
   return (
     <>
       <Section
         title="Price alerts"
         flush
         footer={<PanelFooter tradingEnabled={common.tradingEnabled} />}
-        hint={pluralize(records.length, "alert")}
-        actions={
-          actions.has(TOOL.createPriceAlert) && (
-            <button className={btn.primary} type="button" onClick={() => actions.openRunner(TOOL.createPriceAlert, { portfolioId: portfolios[0]?.portfolioId })}>
-              New alert
-            </button>
-          )
+        hint={filtering ? `${pluralize(visible.length, "alert")} match${records.length !== visible.length ? ` (of ${records.length})` : ""}` : pluralize(records.length, "alert")}
+        toolbar={
+          <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
+            <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter price alerts">
+              <SearchBox inputRef={searchInput} value={filter.text} onChange={(text) => change({ text })} placeholder="Search symbol or name" label="Search price alerts by symbol or name" shortcut={searchInput !== undefined} />
+              <FiltersPopover count={activeFilters} onClear={() => change({ direction: "", status: "" })}>
+                <div className={FILTER_TITLE}>Direction</div>
+                <RadioList<AlertFilter["direction"]>
+                  label="Direction"
+                  value={filter.direction}
+                  onChange={(direction) => change({ direction })}
+                  options={[
+                    ["", "All"],
+                    ["up", "Rises to"],
+                    ["down", "Falls to"],
+                  ]}
+                />
+                <div className={FILTER_TITLE}>Status</div>
+                <RadioList<AlertFilter["status"]>
+                  label="Status"
+                  value={filter.status}
+                  onChange={(status) => change({ status })}
+                  options={[
+                    ["", "All"],
+                    ["active", "Active"],
+                    ["triggered", "Triggered"],
+                  ]}
+                />
+              </FiltersPopover>
+            </div>
+          </div>
         }
       >
         <QueryPanel entries={query.entries} loading={query.loading} what="price alerts" />
@@ -43,18 +74,11 @@ export function AlertsPage({ common, onOpenSecurity }: { common: Common; onOpenS
           <RecordTable
             invoke={common.invoke}
             onOpenSecurity={onOpenSecurity}
-            records={records}
+            records={visible}
             pageSize={common.pageSize}
-            emptyTitle="No price alerts"
+            emptyTitle={filtering && records.length > 0 ? "No matching alerts" : "No price alerts"}
             emptyIcon={BellAlertIcon}
-            emptyAction={
-              actions.has(TOOL.createPriceAlert) && (
-                <button className={btn.primary} type="button" onClick={() => actions.openRunner(TOOL.createPriceAlert, { portfolioId: portfolios[0]?.portfolioId })}>
-                  New alert
-                </button>
-              )
-            }
-            empty="Get notified when a security reaches a price. Create an alert here or from a security’s details."
+            empty={filtering && records.length > 0 ? "Try another search or clear the filters." : "Get notified when a security reaches a price. Create an alert with New alert at the top, or from a security’s details."}
             actions={
               actions.has("remove_price_alert")
                 ? (record) => {

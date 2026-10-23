@@ -94,13 +94,13 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   Settings, Background, "Also show in the app" is on, or when Windows cannot show the notification (toasts
   go away after a few seconds; errors stay until dismissed). Clear all or remove
   single entries from the panel. The history is not saved between launches.
-- **Discover** (securities and derivatives), **Price alerts**, **Trailing stops**, **Savings plans** (list, options,
+- **Discover** (securities and derivatives), **Price alerts** (search and Direction and Status filters, and a New alert button in the page header), **Trailing stops**, **Savings plans** (search and a Frequency filter, and a New plan button in the page header) (list, options,
   guided create and edit with Scalable's preview, removal) and **Transactions** (table or timeline, details, cancel open
   orders). The list is the history stored on this computer (the same one the Overview uses, newest first), so
   the pages cover every transaction at once and the count is the real total. It is brought up to date in the
   background, and while the first full load runs the page shows its progress. Switching to another page and back keeps
   the filters and the page you were on. The table and the timeline show one page of rows at a time (the "Rows per page" setting), a long history is turned into rows in slices (`src/chunked.ts`) so the page stays responsive, and Copy CSV still covers every row the filters match.
-  The toolbar matches the Portfolio table: Table/Timeline tabs, a search box (Ctrl+K) for ISIN or name, a
+  The toolbar matches the Portfolio table: Table/Timeline tabs, a search box (Ctrl+K) for symbol or name, a
   Filters menu for type and status, and Copy CSV. Filters apply to every stored transaction.
   Any form with a portfolio id field (Discover, tool runner, savings plan) shows a portfolio
   drop-down with the main portfolio preselected.

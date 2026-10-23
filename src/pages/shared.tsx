@@ -50,9 +50,27 @@ export function perPortfolio(portfolios: PagePortfolio[], extra: Rec = {}): Rec[
 }
 
 /** A panel with a title bar like the Portfolio table's. `flush` is for a table, which sits against the panel edges; `footer` ends the panel with a PanelFooter. */
-export function Section({ title, hint, actions, flush = false, footer, children }: { title: string; hint?: ReactNode; actions?: ReactNode; flush?: boolean; footer?: ReactNode; children: ReactNode }) {
+export function Section({
+  title,
+  hint,
+  actions,
+  toolbar,
+  flush = false,
+  footer,
+  children,
+}: {
+  title: string;
+  hint?: ReactNode;
+  actions?: ReactNode;
+  /** A bar above the title, like the search and filters of the Portfolio table. */
+  toolbar?: ReactNode;
+  flush?: boolean;
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className={`${PANEL} mb-4`} aria-label={title}>
+      {toolbar}
       <PanelHeader title={title}>
         {hint}
         {actions}
