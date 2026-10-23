@@ -48,6 +48,12 @@ export function useAppData() {
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState<Connection>({ state: "checking" });
   const [view, setView] = useState<View>("overview");
+  // A search handed from a table's search box to the Discover page; the counter restarts the search for a repeated query.
+  const [discoverSearch, setDiscoverSearch] = useState<{ query: string; run: number } | null>(null);
+  const openDiscover = (query: string) => {
+    setDiscoverSearch((current) => ({ query, run: (current?.run ?? 0) + 1 }));
+    setView("discover");
+  };
   // The Transactions page keeps its filters and page number while another page is open, so it
   // stays mounted (hidden) once it has been opened.
   const [transactionsOpened, setTransactionsOpened] = useState(false);
@@ -493,6 +499,8 @@ export function useAppData() {
     connection,
     view,
     setView,
+    discoverSearch,
+    openDiscover,
     transactionsOpened,
     mobileNavOpen,
     setMobileNavOpen,

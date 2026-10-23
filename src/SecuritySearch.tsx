@@ -1,3 +1,4 @@
+import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 import { invokeCommand } from "./commands";
 import type { SecurityHit } from "./OrderDialog";
@@ -58,6 +59,7 @@ export function SecuritySearchResults({
   held,
   onOpen,
   onAddToWatchlist,
+  onSeeAll,
 }: {
   text: string;
   invoke: Invoke;
@@ -68,6 +70,8 @@ export function SecuritySearchResults({
   onOpen: (hit: SecurityHit) => void;
   /** Left out when the tool is not offered. */
   onAddToWatchlist?: (hit: SecurityHit) => void;
+  /** Opens the full search on the Discover page for the typed text. */
+  onSeeAll?: () => void;
 }) {
   const { active, loading, hits, error } = useSecurityHits(text, invoke, enabled);
   if (!active) return null;
@@ -107,6 +111,16 @@ export function SecuritySearchResults({
             </li>
           ))}
         </ul>
+      )}
+      {onSeeAll && (
+        <button
+          type="button"
+          className="mt-1 flex w-full cursor-pointer items-center justify-between rounded-control border-t border-line px-2 py-2 text-left text-ink-accent-bright hover:bg-hover"
+          onClick={onSeeAll}
+        >
+          <span>See all results in Discover</span>
+          <ArrowRightIcon className="size-4" aria-hidden="true" />
+        </button>
       )}
     </div>
   );

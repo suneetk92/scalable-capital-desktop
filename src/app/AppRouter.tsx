@@ -86,7 +86,17 @@ export function AppRouter() {
       )}
       {view === "overview" && <OverviewExtras common={common} currency={totalCurrency} logosEnabled={Boolean(extension.logos?.useIsinLogos)} />}
       {view === "groups" && <GroupsPage common={common} data={groupData} defaultGroup={defaultGroup} errors={groupErrors} offered={groupsOffered} formatMoney={formatMoney} onShowGroup={openGroup} />}
-      {view === "discover" && <DiscoverPage common={common} watched={watchedIsins} held={heldIsins} onOpen={openFound} onTrade={(found) => tradeFound(found)} />}
+      {view === "discover" && (
+        <DiscoverPage
+          key={data.discoverSearch?.run ?? 0}
+          common={common}
+          initialQuery={data.discoverSearch?.query}
+          watched={watchedIsins}
+          held={heldIsins}
+          onOpen={openFound}
+          onTrade={(found) => tradeFound(found)}
+        />
+      )}
       {view === "alerts" && <AlertsPage common={common} searchInput={searchInput} onOpenSecurity={openFound} />}
       {view === "savings" && <SavingsPage common={common} searchInput={searchInput} dialog={data.planDialog} onDialog={data.setPlanDialog} onOpenSecurity={openFound} />}
       {transactionsOpened && (
@@ -165,6 +175,7 @@ function PortfolioRoute() {
       watchedIsins={data.watchedIsins}
       heldIsins={data.heldIsins}
       onSelectView={data.setView}
+      onOpenDiscover={data.openDiscover}
       onCopyCsv={commands.copyCsv}
       onBulkAddToGroup={commands.bulkAddToGroup}
       onBulkWatchlist={commands.bulkWatchlist}

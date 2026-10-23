@@ -43,6 +43,7 @@ export function ScreenerTable({
   watchedIsins,
   heldIsins,
   onSelectView,
+  onOpenDiscover,
   onChangeColumns,
   onCopyCsv,
   onBulkAddToGroup,
@@ -81,6 +82,7 @@ export function ScreenerTable({
   watchedIsins: ReadonlySet<string> | null;
   heldIsins: ReadonlySet<string>;
   onSelectView: (view: View) => void;
+  onOpenDiscover: (query: string) => void;
   onCopyCsv: (rows?: ScreenerRow[]) => Promise<void>;
   onBulkAddToGroup: (group: SecurityGroup) => Promise<void>;
   onBulkWatchlist: (add: boolean) => Promise<void>;
@@ -266,6 +268,10 @@ export function ScreenerTable({
                 onOpen={(hit) => {
                   setDismissed(query);
                   onOpenFound(hit);
+                }}
+                onSeeAll={() => {
+                  setDismissed(query);
+                  onOpenDiscover(query.trim());
                 }}
                 onAddToWatchlist={
                   toolActions.has(TOOL.addWatchlistItem) ? (hit) => void toolActions.run(TOOL.addWatchlistItem, { isin: hit.isin }, { done: `${hit.name} added to your watchlist` }) : undefined

@@ -1,6 +1,6 @@
 import { Field, Label } from "@headlessui/react";
 import { InboxIcon } from "@heroicons/react/24/outline";
-import { useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { ColumnHead, resizedTable } from "./ColumnHead";
 import { useTableLayout } from "./hooks/useTableLayout";
 import { CheckboxField, EmptyState, Pagination, Select, SortHeader } from "./controls";
@@ -435,6 +435,8 @@ function ToolForm({ tool, values, onChange, portfolios = [] }: { tool: ToolDef; 
 type PanelProps = {
   tool: ToolDef;
   prefill?: Rec;
+  /** Runs the tool once when the panel opens, for a form that is already filled in. */
+  autoRun?: boolean;
   portfolios?: PagePortfolio[];
   invoke: Invoke;
   tradingEnabled: boolean;
@@ -445,7 +447,7 @@ type PanelProps = {
 };
 
 /** Form generated from a tool's input schema, with a Run button and the result below. */
-export function ToolRunnerPanel({ tool, prefill = {}, portfolios, invoke, tradingEnabled, runLabel, hideHeader = false, renderResult, onResult }: PanelProps) {
+export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolios, invoke, tradingEnabled, runLabel, hideHeader = false, renderResult, onResult }: PanelProps) {
   const [values, setValues] = useState<FormValues>(() => initialValues(tool, prefill, portfolios));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -474,6 +476,12 @@ export function ToolRunnerPanel({ tool, prefill = {}, portfolios, invoke, tradin
       setBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (autoRun) void run();
+    // Only when the panel opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="grid gap-0.5">

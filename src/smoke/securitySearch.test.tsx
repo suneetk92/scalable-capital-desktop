@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { SecuritySearchResults } from "../SecuritySearch";
 import type { Invoke } from "../tools";
@@ -9,14 +9,17 @@ const PAYLOAD = [
   { isin: "US0378331005", name: "Apple", symbol: "AAPL" },
 ];
 
-function setup(text: string) {
+function setup(text: string, onSeeAll = () => {}) {
   const invoke = vi.fn(async () => PAYLOAD) as unknown as Invoke;
-  const view = render(<SecuritySearchResults text={text} invoke={invoke} enabled watched={new Set(["US0378331005"])} held={new Set()} onOpen={() => {}} />);
+  const view = render(<SecuritySearchResults text={text} invoke={invoke} enabled watched={new Set(["US0378331005"])} held={new Set()} onOpen={() => {}} onSeeAll={onSeeAll} />);
   return { invoke, view };
 }
 
 describe("SecuritySearchResults", () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it("asks Scalable only from three characters", async () => {
     vi.useFakeTimers();
@@ -33,5 +36,14 @@ describe("SecuritySearchResults", () => {
     });
     expect(screen.getByText("BMW St.")).toBeTruthy();
     expect(screen.getByText("On watchlist")).toBeTruthy();
+  });
+
+  it("hands the typed text to the Discover page", async () => {
+    vi.useFakeTimers();
+    const onSeeAll = vi.fn();
+    setup("bmw", onSeeAll);
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    screen.getByText("See all results in Discover").click();
+    expect(onSeeAll).toHaveBeenCalledTimes(1);
   });
 });

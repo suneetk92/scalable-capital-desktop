@@ -83,10 +83,13 @@ export function DiscoverPage({
   common,
   watched,
   held,
+  initialQuery,
   onOpen,
   onTrade,
 }: {
   common: Common;
+  /** Searched at once when the page opens from a table's search box. */
+  initialQuery?: string;
   /** ISINs on the watchlist, or null when the watchlist could not be loaded. */
   watched: Set<string> | null;
   /** ISINs held in a portfolio; Scalable does not put these on the watchlist. */
@@ -113,7 +116,8 @@ export function DiscoverPage({
         <ToolRunnerPanel
           key={def.name}
           tool={def}
-          prefill={{}}
+          prefill={initialQuery && def.name === "search_securities" ? { query: initialQuery } : {}}
+          autoRun={Boolean(initialQuery) && def.name === "search_securities"}
           portfolios={common.portfolios}
           hideHeader
           runLabel="Search"
