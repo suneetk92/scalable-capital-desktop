@@ -8,11 +8,11 @@ import { useShowDiagnostics, VENUE_OPTIONS, type VenueSetting } from "./settings
 import { invokeCommand } from "./commands";
 import { humanize } from "./tools";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { TrailingStopDialog } from "./TrailingStopDialog";
 import { Alert, btn, cx, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "./ui";
 import { formatNumber, parseDecimal } from "./format";
 import { amountExceedsBuyingPower, amountIssue, limitPriceHint, previewFailureHint, priceIssue, quantityExceedsHolding, stopPriceIssue } from "./order";
 import { usePreviewFlow } from "./hooks/usePreviewFlow";
+import { extension } from "./extensions";
 
 const SIDE_BUTTON = "h-9 cursor-pointer font-semibold";
 const NOTE = `mb-4 ${MODAL_TEXT}`;
@@ -123,7 +123,6 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
   const [protect, setProtect] = useState<ProtectionKind | null>(null);
   const [protectable, setProtectable] = useState(false);
   const [placedLegs, setPlacedLegs] = useState<ProtectionKind[]>([]);
-  const [trailing, setTrailing] = useState(false);
   const [bought, setBought] = useState<{ quantity: number | null; limitPrice: number | null }>({ quantity: null, limitPrice: null });
 
   const portfolio = portfolios.find((item) => item.portfolioId === portfolioId);
@@ -542,11 +541,18 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
                     {placedLegs.includes(leg.kind) ? `${leg.label} placed` : `Set ${leg.label.toLowerCase()}`}
                   </button>
                 ))}
-                <button className={btn.secondary} type="button" onClick={() => setTrailing(true)}>
-                  Set trailing stop loss
-                </button>
+                {extension.orderProtection && (
+                  <extension.orderProtection.Actions
+                    invoke={invoke}
+                    security={security}
+                    portfolioId={portfolioId}
+                    quantity={bought.quantity !== null ? String(bought.quantity) : ""}
+                    portfolios={portfolios}
+                    held={security && heldQuantity ? [{ portfolioId, isin: security.isin, name: security.name, symbol: security.symbol, currency: security.currency, quantity: heldQuantity }] : []}
+                  />
+                )}
               </div>
-              <p className={`mt-2 ${MODAL_TEXT}`}>A trailing stop loss is not a Scalable order: the app follows the price itself and sells at market, only while it runs with Trading on.</p>
+              {extension.orderProtection && <p className={`mt-2 ${MODAL_TEXT}`}>{extension.orderProtection.note}</p>}
             </div>
           )}
           <DialogFooter>
@@ -555,18 +561,6 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
             </button>
           </DialogFooter>
         </>
-      )}
-      {trailing && (
-        <TrailingStopDialog
-          security={security}
-          portfolioId={portfolioId}
-          quantity={bought.quantity !== null ? String(bought.quantity) : ""}
-          portfolios={portfolios}
-          held={security && heldQuantity ? [{ portfolioId, isin: security.isin, name: security.name, symbol: security.symbol, currency: security.currency, quantity: heldQuantity }] : []}
-          invoke={invoke}
-          tradingEnabled
-          onClose={() => setTrailing(false)}
-        />
       )}
     </ModalFrame>
   );

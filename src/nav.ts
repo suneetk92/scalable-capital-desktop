@@ -1,23 +1,12 @@
-import {
-  ArrowsRightLeftIcon,
-  BanknotesIcon,
-  ArrowTrendingDownIcon,
-  BellAlertIcon,
-  Cog6ToothIcon,
-  MagnifyingGlassCircleIcon,
-  RectangleGroupIcon,
-  Squares2X2Icon,
-  StarIcon,
-  TableCellsIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowsRightLeftIcon, BanknotesIcon, BellAlertIcon, Cog6ToothIcon, MagnifyingGlassCircleIcon, RectangleGroupIcon, Squares2X2Icon, StarIcon, TableCellsIcon } from "@heroicons/react/24/outline";
 import { readStoredJson } from "./storage";
 
-export type CoreView = "overview" | "portfolio" | "watchlist" | "groups" | "discover" | "alerts" | "trailing" | "savings" | "transactions" | "settings";
+export type CoreView = "overview" | "portfolio" | "watchlist" | "groups" | "discover" | "alerts" | "savings" | "transactions" | "settings";
 /** A core page, or the id of a page an extension adds. */
 export type View = CoreView | (string & {});
 
 export type NavId = View;
-const DEFAULT_NAV_ORDER: CoreView[] = ["overview", "portfolio", "watchlist", "groups", "discover", "alerts", "trailing", "savings", "transactions", "settings"];
+const DEFAULT_NAV_ORDER: CoreView[] = ["overview", "portfolio", "watchlist", "groups", "discover", "alerts", "savings", "transactions", "settings"];
 
 export function loadNavOrder(extensionViews: readonly { id: NavId; after: NavId }[] = []): NavId[] {
   const saved = readStoredJson("nav-order");
@@ -48,7 +37,6 @@ export const VIEW_TITLES: Record<CoreView, string> = {
   groups: "Groups",
   discover: "Discover",
   alerts: "Price alerts",
-  trailing: "Trailing stops",
   savings: "Savings plans",
   transactions: "Transactions",
   settings: "Settings",
@@ -60,7 +48,6 @@ export const VIEW_DESCRIPTIONS: Record<CoreView, string> = {
   groups: "Bundle holdings into Scalable groups and follow them together.",
   discover: "Search Scalable’s securities and derivatives.",
   alerts: "Get notified when a security reaches a price.",
-  trailing: "Stop losses that sell and buy stops that buy when the price moves by your distance, watched by this app.",
   savings: "Recurring purchases that run on a schedule.",
   transactions: "Orders and cash movements as Scalable reports them, with ISIN, name and a link to the security details.",
   settings: "Appearance, data, session, trading and the Scalable tools.",
@@ -73,7 +60,6 @@ export const NAV_ITEMS: Record<CoreView, { label: string; icon: typeof StarIcon 
   groups: { label: "Groups", icon: RectangleGroupIcon },
   discover: { label: "Discover", icon: MagnifyingGlassCircleIcon },
   alerts: { label: "Price alerts", icon: BellAlertIcon },
-  trailing: { label: "Trailing stops", icon: ArrowTrendingDownIcon },
   savings: { label: "Savings plans", icon: BanknotesIcon },
   transactions: { label: "Transactions", icon: ArrowsRightLeftIcon },
   settings: { label: "Settings", icon: Cog6ToothIcon },

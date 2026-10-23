@@ -20,6 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
+  "include": ["src", "extensions/trailing-stops/web"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

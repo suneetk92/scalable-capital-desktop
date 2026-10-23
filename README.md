@@ -188,6 +188,20 @@ npm run dev            # frontend only, in a browser at http://localhost:1420
   versions as warnings). When a new dependency brings a licence the list does not have, add it there if it is
   permissive; `cargo install cargo-deny` runs the same check locally.
 
+## Extensions
+
+Optional features live in `extensions/`, each with its own `extension.json` (id, name, version, description)
+and its own version, kept apart from the app version. **Settings > About > Extensions** lists the installed
+ones with their versions.
+
+- `extensions/trailing-stops/` is public and bundled in every build (see `bundled-extensions.json`): the trailing
+  stop loss and buy stop, in TypeScript (`web/`) and Rust (`src-tauri/`). Its README has the details.
+- Another extension can join a build from a local folder; it is not part of this repository.
+
+Change an extension's version with `node scripts/set-extension-version.mjs <id> X.Y.Z`. Extensions are compiled
+into the app, so a new extension version reaches users with the next app release; updating an extension alone
+would need a separate loader and feed, which the app does not have.
+
 ## Project layout
 
 ```text
@@ -196,10 +210,11 @@ src/                 React frontend (TypeScript, Tailwind-only styling)
   app/               useAppData (state, timers, data hooks), useAppCommands (refresh, copy, orders, bulk edits, sign in and out, palette and menu entries), AppContext (shared data/commands and route wrappers), AppRouter (the page for the view; the pages other than Overview, Portfolio and Watchlist load lazily), GlobalDialogs (order, palette, confirmations, security dock), Header (page buttons, account menu heading), ProviderStatus (the service status line), invoke.ts (the `invoke` that fails with a clear message outside the desktop window)
   commands.ts        typed registry of the Tauri commands (`CommandMap`, `invokeCommand`) and the names of the Scalable tools used in more than one file; a test checks it against `generate_handler!` in `src-tauri/src/lib.rs` (tested)
   Sidebar, TopBar, SignIn, Brand, Overview, OverviewExtras, SummaryStats, ScreenerTable, ScreenerRow, SecurityDrawer, SettingsPage, ...   screens and chrome; the Portfolio and Watchlist table (ScreenerTable, ScreenerRow) and the Overview cards are separate modules
-  pages/             Groups, Alerts, TrailingStops, Savings (+ plan dialog), Transactions, Tools and ToolSchema (shown in Settings), Discover
+  pages/             Groups, Alerts, Savings (+ plan dialog), Transactions, Tools and ToolSchema (shown in Settings), Discover
   hooks/             dashboard data, async query and preview flows, table state, overnight transactions, transaction history, windowed table rows (`useRowWindow.ts`), group figures and order, price alert watch, trailing stops, notifications, provider status, sidebar order, session info, updater, background options
-  extensions.ts      typed extension slots (extra pages, table columns, security-panel sections, settings and menu entries); the app works without any extension
-  extensionStub.ts   the empty extension; `vite.config.ts` resolves the `virtual:app-extension` module to it
+  extensions.ts      typed extension slots (extra pages, table columns, security-panel sections, settings and menu entries) and the list of installed extensions; the app works without any extension
+  composeExtensions.ts   combines the installed extensions into the one the app talks to (tested)
+  refreshOptions.ts  the check-frequency choices and their labels, with no imports
   providerStatus.ts  per-service status (Scalable, updater): last success, last error, ok / stale / failed (tested); lastGood.ts keeps the last good data of a failed reload (tested)
   kvStore.ts, chunked.ts   the small async key-value store over IndexedDB with a memory fallback, and sliced processing for long lists (both tested)
   updates.ts         update state, progress and messages (tested); UpdateNotice.tsx is the notice
@@ -214,7 +229,7 @@ src/                 React frontend (TypeScript, Tailwind-only styling)
   index.css          theme tokens (dark and light), keyframes and custom variants
 src-tauri/           Rust backend
   src/auth.rs        OAuth, token storage in the keyring, session info
-  src/mcp/           MCP client, session pool, dashboard loading, trading gate (`trading.rs`), savings plans, input-schema argument validation and preview state, trailing stops (`trailing/`); `response.rs` has the shared readers for tool answers (records, strings, numbers, tool names; tested)
+  src/mcp/           MCP client, session pool, dashboard loading, trading gate (`trading.rs`), savings plans, input-schema argument validation and preview state; `response.rs` has the shared readers for tool answers (records, strings, numbers, tool names; tested)
   src/notify.rs      `show_notification`: desktop notices (the webview cannot use the notification plugin itself); registers the Windows app ID
   src/background.rs  tray icon, close to the tray, start with Windows (`get_background`, `set_background`; the webview cannot use the autostart plugin itself)
   src/updates.rs     `check_for_update` and `install_update`: signed updates through the updater plugin (the webview cannot use the plugin itself)
@@ -325,7 +340,7 @@ non-read tool, including unknown tools, until Trading is on.
   take-profit price must be above and the stop-loss price below the limit price.
 - **Trailing buy stop (optional, local).** The mirror image, in its own panel on the Trailing stops page: pick any security, an amount of money to spend and a distance above the low. The app follows the lowest ask price and, when the price rises to the low plus the distance, buys at market with `preview_buy_order` and `submit_buy_order`. It has the same rules as the stop loss (app running, signed in, Trading on, never accepts a warning, never repeats a submitted order) and also needs enough cash; an ask more than 25% above the trigger needs manual review. Edit works the same way.
 - **Trailing stop loss (optional, local).** Scalable's MCP has no trailing stop, so the app does it itself
-  (`src-tauri/src/mcp/trailing/`: the saved file, quotes, the sale, the watcher and the commands in one file each). Start one on the Trailing stops page (**New trailing stop**) or after a buy
+  (`extensions/trailing-stops/src-tauri/`: the saved file, quotes, the sale, the watcher and the commands in one file each). Start one on the Trailing stops page (**New trailing stop**) or after a buy
   (**Set trailing stop loss**): pick a security you hold (the dialog shows your shares and a **Sell all** link), the shares to sell and a distance in percent or money, and
   tick that the app may sell without asking again. The app remembers the highest price from then on (the
   bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (on the Trailing stops page the header Refresh uses this frequency, shows its countdown bar and reads the prices right away; it only runs while a stop is active; the sidebar shows how many stops exist) (Settings, Trailing stops, "Trailing stops check frequency", for both stop losses and buy stops: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at

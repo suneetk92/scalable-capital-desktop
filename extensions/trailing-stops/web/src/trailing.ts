@@ -1,5 +1,5 @@
-import { isRec } from "./response";
-import { parseDecimal } from "./format";
+import { isRec } from "../../../../src/response";
+import { parseDecimal } from "../../../../src/format";
 
 /** A trailing stop loss (sells when the price falls) or trailing buy stop (buys when it rises) the app watches itself: Scalable's MCP has no such order. See `src-tauri/src/mcp/trailing/`. */
 export type TrailKind = "percent" | "amount";

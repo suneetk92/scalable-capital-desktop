@@ -1,7 +1,6 @@
 //! Scalable Capital MCP access. One module per responsibility:
 //! `client` (JSON-RPC over HTTP), `session` (shared session cache), `args` (argument helpers), `response` (reading tool answers), `dashboard` (read-only dashboard load), `trading` (the Trading
-//! gate, tool runner and orders), `savings` (the savings-plan preview and submit) and `trailing` (trailing stop loss, watched
-//! locally and sold through the same gate).
+//! gate, tool runner and orders), `savings` (the savings-plan preview and submit).
 
 pub mod args;
 pub mod client;
@@ -11,12 +10,11 @@ pub mod response;
 pub mod savings;
 pub mod session;
 pub mod trading;
-pub mod trailing;
 
 /// The published input schemas of Scalable's tools, by tool name, for the tests that check the arguments the
 /// app builds. They come from the saved `tools/list` response.
 #[cfg(test)]
-mod fixtures {
+pub(crate) mod fixtures {
     use serde_json::Value;
 
     pub fn input_schemas() -> Value {

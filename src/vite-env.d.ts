@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
-declare module "virtual:app-extension" {
+declare module "virtual:app-extensions" {
   import type { AppExtension } from "./extensions";
-  const extension: AppExtension;
-  export default extension;
+  const extensions: AppExtension[];
+  export default extensions;
 }

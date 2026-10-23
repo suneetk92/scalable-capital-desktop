@@ -1,0 +1,6 @@
+{
+  "id": "trailing-stops",
+  "name": "Trailing stops",
+  "version": "1.0.0",
+  "description": "Trailing stop losses and buy stops that the app watches itself, because Scalable has no such order."
+}

@@ -5,7 +5,6 @@ import { pluralize } from "../format";
 import type { View } from "../nav";
 import { btn } from "../ui";
 import { RefreshButton } from "../controls";
-import { intervalLabel } from "../settings";
 import { extension } from "../extensions";
 import { EXCHANGE_HOURS_NOTE } from "../marketHours";
 import type { AppCommands } from "./useAppCommands";
@@ -34,18 +33,20 @@ const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "
 export function pageActions(data: AppData, commands: AppCommands) {
   const { view, tradingEnabled, marketOpen, autoRefresh, refreshLabel, syncing, marketTableOpen, market, extensionRuntime } = data;
   const { toggleTrading, openOrder, refreshAccount } = commands;
-  const extensionView = extension.views?.some((item) => item.id === view) ?? false;
-  const refreshExtension = extensionView && extensionRuntime.refresh !== undefined;
-  const showTrading = view !== "settings" && !extensionView;
+  const ownView = extension.views?.find((item) => item.id === view);
+  const extensionView = ownView !== undefined;
+  const ownRefresh = ownView?.refresh?.({ data, commands });
+  const refreshExtension = extensionView && !ownRefresh && extensionRuntime.refresh !== undefined;
+  const showTrading = view !== "settings" && (!extensionView || ownView.trading === true);
   // New order belongs to the pages about securities and orders; Groups, Alerts and Savings have their own "New …" action.
   const showNewOrder = showTrading && tradingEnabled && ORDER_VIEWS.has(view);
   const showRefresh = view !== "settings";
-  const headerAuto = refreshExtension ? (extensionRuntime.autoRefresh ?? false) : autoRefresh;
-  const headerLabel = refreshExtension ? (extensionRuntime.refreshLabel ?? "") : refreshLabel;
-  const refreshBusy = refreshExtension ? (extensionRuntime.busy ?? extensionRuntime.loading ?? false) : syncing || (marketTableOpen && market.loading);
-  const refreshNow = refreshExtension ? extensionRuntime.refresh! : refreshAccount;
-  const { trailing } = data;
-  const trailingView = view === "trailing";
+  const headerAuto = ownRefresh ? ownRefresh.auto : refreshExtension ? (extensionRuntime.autoRefresh ?? false) : autoRefresh;
+  const headerLabel = ownRefresh ? ownRefresh.label : refreshExtension ? (extensionRuntime.refreshLabel ?? "") : refreshLabel;
+  const refreshBusy = ownRefresh ? ownRefresh.busy : refreshExtension ? (extensionRuntime.busy ?? extensionRuntime.loading ?? false) : syncing || (marketTableOpen && market.loading);
+  const refreshNow = ownRefresh ? ownRefresh.refresh : refreshExtension ? extensionRuntime.refresh! : refreshAccount;
+  const lastLoadedAt = ownRefresh ? ownRefresh.lastLoadedAt : refreshExtension ? null : (data.lastUpdated?.getTime() ?? null);
+  const intervalMs = ownRefresh ? ownRefresh.intervalMs : data.settings.refreshSeconds * 1000;
   if (!showTrading && !showRefresh) return undefined;
   return (
     <>
@@ -73,16 +74,7 @@ export function pageActions(data: AppData, commands: AppCommands) {
           New order
         </button>
       )}
-      {showRefresh && (
-        <RefreshButton
-          auto={trailingView ? trailing.stops.some((stop) => stop.status === "active") : headerAuto}
-          label={trailingView ? intervalLabel(data.settings.trailingSeconds) : headerLabel}
-          busy={trailingView ? trailing.checking : refreshBusy}
-          onRefresh={trailingView ? () => void trailing.checkNow() : refreshNow}
-          lastLoadedAt={trailingView ? (trailing.lastChecked ?? trailing.openedAt) : refreshExtension ? null : (data.lastUpdated?.getTime() ?? null)}
-          intervalMs={(trailingView ? data.settings.trailingSeconds : data.settings.refreshSeconds) * 1000}
-        />
-      )}
+      {showRefresh && <RefreshButton auto={headerAuto} label={headerLabel} busy={refreshBusy} onRefresh={refreshNow} lastLoadedAt={lastLoadedAt} intervalMs={intervalMs} />}
     </>
   );
 }

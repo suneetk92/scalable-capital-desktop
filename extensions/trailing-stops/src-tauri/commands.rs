@@ -334,7 +334,7 @@ mod tests {
             admit_new_stop(&gate, &state, &request).unwrap_err(),
             TRADING_OFF
         );
-        gate.enabled.store(true, Ordering::SeqCst);
+        gate.set_for_test(true);
         assert_eq!(
             admit_new_stop(&gate, &state, &request).unwrap(),
             Some("p-1".to_owned())
@@ -348,7 +348,7 @@ mod tests {
         assert!(admit_new_stop(&gate, &state, &buy).is_err());
         buy.amount = 100.0;
         assert!(admit_new_stop(&gate, &state, &buy).is_ok());
-        gate.enabled.store(false, Ordering::SeqCst);
+        gate.set_for_test(false);
         assert_eq!(
             admit_new_stop(&gate, &state, &request).unwrap_err(),
             TRADING_OFF

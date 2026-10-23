@@ -1,16 +1,16 @@
 import { Description, Field, Label } from "@headlessui/react";
 import { useState } from "react";
-import { CheckboxField, GroupInput, Select } from "./controls";
-import { HeldSecurityPicker } from "./HeldSecurityPicker";
-import type { SecurityHit } from "./OrderDialog";
-import { SecurityPicker } from "./SecurityPicker";
-import { formatNumber, parseSearch } from "./screener";
+import { CheckboxField, GroupInput, Select } from "../../../../src/controls";
+import { HeldSecurityPicker } from "../../../../src/HeldSecurityPicker";
+import type { SecurityHit } from "../../../../src/OrderDialog";
+import { SecurityPicker } from "../../../../src/SecurityPicker";
+import { formatNumber, parseSearch } from "../../../../src/screener";
 import { invokeCommand } from "./commands";
-import { type Invoke } from "./tools";
+import { type Invoke } from "../../../../src/tools";
 import { decimal, trailIssue, type TrailingStop, type TrailKind, type TrailSide } from "./trailing";
-import type { HeldPosition, PagePortfolio } from "./types";
-import { Alert, btn, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "./ui";
-import { useBusyAction } from "./hooks/usePreviewFlow";
+import type { HeldPosition, PagePortfolio } from "../../../../src/types";
+import { Alert, btn, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "../../../../src/ui";
+import { useBusyAction } from "../../../../src/hooks/usePreviewFlow";
 
 type Props = {
   /** A stop loss sells shares of a holding; a buy stop buys any security for an amount of money. Defaults to a stop loss. */

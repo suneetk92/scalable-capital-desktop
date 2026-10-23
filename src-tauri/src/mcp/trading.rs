@@ -25,7 +25,7 @@ const BLOCKED_GENERIC_TOOLS: [&str; 3] = [
     "submit_savings_plan",
 ];
 
-pub(super) const TRADING_OFF: &str =
+pub(crate) const TRADING_OFF: &str =
     "Trading is switched off. Turn on Trading (top right) to run tools that change Scalable data.";
 
 /// Whether the user has switched Trading on. Starts off on every launch; the UI sends its saved
@@ -37,8 +37,13 @@ pub struct TradingGate {
 }
 
 impl TradingGate {
-    pub(super) fn is_on(&self) -> bool {
+    pub(crate) fn is_on(&self) -> bool {
         self.enabled.load(Ordering::SeqCst) && exchange_open()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_for_test(&self, on: bool) {
+        self.enabled.store(on, Ordering::SeqCst);
     }
 }
 
@@ -254,7 +259,7 @@ fn failed(name: String, error: String) -> ToolOutcome {
 pub(super) const PREVIEW_TTL: Duration = Duration::from_secs(300);
 pub(super) const MAX_PENDING_PREVIEWS: usize = 8;
 
-pub(super) const TRADING_UNAVAILABLE: &str = "Scalable MCP does not offer order tools for this sign-in. In the Scalable app open Profile > Security > Agentic Investing, set the MCP access level to Full access, then sign out here and sign in again.";
+pub(crate) const TRADING_UNAVAILABLE: &str = "Scalable MCP does not offer order tools for this sign-in. In the Scalable app open Profile > Security > Agentic Investing, set the MCP access level to Full access, then sign out here and sign in again.";
 
 pub struct Previews<R> {
     pending: Mutex<Vec<Pending<R>>>,
@@ -417,7 +422,7 @@ pub(super) fn number(value: f64) -> Value {
 
 /// The arguments of `preview_buy_order` and `preview_sell_order`, in the shape their input schemas
 /// publish: `isin`, `portfolioId`, `venue`, `quantity: { mode, amount | shares }` and `order: { type, ... }`.
-pub(super) fn preview_arguments(request: &OrderRequest) -> Value {
+pub(crate) fn preview_arguments(request: &OrderRequest) -> Value {
     let mut arguments = Map::new();
     arguments.insert("isin".to_owned(), json!(request.isin));
     if let Some(portfolio_id) = request.portfolio_id.as_deref().filter(|id| !id.is_empty()) {
@@ -447,7 +452,7 @@ pub(super) fn preview_arguments(request: &OrderRequest) -> Value {
 }
 
 /// The `submission` object of an order or savings-plan preview. It is passed to the submit tool unchanged.
-pub(super) fn submission_of(preview: &Value) -> Result<&Value, String> {
+pub(crate) fn submission_of(preview: &Value) -> Result<&Value, String> {
     preview
         .get("submission")
         .filter(|submission| submission.is_object())
@@ -457,7 +462,7 @@ pub(super) fn submission_of(preview: &Value) -> Result<&Value, String> {
 }
 
 /// The acknowledgement ids the preview asks the user to accept before the order can be submitted.
-pub(super) fn required_acknowledgements(submission: &Value) -> Vec<String> {
+pub(crate) fn required_acknowledgements(submission: &Value) -> Vec<String> {
     strings_at(
         submission,
         "/confirmationContext/requiredAcknowledgementIds",
@@ -466,7 +471,7 @@ pub(super) fn required_acknowledgements(submission: &Value) -> Vec<String> {
 
 /// The arguments of `submit_buy_order` and `submit_sell_order`: the preview's `submission` and the
 /// acknowledgement ids the user accepted.
-pub(super) fn submit_arguments(submission: &Value, acknowledgement_ids: &[String]) -> Value {
+pub(crate) fn submit_arguments(submission: &Value, acknowledgement_ids: &[String]) -> Value {
     json!({ "submission": submission, "acknowledgementIds": acknowledgement_ids })
 }
 

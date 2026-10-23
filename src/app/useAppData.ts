@@ -24,13 +24,13 @@ import type { Provider } from "../providerStatus";
 import { profileName } from "../profile";
 import { connectionCheckDue, nextRefreshDelay, wokeFromSleep } from "../refreshSchedule";
 import type { DrawerTarget } from "../SecurityDrawer";
-import { intervalLabel, useLightTheme, useSettings } from "../settings";
+import { intervalLabel } from "../refreshOptions";
+import { useLightTheme, useSettings } from "../settings";
 import { useToolActions, useToolQuery } from "../toolActions";
 import { callTools, type ToolDef } from "../tools";
 import { pickString, type Rec } from "../response";
 import { dedupeRows } from "../transactions";
 import type { Common, Connection, Dashboard } from "../types";
-import { useTrailingStops } from "../hooks/useTrailingStops";
 import { getErrorMessage, hasTauriRuntime, invoke } from "./invoke";
 
 const CONNECTION_CHECK_MS = 60_000;
@@ -106,13 +106,6 @@ export function useAppData() {
   useEffect(() => {
     setTradingEnabled(marketOpen && tradingAtStartRef.current);
   }, [marketOpen]);
-
-  const trailing = useTrailingStops(invoke);
-  // The trailing stop watcher runs in Rust; it uses 30 seconds until it is told the setting.
-  useEffect(() => {
-    if (!hasTauriRuntime()) return;
-    invokeCommand(invoke, "set_trailing_interval", { seconds: settings.trailingSeconds }).catch(() => {});
-  }, [settings.trailingSeconds]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -416,7 +409,6 @@ export function useAppData() {
     actions: toolActions,
     tradingEnabled,
     pageSize: settings.pageSize,
-    trailingSeconds: settings.trailingSeconds,
     reloadKey,
   };
   const extensionContext = {
@@ -529,7 +521,6 @@ export function useAppData() {
     background,
     accountName,
     alertCount,
-    trailing,
     transactionCount,
     marketTableOpen,
     portfolioRows,

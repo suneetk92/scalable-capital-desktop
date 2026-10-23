@@ -18,7 +18,7 @@ const RECENT_LINES: usize = 80;
 #[cfg(not(feature = "extension"))]
 const APP_NAME: &str = "Scalable Capital Desktop";
 #[cfg(feature = "extension")]
-const APP_NAME: &str = crate::extension::APP_NAME;
+const APP_NAME: &str = crate::extensions::APP_NAME;
 
 /// Anything but "rc" is the stable channel, like `UpdateChannel::parse` in `updates.rs`.
 fn channel_label(value: Option<&str>) -> &'static str {

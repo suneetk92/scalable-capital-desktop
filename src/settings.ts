@@ -36,8 +36,6 @@ export type Settings = {
   alertMinutes: number;
   /** Also pops up an in-app toast for every notice; off leaves the Windows notification and the notification center. */
   alertToasts: boolean;
-  /** Seconds between two price checks of the trailing stops, which the Rust backend runs. */
-  trailingSeconds: number;
   /** Asks the update server once at launch whether a newer version exists. The only request that does not go to Scalable. */
   checkUpdates: boolean;
   updateChannel: UpdateChannelSetting;
@@ -52,18 +50,6 @@ export const SETTINGS_VERSION = 1;
 
 export const FONT_SIZE_MIN = 11;
 export const FONT_SIZE_MAX = 22;
-
-export const REFRESH_OPTIONS: [number, string][] = [
-  [15, "15 seconds"],
-  [30, "30 seconds"],
-  [60, "1 minute"],
-  [120, "2 minutes"],
-  [300, "5 minutes"],
-  [600, "10 minutes"],
-];
-
-/** "30 seconds", "1 minute" becomes "minute"; used in "every …". */
-export const intervalLabel = (seconds: number) => (REFRESH_OPTIONS.find(([value]) => value === seconds)?.[1] ?? `${seconds} seconds`).replace(/^1 /, "");
 
 export const PAGE_SIZE_OPTIONS: [number, string][] = [
   [10, "10 rows"],
@@ -95,7 +81,6 @@ export const DEFAULT_SETTINGS: Settings = {
   alertWatch: true,
   alertMinutes: 5,
   alertToasts: false,
-  trailingSeconds: 30,
   checkUpdates: true,
   updateChannel: "stable",
   orderVenue: "eix",
@@ -128,7 +113,6 @@ export function sanitizeSettings(raw: Partial<Record<keyof Settings, unknown>>):
     alertWatch: typeof raw.alertWatch === "boolean" ? raw.alertWatch : DEFAULT_SETTINGS.alertWatch,
     alertMinutes: ALERT_MINUTE_OPTIONS.find((minutes) => minutes === raw.alertMinutes) ?? DEFAULT_SETTINGS.alertMinutes,
     alertToasts: typeof raw.alertToasts === "boolean" ? raw.alertToasts : DEFAULT_SETTINGS.alertToasts,
-    trailingSeconds: REFRESH_OPTIONS.find(([seconds]) => seconds === raw.trailingSeconds)?.[0] ?? DEFAULT_SETTINGS.trailingSeconds,
     checkUpdates: typeof raw.checkUpdates === "boolean" ? raw.checkUpdates : DEFAULT_SETTINGS.checkUpdates,
     updateChannel: oneOf(raw.updateChannel, ["stable", "rc"], DEFAULT_SETTINGS.updateChannel),
     orderVenue: oneOf(raw.orderVenue, ["eix", "gettex", "xetra"], DEFAULT_SETTINGS.orderVenue),

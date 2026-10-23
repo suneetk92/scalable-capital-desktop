@@ -190,14 +190,38 @@ fn announce_change(app: &AppHandle) {
     let _ = app.emit(CHANGED_EVENT, ());
 }
 
-/// Loads the saved stops and starts the watcher, which idles unless one of them is active.
-pub fn start(app: &AppHandle) {
+/// Registers the state, loads the saved stops and starts the watcher, which idles unless one of them is active.
+pub fn setup(app: &AppHandle) {
+    app.manage(TrailingState::default());
     store::load(app);
     watcher::spawn(app);
 }
 
+pub fn handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
+    tauri::generate_handler![
+        commands::list_trailing_stops,
+        commands::check_trailing_stops_now,
+        commands::add_trailing_stop,
+        commands::update_trailing_stop,
+        commands::remove_trailing_stop,
+        commands::set_trailing_interval,
+    ]
+}
+
+pub fn handles(command: &str) -> bool {
+    matches!(
+        command,
+        "list_trailing_stops"
+            | "check_trailing_stops_now"
+            | "add_trailing_stop"
+            | "update_trailing_stop"
+            | "remove_trailing_stop"
+            | "set_trailing_interval"
+    )
+}
+
 /// Whether a trailing-stop sale has started and should get a short chance to finish before Quit.
-pub fn sale_in_progress(app: &AppHandle) -> bool {
+pub fn busy(app: &AppHandle) -> bool {
     app.state::<TrailingState>()
         .mutate(|stops| has_sale_in_progress(stops))
 }

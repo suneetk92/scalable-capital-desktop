@@ -43,7 +43,6 @@ function App() {
     accountName,
     baseGroups,
     alertCount,
-    trailing,
     transactionCount,
     portfolioRows,
     watchlistRows,
@@ -71,9 +70,12 @@ function App() {
     watchlist: watchlistUnknown ? "—" : watchlistRows.length,
     groups: baseGroups.length,
     alerts: alertCount,
-    trailing: trailing.stops.length,
     transactions: transactionCount,
   };
+  for (const item of extension.views ?? []) {
+    const count = item.count?.({ data, commands });
+    if (count !== undefined) navCounts[item.id] = count;
+  }
   const account = { header: <AccountHeader />, items: commands.accountItems, name: accountName ?? "My account", initials: initialsOf(accountName) };
   const extensionView = extension.views?.find((item) => item.id === view);
   const title = VIEW_TITLES[view as keyof typeof VIEW_TITLES] ?? extensionView?.title ?? view;

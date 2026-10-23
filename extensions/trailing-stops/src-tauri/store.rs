@@ -67,7 +67,7 @@ pub(super) fn load(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mcp::trailing::{sample_stop, Trail};
+    use crate::ext_trailing_stops::{sample_stop, Trail};
 
     #[test]
     fn a_sale_that_was_started_is_not_repeated_after_a_restart() {

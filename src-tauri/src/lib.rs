@@ -7,9 +7,8 @@ mod mcp;
 mod notify;
 mod updates;
 
-// An optional extension: build.rs writes `mod extension;` pointing at its module.
-#[cfg(feature = "extension")]
-include!(concat!(env!("OUT_DIR"), "/extension.rs"));
+// The extensions: build.rs writes their modules and the module that combines them.
+include!(concat!(env!("OUT_DIR"), "/extensions.rs"));
 
 use tauri::Manager;
 
@@ -33,12 +32,6 @@ fn core_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
         mcp::trading::submit_order,
         mcp::savings::preview_savings_plan,
         mcp::savings::submit_savings_plan,
-        mcp::trailing::commands::list_trailing_stops,
-        mcp::trailing::commands::check_trailing_stops_now,
-        mcp::trailing::commands::add_trailing_stop,
-        mcp::trailing::commands::update_trailing_stop,
-        mcp::trailing::commands::remove_trailing_stop,
-        mcp::trailing::commands::set_trailing_interval,
         background::get_background,
         background::set_background,
         notify::show_notification,
@@ -51,8 +44,7 @@ fn core_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(feature = "extension")]
-    let extension_handler = extension::handler();
+    let extension_handler = extensions::handler();
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             background::on_second_instance(app)
@@ -66,15 +58,13 @@ pub fn run() {
         .manage(mcp::trading::TradeState::default())
         .manage(mcp::savings::SavingsState::default())
         .manage(mcp::trading::TradingGate::default())
-        .manage(mcp::trailing::TrailingState::default())
         .manage(mcp::session::SessionPool::default())
         .manage(updates::PendingUpdate::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(move |invoke: tauri::ipc::Invoke<tauri::Wry>| {
-            #[cfg(feature = "extension")]
-            if extension::handles(invoke.message.command()) {
+            if extensions::handles(invoke.message.command()) {
                 return extension_handler(invoke);
             }
             let core = core_handler();
@@ -91,7 +81,7 @@ pub fn run() {
                 &format!("started version {}", env!("CARGO_PKG_VERSION")),
             );
             notify::register_app_id(app.handle());
-            mcp::trailing::start(app.handle());
+            extensions::setup(app.handle());
             Ok(background::setup(app.handle())?)
         })
         .run(tauri::generate_context!());

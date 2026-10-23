@@ -222,9 +222,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 let app = app.clone();
                 tauri::async_runtime::spawn(async move {
                     let deadline = tokio::time::Instant::now() + SALE_QUIT_WAIT;
-                    while crate::mcp::trailing::sale_in_progress(&app)
-                        && tokio::time::Instant::now() < deadline
-                    {
+                    while crate::extensions::busy(&app) && tokio::time::Instant::now() < deadline {
                         tokio::time::sleep(SALE_QUIT_POLL).await;
                     }
                     app.exit(0);

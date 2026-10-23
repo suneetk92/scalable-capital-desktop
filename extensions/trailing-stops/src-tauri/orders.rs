@@ -228,7 +228,7 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
 mod tests {
     use super::*;
     use crate::mcp::fixtures::{assert_matches, input_schemas};
-    use crate::mcp::trailing::Trail;
+    use crate::ext_trailing_stops::Trail;
     use serde_json::json;
 
     #[test]

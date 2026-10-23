@@ -93,20 +93,33 @@
   --animate-load-bar: load-bar 1.2s ease-in-out infinite;
 
   @keyframes fade-in {
-    from { opacity: 0; }
+    from {
+      opacity: 0;
+    }
   }
   @keyframes slide-in-left {
-    from { transform: translateX(-100%); }
+    from {
+      transform: translateX(-100%);
+    }
   }
   @keyframes slide-in-right {
-    from { transform: translateX(100%); }
+    from {
+      transform: translateX(100%);
+    }
   }
   @keyframes toast-in {
-    from { opacity: 0; transform: translateY(0.5rem); }
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
   }
   @keyframes load-bar {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(350%); }
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(350%);
+    }
   }
 }
 
@@ -136,8 +149,14 @@
     font-variant-numeric: tabular-nums;
   }
 
-  body { min-height: 100vh; }
-  @media (max-width: 640px) { body { min-width: 360px; } }
+  body {
+    min-height: 100vh;
+  }
+  @media (max-width: 640px) {
+    body {
+      min-width: 360px;
+    }
+  }
 
   /* One focus ring for every interactive element, including Headless UI's `data-focus` (menu items and options keep their own highlight). */
   :where(a, button, input, select, textarea, summary, [role="tab"], [role="switch"], [role="radio"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible,
@@ -147,7 +166,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, ::before, ::after {
+    *,
+    ::before,
+    ::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -164,7 +185,10 @@
       outline-offset: 1px;
     }
   }
-  ::selection { color: #fff; background: #167a68; }
+  ::selection {
+    color: #fff;
+    background: #167a68;
+  }
 
   /* Light theme: same variables, light values. */
   html[data-theme="light"] {
@@ -221,5 +245,8 @@
     --signin-art-1: rgb(23 169 138 / 0.12);
     --signin-art-2: rgb(23 169 138 / 0.05);
   }
-  html[data-theme="light"] ::selection { color: #fff; background: #17a98a; }
+  html[data-theme="light"] ::selection {
+    color: #fff;
+    background: #17a98a;
+  }
 }

@@ -11,7 +11,10 @@ import type { AppCommands } from "./app/useAppCommands";
 import type { AppData } from "./app/useAppData";
 import type { PaletteItem } from "./CommandPalette";
 import type { MenuEntry } from "./controls";
-import extensionModule from "virtual:app-extension";
+import type { HeldPosition, PagePortfolio } from "./types";
+import type { SecurityHit } from "./OrderDialog";
+import extensionModules from "virtual:app-extensions";
+import { composeExtensions } from "./composeExtensions";
 
 export type ExtensionData = unknown;
 
@@ -47,6 +50,26 @@ export type ExtensionDataContext = {
 
 export type ExtensionContext = { data: AppData; commands: AppCommands };
 
+/** What the header's Refresh button shows and does on a page of an extension that has its own refresh. */
+export type ExtensionRefresh = {
+  auto: boolean;
+  label: string;
+  busy: boolean;
+  refresh(): void;
+  lastLoadedAt: number | null;
+  intervalMs: number;
+};
+
+/** What an extension gets in the "position placed" step of the order dialog. */
+export type ExtensionOrderProps = {
+  invoke: Invoke;
+  security: SecurityHit | null;
+  portfolioId: string;
+  quantity: string;
+  portfolios: PagePortfolio[];
+  held: HeldPosition[];
+};
+
 export type ExtensionView = {
   id: NavId;
   label: string;
@@ -54,6 +77,12 @@ export type ExtensionView = {
   title: string;
   description: string;
   after: View;
+  /** Whether the page shows the Trading switch next to its title. */
+  trading?: boolean;
+  /** The number shown next to the page in the sidebar. */
+  count?(context: ExtensionContext): number | string | undefined;
+  /** Replaces the header's Refresh button on this page. */
+  refresh?(context: ExtensionContext): ExtensionRefresh;
   render(context: ExtensionContext): ReactNode;
 };
 
@@ -77,7 +106,12 @@ export type ExtensionSlotProps = ExtensionContext & { target: DrawerTarget };
 export type ExtensionProvider = { id: string; name: string };
 
 export type AppExtension = {
+  /** The folder name of the extension, also the name of its `extension.json`. */
   id: string;
+  name: string;
+  /** Its own version, read from `extension.json`: an extension is versioned apart from the app. */
+  version: string;
+  description?: string;
   variantName?: string;
   useData?(context: ExtensionDataContext): ExtensionData;
   runtime?(data: ExtensionData): ExtensionRuntime;
@@ -91,6 +125,8 @@ export type AppExtension = {
   securityPanel?: Partial<Record<"top" | "afterChart" | "end", ComponentType<ExtensionSlotProps>>>;
   securityBadge?(record: MarketRecord | undefined, row: ScreenerRow): { label: string; title: string } | null;
   dock?: ComponentType<{ context: ExtensionContext }>;
+  /** Buttons in the order dialog's "Protect this position" step, with the note shown below them. */
+  orderProtection?: { note: string; Actions: ComponentType<ExtensionOrderProps> };
   settingsSection?: ComponentType<{ context: ExtensionContext }>;
   providers?: ExtensionProvider[];
   palette?(context: ExtensionContext): PaletteItem[];
@@ -104,9 +140,12 @@ export { MenuRowButton } from "./controls";
 export { formatWithOptions } from "./format";
 export { TONE_CLASS } from "./ScreenerRow";
 
-const extension: AppExtension = extensionModule;
+/** The extensions in this build: the ones that ship with the app, then the optional one the build adds. */
+const installedExtensions: readonly AppExtension[] = extensionModules;
 
-export { extension };
+const extension = composeExtensions(installedExtensions);
+
+export { extension, installedExtensions };
 
 const NO_LOGOS: ReadonlyMap<string, string> = new Map();
 

@@ -85,7 +85,7 @@ export function SecurityDock() {
   const { data, commands } = useApp();
   const { dashboard, view, securityTarget, setSecurityTarget, common } = data;
   const { tradeFound } = commands;
-  const extensionView = extension.views?.find((item) => item.id === view);
+  const extensionView = extension.hasDock(view) ? extension.views?.find((item) => item.id === view) : undefined;
   const extensionContext = { data, commands };
   if (!dashboard || (!extensionView && !securityTarget)) return null;
   return (

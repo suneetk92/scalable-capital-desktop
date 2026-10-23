@@ -209,7 +209,7 @@ pub(super) fn spawn(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mcp::trailing::sample_stop;
+    use crate::ext_trailing_stops::sample_stop;
 
     #[test]
     fn the_trigger_is_below_the_high_by_the_trail() {

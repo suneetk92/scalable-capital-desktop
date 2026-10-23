@@ -1,18 +1,18 @@
-import { extension, useExtensionIsinLogos } from "../extensions";
-import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
-import { useTableLayout } from "../hooks/useTableLayout";
+import { extension, useExtensionIsinLogos } from "../../../../src/extensions";
+import { ColumnHead, inOrder, resizedTable } from "../../../../src/ColumnHead";
+import { useTableLayout } from "../../../../src/hooks/useTableLayout";
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { invokeCommand } from "../commands";
-import { useApp } from "../app/AppContext";
-import { formatMoney } from "../screener";
-import { TrailingStopDialog } from "../TrailingStopDialog";
-import { errorText } from "../tools";
-import { statusLabel, trailLabel, triggerMargin, triggerPrice, type TrailingStatus, type TrailingStop, type TrailSide } from "../trailing";
-import { type Common } from "../types";
-import { EmptyState, ShareBar } from "../controls";
-import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../ui";
-import { Section } from "./shared";
+import { invokeCommand } from "./commands";
+import { formatMoney } from "../../../../src/screener";
+import { TrailingStopDialog } from "./TrailingStopDialog";
+import { errorText } from "../../../../src/tools";
+import type { useTrailingStops } from "./useTrailingStops";
+import { statusLabel, trailLabel, triggerMargin, triggerPrice, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
+import { type Common } from "../../../../src/types";
+import { EmptyState, ShareBar } from "../../../../src/controls";
+import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
+import { Section } from "../../../../src/pages/shared";
 
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
@@ -250,9 +250,17 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
 }
 
 /** The trailing stop losses and trailing buy stops the app watches itself, with a form to start each. */
-export function TrailingStops({ common, onOpenSecurity }: { common: Common; onOpenSecurity: (security: { isin: string; name: string }) => void }) {
+export function TrailingStops({
+  common,
+  trailing,
+  onOpenSecurity,
+}: {
+  common: Common;
+  trailing: ReturnType<typeof useTrailingStops>;
+  onOpenSecurity: (security: { isin: string; name: string }) => void;
+}) {
   const { invoke, portfolios, held, tradingEnabled } = common;
-  const { stops, problem, reload, checkError, setCheckError } = useApp().data.trailing;
+  const { stops, problem, reload, checkError, setCheckError } = trailing;
   const [adding, setAdding] = useState<TrailSide | null>(null);
   const [editing, setEditing] = useState<TrailingStop | null>(null);
 

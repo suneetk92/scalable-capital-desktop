@@ -7,7 +7,8 @@ import { ALERT_MINUTE_OPTIONS } from "./alerts";
 import { invoke } from "./app/invoke";
 import { invokeCommand } from "./commands";
 import { Select } from "./controls";
-import { extension } from "./extensions";
+import { REFRESH_OPTIONS } from "./refreshOptions";
+import { extension, installedExtensions } from "./extensions";
 import type { useBackground } from "./hooks/useBackground";
 import type { useUpdater } from "./hooks/useUpdater";
 import type { View } from "./nav";
@@ -23,7 +24,6 @@ import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   PAGE_SIZE_OPTIONS,
-  REFRESH_OPTIONS,
   VENUE_OPTIONS,
   type DensitySetting,
   type FontFamilySetting,
@@ -389,19 +389,6 @@ export function SettingsPage({
               <Switch label="Also show in the app" checked={settings.alertToasts} onToggle={() => onChange({ alertToasts: !settings.alertToasts })} />
             </Row>
           </SectionCard>
-          <SectionCard title="Trailing stops">
-            <Row
-              label="Trailing stops check frequency"
-              hint="How often the app reads the price of each security with a trailing stop loss or buy stop. Shorter reacts faster to a price move but makes more requests to Scalable, which may throttle them. Checks run only while the app runs, you are signed in and Trading is on"
-            >
-              <Select
-                size="compact"
-                value={settings.trailingSeconds}
-                onChange={(trailingSeconds: number) => onChange({ trailingSeconds })}
-                options={REFRESH_OPTIONS.map(([seconds, text]) => ({ value: seconds, label: text }))}
-              />
-            </Row>
-          </SectionCard>
         </TabPanel>
 
         <TabPanel className={PANEL_NARROW}>
@@ -469,7 +456,7 @@ export function SettingsPage({
                 </button>
               </div>
             </Row>
-            {extension.id !== "none" && (
+            {extension.variantName && (
               <Row
                 label="Update channel"
                 hint="Stable gets tested releases only. Release candidate also offers early -rc versions, which may still have bugs. Switching does not downgrade an installed version"
@@ -513,6 +500,21 @@ export function SettingsPage({
               </div>
             </dl>
           </SectionCard>
+          {installedExtensions.length > 0 && (
+            <SectionCard title="Extensions">
+              <dl className="divide-y divide-line">
+                {installedExtensions.map((item) => (
+                  <div key={item.id} className="flex justify-between gap-4 py-3">
+                    <dt className="text-ink-soft">
+                      {item.name}
+                      {item.description && <span className="block text-ink-muted">{item.description}</span>}
+                    </dt>
+                    <dd className="text-ink-strong">{item.version}</dd>
+                  </div>
+                ))}
+              </dl>
+            </SectionCard>
+          )}
           {isTauri() && <DiagnosticsCard updateChannel={settings.updateChannel} onCopyText={onCopyText} />}
         </TabPanel>
       </TabPanels>

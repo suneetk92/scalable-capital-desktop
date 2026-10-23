@@ -1,11 +1,11 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useState } from "react";
-import { invokeCommand } from "../commands";
-import { parseTrailingList, type TrailingList } from "../trailing";
-import { errorText, type Invoke } from "../tools";
+import { invokeCommand } from "./commands";
+import { parseTrailingList, type TrailingList } from "./trailing";
+import { errorText, type Invoke } from "../../../../src/tools";
 
-/** Sent by the backend whenever a stop or the problem line changes (`src-tauri/src/mcp/trailing`). */
+/** Sent by the backend whenever a stop or the problem line changes (`src-tauri/mod.rs` in this extension). */
 const CHANGED_EVENT = "trailing-stops-changed";
 /** A safety net only, in case an event is missed; it runs only while visible with an active or selling stop. */
 const FALLBACK_MS = 60_000;

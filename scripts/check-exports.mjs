@@ -160,7 +160,8 @@ export function findUnusedExports(entries, apiFiles = []) {
 
 function main() {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const entries = walk(resolve(root, "src")).map((fileName) => ({
+  // The bundled public extension is part of the repository and uses src/ like any other module.
+  const entries = [...walk(resolve(root, "src")), ...walk(resolve(root, "extensions/trailing-stops/web"))].map((fileName) => ({
     fileName,
     text: readFileSync(fileName, "utf8"),
   }));
