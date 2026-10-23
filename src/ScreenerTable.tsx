@@ -5,7 +5,7 @@ import { ColumnHead, resizedTable } from "./ColumnHead";
 import { ColumnPicker } from "./ColumnPicker";
 import { moveColumn, useColumnWidths, type ColumnLayout } from "./hooks/useTableLayout";
 import { CheckboxField, DropdownMenu, EmptyState, FILTER_TITLE, FiltersPopover, Pagination, RadioList, RowCheckbox, SearchBox, SortButton, type MenuEntry } from "./controls";
-import { ScreenerRowView, isTextColumn } from "./ScreenerRow";
+import { ScreenerRowView } from "./ScreenerRow";
 import type { ScreenerTableState } from "./hooks/useScreenerTable";
 import type { View } from "./nav";
 import { columnById, DEFAULT_COLUMNS, type MarketRecord } from "./marketColumns";
@@ -173,7 +173,6 @@ export function ScreenerTable({
       }),
     [columnOf, columns, extensionEnabled],
   );
-  const isColumnText = (column: (typeof shownColumns)[number]) => (column.source === "scalable" ? column.id === "exchange" : (extension.tableColumns?.isTextColumn?.(column) ?? isTextColumn(column)));
   const usesExtensionData = shownColumns.some((column) => column.source !== "scalable");
   const [widths, setWidths] = useColumnWidths(`screener-${view}`);
   const columnLayout: ColumnLayout = {
@@ -400,26 +399,11 @@ export function ScreenerTable({
                 <RowCheckbox label="Select all rows on this page" checked={pageSelected} indeterminate={!pageSelected && pageSomeSelected} onChange={togglePage} />
               </th>
               <ColumnHead id="symbol" label="Symbol / Name" layout={columnLayout} className={NAME_COLUMN} sortState={activeSortKey === "symbol" ? sortDirection : "none"}>
-                <SortButton start label="Symbol / Name" column="symbol" active={activeSortKey === "symbol"} direction={sortDirection} onSort={toggleSort} />
+                <SortButton label="Symbol / Name" column="symbol" active={activeSortKey === "symbol"} direction={sortDirection} onSort={toggleSort} />
               </ColumnHead>
               {shownColumns.map((column) => (
-                <ColumnHead
-                  key={column.id}
-                  id={column.id}
-                  label={column.label}
-                  layout={columnLayout}
-                  className={isColumnText(column) ? "min-w-[8.6667rem] text-left" : TH_NUM}
-                  sortState={activeSortKey === column.id ? sortDirection : "none"}
-                >
-                  <SortButton
-                    start={isColumnText(column)}
-                    label={column.label}
-                    title={column.hint}
-                    column={column.id}
-                    active={activeSortKey === column.id}
-                    direction={sortDirection}
-                    onSort={toggleSort}
-                  />
+                <ColumnHead key={column.id} id={column.id} label={column.label} layout={columnLayout} className={TH_NUM} sortState={activeSortKey === column.id ? sortDirection : "none"}>
+                  <SortButton label={column.label} title={column.hint} column={column.id} active={activeSortKey === column.id} direction={sortDirection} onSort={toggleSort} />
                 </ColumnHead>
               ))}
               {hasRowActions && (

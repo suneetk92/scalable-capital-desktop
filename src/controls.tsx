@@ -401,7 +401,7 @@ export function SortHeader({
   layout?: ColumnLayout;
 }) {
   const active = sort !== null && sort.key === column;
-  const button = <SortButton label={label} column={column} active={active} direction={sort?.direction ?? "descending"} onSort={onSort} start={!numeric} />;
+  const button = <SortButton label={label} column={column} active={active} direction={sort?.direction ?? "descending"} onSort={onSort} />;
   if (layout) {
     return (
       <ColumnHead id={column} label={label} layout={layout} className={cx(numeric && TH_NUM, className)} sortState={active ? sort.direction : "none"}>
@@ -422,7 +422,6 @@ export function SortButton({
   active,
   direction,
   onSort,
-  start = false,
   title,
 }: {
   label: string;
@@ -431,11 +430,10 @@ export function SortButton({
   active: boolean;
   direction: "ascending" | "descending";
   onSort: (column: string) => void;
-  start?: boolean;
 }) {
   return (
     <button
-      className={cx("inline-flex cursor-pointer items-center gap-[0.3333rem] hover:text-ink-body", start ? "justify-start" : "w-full flex-row-reverse justify-start", active && "text-ink-body")}
+      className={cx("inline-flex cursor-pointer items-center gap-[0.3333rem] hover:text-ink-body", "w-full flex-row-reverse justify-start", active && "text-ink-body")}
       type="button"
       title={title}
       aria-label={`Sort by ${label}`}

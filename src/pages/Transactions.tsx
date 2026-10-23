@@ -404,7 +404,7 @@ export function TransactionsPage({
                                         title={
                                           fields.isin ? (
                                             <button
-                                              className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline"
+                                              className="cursor-pointer text-right hover:text-ink-accent-bright hover:underline"
                                               type="button"
                                               onClick={() => openSecurity(fields)}
                                               title="Open details, chart and news"

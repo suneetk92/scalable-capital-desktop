@@ -82,7 +82,7 @@ export const ScreenerRowView = memo(function ScreenerRowView({
           badge={extension.securityBadge?.(marketRecord, row) ?? null}
           title={
             <button
-              className="cursor-pointer text-left enabled:hover:[&_strong]:text-ink-accent-bright enabled:hover:[&_strong]:underline disabled:cursor-default"
+              className="cursor-pointer text-right enabled:hover:[&_strong]:text-ink-accent-bright enabled:hover:[&_strong]:underline disabled:cursor-default"
               type="button"
               disabled={!row.isin}
               onClick={() => onOpenSecurity(row)}
@@ -98,7 +98,7 @@ export const ScreenerRowView = memo(function ScreenerRowView({
         if (column.source !== "scalable") {
           const cell = formatExtensionCell?.(column, marketRecord, marketCurrency) ?? { text: "—", tone: "" as const };
           return (
-            <td key={column.id} className={cx(isTextColumn(column) ? "text-left" : TD_NUM, TONE_CLASS[cell.tone])}>
+            <td key={column.id} className={cx(isTextColumn(column) ? "text-right" : TD_NUM, TONE_CLASS[cell.tone])}>
               {cell.text}
             </td>
           );

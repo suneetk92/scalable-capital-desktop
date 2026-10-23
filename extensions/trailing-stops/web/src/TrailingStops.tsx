@@ -83,7 +83,7 @@ function Row({
                 initials={stop.name.slice(0, 2).toUpperCase()}
                 logo={logo}
                 title={
-                  <button className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline" type="button" onClick={onOpen} title="Open details, chart and news">
+                  <button className="cursor-pointer text-right hover:text-ink-accent-bright hover:underline" type="button" onClick={onOpen} title="Open details, chart and news">
                     {stop.isin}
                   </button>
                 }

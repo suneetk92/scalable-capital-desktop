@@ -153,7 +153,7 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
                             {row.usage.feature}
                             <div className="text-caption">
                               <button
-                                className={cx(btn.link, "max-w-full truncate text-left hover:underline")}
+                                className={cx(btn.link, "max-w-full truncate text-right hover:underline")}
                                 type="button"
                                 title={`Open ${VIEW_TITLES[row.usage.view as keyof typeof VIEW_TITLES] ?? extension.views?.find((view) => view.id === row.usage?.view)?.title ?? row.usage.view}`}
                                 onClick={() => onSelectView(row.usage!.view)}
