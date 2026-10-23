@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, ChevronRightIcon, MinusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { RowCheckbox } from "./controls";
 import { extension } from "./extensions";
 import type { Cell } from "./marketColumns";
@@ -126,12 +126,7 @@ export const ScreenerRowView = memo(function ScreenerRowView({
           case "change":
             return (
               <td key={column.id} className={cx(TD_NUM, changeTone(row.change))}>
-                {/* The figure gets a fixed minimum width, so the trend icons just before it line up whatever the figure's width. */}
-                <div className="flex items-center justify-end gap-1.5 leading-[1.2] [&_svg]:size-[1.1333rem] [&_svg]:shrink-0">
-                  {row.change !== null &&
-                    (row.change === 0 ? <MinusIcon aria-hidden="true" /> : row.change > 0 ? <ArrowTrendingUpIcon aria-hidden="true" /> : <ArrowTrendingDownIcon aria-hidden="true" />)}
-                  <span className="min-w-[4.2em]">{formatChange(row.change)}</span>
-                </div>
+                {formatChange(row.change)}
               </td>
             );
           case "quantity":
