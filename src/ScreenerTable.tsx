@@ -123,8 +123,9 @@ export function ScreenerTable({
     orderedRows,
     rowsPerPage,
     setPage,
+    setSectionPage,
   } = table;
-  const rowKeys = tableItems.map((item) => (item.kind === "header" ? `group:${item.section.key}` : `row:${item.row.rowId}`));
+  const rowKeys = tableItems.map((item) => (item.kind === "header" ? `group:${item.section.key}` : item.kind === "pager" ? `pager:${item.section.key}` : `row:${item.row.rowId}`));
   const { bodyRef, window: rowWindow } = useRowWindow(rowKeys, tableScroll);
   const latestHandlers = useRef({ toggleRow, onOpenSecurity, onOpenOrder, toolActions });
   latestHandlers.current = { toggleRow, onOpenSecurity, onOpenOrder, toolActions };
@@ -185,7 +186,7 @@ export function ScreenerTable({
     if (tableSections.length === 0 || event.pointerType === "touch") return;
     const element = event.target as HTMLElement;
     const item = tableItems[Number(element.closest<HTMLElement>("tr[data-index]")?.dataset.index ?? -1)];
-    if (!item) return;
+    if (!item || item.kind === "pager") return;
     if (item.kind === "header") {
       if (canReorder && groupKeys.includes(item.section.key)) startDrag(event, { kind: "section", key: item.section.key, label: item.section.title });
       return;
@@ -419,6 +420,15 @@ export function ScreenerTable({
                           </span>
                         )}
                       </button>
+                    </td>
+                  </tr>
+                );
+              }
+              if (item.kind === "pager") {
+                return (
+                  <tr key={`pager-${item.section.key}`} className="bg-surface!" data-index={index} aria-rowindex={index + 2}>
+                    <td className="h-auto! p-0!" colSpan={columnCount}>
+                      <Pagination page={item.page} pageCount={item.pageCount} total={item.section.rows.length} pageSize={item.size} onPage={(next) => setSectionPage(item.section.key, next)} />
                     </td>
                   </tr>
                 );

@@ -4,6 +4,7 @@ import { UNGROUPED_ID, type SecurityGroup } from "../groups";
 import type { View } from "../nav";
 import { columnById, marketSortValue, type MarketRecord } from "../marketColumns";
 import { extension } from "../extensions";
+import { paginate } from "../paging";
 import { groupHas, type ChangeFilter, type ScreenerRow, type SortKey } from "../screener";
 
 type RowSortKey = "symbol" | "exchange" | "lastPrice" | "change" | "quantity" | "value" | "avgPrice" | "cost" | "sinceBuy" | "sinceBuyPct" | "weight" | "today" | "bid" | "ask" | "spreadPct";
@@ -54,6 +55,7 @@ export function useScreenerTable({
   pageSize: number;
 }) {
   const [page, setPage] = useState(1);
+  const [sectionPages, setSectionPages] = useState<Record<string, number>>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const tableScroll = useRef<HTMLDivElement>(null);
   const [groupFilter, setGroupFilter] = useState("all");
@@ -121,28 +123,44 @@ export function useScreenerTable({
     return sections;
   }, [groupRows, groups, inRealGroup, view, visibleRows]);
 
-  // Rows in display order (grouped sections first), cut into pages.
+  // Rows in display order (grouped sections first). Without groups the whole list is cut into pages; with groups every group has its own pages.
   const orderedRows = useMemo(() => (tableSections.length > 0 ? tableSections.flatMap((section) => section.rows) : visibleRows), [tableSections, visibleRows]);
+  const grouped = tableSections.length > 0;
   const rowsPerPage = pageSize > 0 ? pageSize : Math.max(orderedRows.length, 1);
-  const pageCount = Math.max(1, Math.ceil(orderedRows.length / rowsPerPage));
+  const pageCount = grouped ? 1 : Math.max(1, Math.ceil(orderedRows.length / rowsPerPage));
   const currentPage = Math.min(page, pageCount);
-  const pagedRows = useMemo(() => orderedRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage), [currentPage, orderedRows, rowsPerPage]);
+  const sectionPaging = useMemo(
+    () => new Map(tableSections.map((section) => [section.key, paginate(section.rows, sectionPages[section.key] ?? 1, pageSize)])),
+    [pageSize, sectionPages, tableSections],
+  );
+  const pagedRows = useMemo(
+    () => (grouped ? tableSections.flatMap((section) => sectionPaging.get(section.key)?.rows ?? []) : orderedRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)),
+    [currentPage, grouped, orderedRows, rowsPerPage, sectionPaging, tableSections],
+  );
 
   const tableItems = useMemo(() => {
-    if (tableSections.length === 0) return pagedRows.map((row) => ({ kind: "row" as const, row, sectionKey: undefined as string | undefined }));
-    const onPage = new Set(pagedRows.map((row) => row.rowId));
+    if (!grouped) return pagedRows.map((row) => ({ kind: "row" as const, row, sectionKey: undefined as string | undefined }));
     return tableSections.flatMap((section) => {
-      const rows = section.rows.filter((row) => onPage.has(row.rowId));
-      if (rows.length === 0) return [];
-      return [{ kind: "header" as const, section }, ...(collapsedGroups.has(section.key) ? [] : rows.map((row) => ({ kind: "row" as const, row, sectionKey: section.key })))];
+      const paging = sectionPaging.get(section.key);
+      const rows = paging?.rows ?? [];
+      const body = collapsedGroups.has(section.key) ? [] : rows.map((row) => ({ kind: "row" as const, row, sectionKey: section.key as string | undefined }));
+      const pager = paging && paging.pageCount > 1 && !collapsedGroups.has(section.key) ? [{ kind: "pager" as const, section, ...paging }] : [];
+      return [{ kind: "header" as const, section }, ...body, ...pager];
     });
-  }, [collapsedGroups, pagedRows, tableSections]);
+  }, [collapsedGroups, grouped, pagedRows, sectionPaging, tableSections]);
+
+  function setSectionPage(key: string, next: number) {
+    setSectionPages((current) => ({ ...current, [key]: next }));
+  }
 
   const selectedRows = useMemo(() => visibleRows.filter((row) => selected.has(row.rowId)), [selected, visibleRows]);
   const pageSelected = pagedRows.length > 0 && pagedRows.every((row) => selected.has(row.rowId));
   const pageSomeSelected = pagedRows.some((row) => selected.has(row.rowId));
 
-  useEffect(() => setPage(1), [view, query, changeFilter, heldOnly, groupFilter, groupRows, pageSize]);
+  useEffect(() => {
+    setPage(1);
+    setSectionPages({});
+  }, [view, query, changeFilter, heldOnly, groupFilter, groupRows, pageSize]);
   useEffect(() => setRowSelection({}), [view]);
 
   const activeFilters = (changeFilter !== "all" ? 1 : 0) + (view === "watchlist" && heldOnly ? 1 : 0) + (activeGroup ? 1 : 0);
@@ -186,6 +204,7 @@ export function useScreenerTable({
   return {
     page,
     setPage,
+    setSectionPage,
     selected,
     setSelected,
     tableScroll,
