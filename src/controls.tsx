@@ -639,7 +639,6 @@ export function RefreshButton({
       title={auto ? `Reload now. Data refreshes by itself every ${label}; the bar drains to empty when the next reload happens. Change this in Settings.` : "Reload the current data now."}
     >
       <ArrowPathIcon aria-hidden="true" className={busy ? SPIN : ""} /> Refresh
-      {auto && <span className="font-normal opacity-80">· every {label}</span>}
       {auto && lastLoadedAt !== null && !busy && (
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-heading/10">
           <span className="block h-full bg-accent transition-[width] duration-1000 ease-linear" style={{ width: `${(1 - share) * 100}%` }} />
