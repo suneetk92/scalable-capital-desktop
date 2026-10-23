@@ -8,6 +8,25 @@ const outputSchemas: Record<string, Schema | undefined> = Object.fromEntries(
 
 const ISINS = ["DE0007030009", "DE0007100000", "US0378331005", "US5949181045", "IE00B4L5Y983"];
 
+const NAMES = ["Rheinmetall", "Mercedes-Benz Group", "Apple", "Microsoft", "iShares Core MSCI World"];
+const BY_KEY: [RegExp, (index: number) => string][] = [
+  [/isin/i, (i) => ISINS[i % ISINS.length]],
+  [/timestamp|date|at$/i, (i) => `2026-01-0${i + 2}T09:30:00Z`],
+  [/currency/i, () => "EUR"],
+  [/^(side|direction)$/i, (i) => ["BUY", "SELL"][i % 2]],
+  [/^status$/i, (i) => ["EXECUTED", "PENDING"][i % 2]],
+  [/transactiontype/i, (i) => ["SECURITY_TRANSACTION", "SAVINGS_PLAN_EXECUTION"][i % 2]],
+  [/frequency/i, () => "MONTHLY"],
+  [/amount|price|quantity|valuation|performance|return|rate/i, (i) => String(250 + i * 125)],
+  [/ticker/i, (i) => ["RHM", "MBG", "AAPL", "MSFT", "IWDA"][i % 5]],
+  [/name/i, (i) => NAMES[i % NAMES.length]],
+];
+
+function text(key: string, format: string | undefined, index: number): string {
+  if (format === "date-time") return `2026-01-0${index + 2}T09:30:00Z`;
+  return (BY_KEY.find(([pattern]) => pattern.test(key))?.[1] ?? ((i) => `${key || "text"} ${i + 1}`))(index);
+}
+
 /** A value that satisfies `schema`, picking the first non-null variant; arrays get two items. Deterministic, so tests are stable. */
 export function generate(schema: Schema | undefined, key = "", index = 0): unknown {
   if (!schema) return null;
@@ -26,10 +45,7 @@ export function generate(schema: Schema | undefined, key = "", index = 0): unkno
     case "boolean":
       return false;
     case "string":
-      if (/isin/i.test(key)) return ISINS[index % ISINS.length];
-      if (schema.format === "date-time" || /timestamp|at$/i.test(key)) return "2026-01-02T09:30:00Z";
-      if (/currency/i.test(key)) return "EUR";
-      return `${key || "text"} ${index + 1}`;
+      return text(key, schema.format, index);
     default:
       return null;
   }

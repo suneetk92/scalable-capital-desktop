@@ -12,7 +12,17 @@ test("every page renders with schema-generated data and no errors", async ({ pag
   for (const name of PAGES) {
     await page.getByRole("link", { name: new RegExp(`^${name}`) }).or(page.getByRole("button", { name: new RegExp(`^${name}`) })).first().click();
     await expect(page.getByRole("heading", { name }).first()).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(page.getByRole("status", { name: "Loading page…" })).toHaveCount(0, { timeout: 20_000 });
+    await page.waitForTimeout(300);
+    // The app scrolls inside its own container, so grow the window by what is hidden to capture the whole page.
+    const hidden = await page.evaluate(() =>
+      Math.max(0, ...[...document.querySelectorAll<HTMLElement>("*")].filter((el) => /auto|scroll/.test(getComputedStyle(el).overflowY)).map((el) => el.scrollHeight - el.clientHeight)),
+    );
+    await page.setViewportSize({ width: 1600, height: 900 + hidden });
+    await page.waitForTimeout(300);
     await page.screenshot({ path: `e2e/output/page-${name.toLowerCase().replace(/ /g, "-")}.png` });
+    await page.setViewportSize({ width: 1600, height: 900 });
   }
   expect(errors).toEqual([]);
 });
