@@ -130,7 +130,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
 - **Scalable tools** (Settings, Scalable tools): every MCP tool the connection offers. A tool name is green when the app uses it and red when it does not, and a link jumps to the page that uses it. The table also shows
   how often this window called them (split into pages by the "Rows per page" setting), a connection test (`ping`), a **Schema** button and a Run button that builds a form
   from the tool's own input schema. Schema fetches the tool list from Scalable when you open it (nothing is stored in the app) and shows the arguments, the input schema and the output schema, with a Reload button. Tools that change data ask for confirmation and require the Trading switch.
-- **Page shortcuts**: Settings > Keyboard and about > Keyboard shortcuts has "Add a shortcut to open a page": choose a page from the list, then press the keys. The
+- **Page shortcuts**: Settings > Keyboard has "Add a shortcut to open a page": choose a page from the list, then press the keys. The
   app refuses a combination that a built-in shortcut, the window or another page already uses.
 - **Command palette** (Ctrl+P): jump to a page, run common actions or open a security by name.
 - **Settings** (Ctrl+,): theme (dark, light, system), font size and family, table density,
@@ -150,7 +150,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   leaves Rust.
 - **Updates**: on launch the app asks this repository's GitHub Releases once whether a newer signed version
   exists (installed copies only, never in `tauri dev`). A dismissible notice offers **Install and restart**;
-  Settings, Keyboard and about has a **Check for updates** button and the "Check for updates on launch" switch.
+  Settings > About has a **Check for updates** button and the "Check for updates on launch" switch.
   The app offers stable releases only. **Reinstall** next to it downloads the current release again and installs it
   over the running one, also when the version number is the same (for example after a release was uploaded again).
   See "Updates and signing" below.
@@ -368,7 +368,7 @@ non-read tool, including unknown tools, until Trading is on.
 
 The app keeps a small log to help with bug reports. It is a JSON-lines file,
 `scalable-capital-desktop.log`, in the app log folder (on Windows under
-`%LOCALAPPDATA%\com.sk.scalable-capital-desktop\logs`; Settings > Keyboard and about > Diagnostics >
+`%LOCALAPPDATA%\com.sk.scalable-capital-desktop\logs`; Settings > Data and refresh > Diagnostics >
 "Open log folder" opens it). It rotates at 1 MB and keeps three files. It records the start-up, the result of
 a sign-in, the category of a failed tool call, session set-up, update check or background option, and panics
 (message and source location). It never records tool arguments, response bodies, tokens or account data, and
@@ -540,8 +540,8 @@ Installed apps update from this repository's GitHub Releases. Rust makes the req
   hidden. The Rust comparator accepts only strictly newer versions and rejects pre-releases on Stable, so a
   `-rc` release is never offered as an update.
 - **Privacy.** The update check is the one request that does not go to Scalable. It sends no account
-  data, only what any download sends (such as your IP address). Switch it off in Settings, Keyboard and
-  about; the **Check for updates** button still works.
+  data, only what any download sends (such as your IP address). Switch it off in Settings, About;
+  the **Check for updates** button still works.
 - **Maintainer setup, once.** The public half of the updater key is already in `plugins.updater.pubkey` in
   `src-tauri/tauri.conf.json` (the release fails early if it is empty or a placeholder); the endpoint must
   stay the GitHub Releases `latest.json` URL above. Add the matching private key and its

@@ -1,5 +1,5 @@
 import { Description, Field, Input, Label, Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
-import { ArrowPathIcon, BellAlertIcon, ClockIcon, InformationCircleIcon, PaintBrushIcon, ShieldCheckIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, BellAlertIcon, ClockIcon, CommandLineIcon, InformationCircleIcon, PaintBrushIcon, ShieldCheckIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useState, type ReactNode } from "react";
 import { clearHistories, storedCount } from "./activityCache";
@@ -164,7 +164,8 @@ const SECTIONS = [
   { id: "session", label: "Session", icon: ClockIcon },
   { id: "trading", label: "Trading", icon: ShieldCheckIcon },
   { id: "tools", label: "Scalable tools", icon: WrenchScrewdriverIcon },
-  { id: "about", label: "Keyboard and about", icon: InformationCircleIcon },
+  { id: "keyboard", label: "Keyboard", icon: CommandLineIcon },
+  { id: "about", label: "About", icon: InformationCircleIcon },
 ] as const;
 
 /** One labelled setting: label and hint on the left, the control on the right (Headless UI Field wires the label). */
@@ -420,6 +421,7 @@ export function SettingsPage({
               <pre className="my-4 max-h-96 overflow-auto rounded-control bg-inset p-3 break-words whitespace-pre-wrap select-text">{diagnostics}</pre>
             </SectionCard>
           )}
+          {isTauri() && <DiagnosticsCard updateChannel={settings.updateChannel} onCopyText={onCopyText} />}
         </TabPanel>
 
         <TabPanel className={PANEL_NARROW}>
@@ -514,6 +516,9 @@ export function SettingsPage({
             </dl>
             <p className="text-ink-muted">A shortcut needs Ctrl or Alt. One the app, the window or another page already uses is refused.</p>
           </SectionCard>
+        </TabPanel>
+
+        <TabPanel className={PANEL_NARROW}>
           <SectionCard title="About">
             <Row label="Check for updates" hint={statusMessage(updater.state) || "Looks for a newer signed version"}>
               <div className="flex shrink-0 items-center gap-2">
@@ -600,7 +605,6 @@ export function SettingsPage({
               </dl>
             </SectionCard>
           )}
-          {isTauri() && <DiagnosticsCard updateChannel={settings.updateChannel} onCopyText={onCopyText} />}
         </TabPanel>
       </TabPanels>
     </TabGroup>
