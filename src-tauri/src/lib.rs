@@ -2,6 +2,7 @@ mod auth;
 mod background;
 mod diagnostics;
 mod files;
+mod links;
 mod logging;
 mod mcp;
 mod notify;
@@ -80,6 +81,7 @@ pub fn run() {
                 "app",
                 &format!("started version {}", env!("CARGO_PKG_VERSION")),
             );
+            links::create_main_window(app)?;
             notify::register_app_id(app.handle());
             extensions::setup(app.handle());
             Ok(background::setup(app.handle())?)

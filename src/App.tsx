@@ -4,7 +4,7 @@ import { MobileNav, Sidebar } from "./Sidebar";
 import { SignInScreen } from "./SignIn";
 import { TopBar } from "./TopBar";
 import { UpdateNotice } from "./UpdateNotice";
-import { Alert, field } from "./ui";
+import { Alert, ConfirmDialog, field } from "./ui";
 import { VIEW_DESCRIPTIONS, VIEW_TITLES, type NavCounts } from "./nav";
 import { extension } from "./extensions";
 import { initialsOf } from "./profile";
@@ -15,11 +15,13 @@ import { AccountHeader, pageActions } from "./app/Header";
 import { AppProvider } from "./app/AppContext";
 import { useAppCommands } from "./app/useAppCommands";
 import { useAppData } from "./app/useAppData";
+import { useExternalLink } from "./hooks/useExternalLink";
 import "./index.css";
 
 function App() {
   const data = useAppData();
   const commands = useAppCommands(data);
+  const externalLink = useExternalLink((text) => data.toolActions.notify({ kind: "error", text }));
   const {
     dashboard,
     loading,
@@ -136,6 +138,15 @@ function App() {
           </div>
         </section>
         <GlobalDialogs />
+        {externalLink.url && (
+          <ConfirmDialog
+            title="Open link in your browser?"
+            text={`This opens ${externalLink.url} in your default browser, outside Scalable Capital Desktop. Only continue if you trust the site.`}
+            confirmLabel="Open link"
+            onConfirm={externalLink.confirm}
+            onCancel={externalLink.cancel}
+          />
+        )}
       </main>
     </AppProvider>
   );

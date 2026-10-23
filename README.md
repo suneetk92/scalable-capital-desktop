@@ -233,6 +233,7 @@ src/                 React frontend (TypeScript, Tailwind-only styling)
 src-tauri/           Rust backend
   src/auth.rs        OAuth, token storage in the keyring, session info
   src/mcp/           MCP client, session pool, dashboard loading, trading gate (`trading.rs`), savings plans, input-schema argument validation and preview state; `response.rs` has the shared readers for tool answers (records, strings, numbers, tool names; tested)
+  src/links.rs       builds the main window with a new-window handler: links a widget tries to open in a new window are sent to the page, which asks before opening them in your browser
   src/notify.rs      `show_notification`: desktop notices (the webview cannot use the notification plugin itself); registers the Windows app ID
   src/background.rs  tray icon, close to the tray, start with Windows (`get_background`, `set_background`; the webview cannot use the autostart plugin itself)
   src/updates.rs     `check_for_update` and `install_update`: signed updates through the updater plugin (the webview cannot use the plugin itself)
@@ -394,12 +395,12 @@ without notice.
 **Access levels.** You choose one level in your Scalable account. It applies to every connected AI
 assistant, app and portfolio. If tools are missing after you change it, sign out and in again here.
 
-| Level | What Scalable allows | What works in this app |
-| --- | --- | --- |
-| No access | The MCP server cannot be used. | MCP cannot be used; no account data can be loaded through it. |
-| Read-only | Reading account, portfolio, market data and similar information. | Portfolio, overview, discover, transactions and other read screens. Watchlist, price alert, group and order actions are missing. |
-| Limited access | Read-only plus managing watchlists, price alerts and portfolio groups. | Everything in Read-only plus watchlist, price alert and group actions. Savings-plan and order actions are missing. |
-| Full access | Everything, including savings-plan changes and buy and sell orders. | Everything above. Order and savings-plan changes also need the Trading switch. |
+| Level          | What Scalable allows                                                   | What works in this app                                                                                                           |
+| -------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| No access      | The MCP server cannot be used.                                         | MCP cannot be used; no account data can be loaded through it.                                                                    |
+| Read-only      | Reading account, portfolio, market data and similar information.       | Portfolio, overview, discover, transactions and other read screens. Watchlist, price alert, group and order actions are missing. |
+| Limited access | Read-only plus managing watchlists, price alerts and portfolio groups. | Everything in Read-only plus watchlist, price alert and group actions. Savings-plan and order actions are missing.               |
+| Full access    | Everything, including savings-plan changes and buy and sell orders.    | Everything above. Order and savings-plan changes also need the Trading switch.                                                   |
 
 What the level allows is decided by Scalable. Settings, Scalable tools always shows the tools your
 connection really offers.
@@ -503,11 +504,11 @@ cp $T/bundle/nsis/scalable-capital-desktop_1.0.0_x64-setup.exe release/
 
 ### CI and tagged releases
 
-| Workflow | Runs on | What it does |
-| --- | --- | --- |
-| `ci.yml` | pushes to `main`, pull requests | Frontend checks, Rust checks, npm/Cargo dependency audits, then installer builds. |
-| `build.yml` | called by the two others | Builds installers on five targets and uploads them as artifacts (14 days). With `sign: true` it also makes the signed updater files (`.sig`). |
-| `release.yml` | tags like `v0.1.0` | Checks the tag looks like `vX.Y.Z` and that the updater public key and endpoint are set, writes the tag's version into `tauri.conf.json`, `Cargo.toml` and `package.json` (`scripts/set-version.mjs`), builds every target with signing, and publishes all the installers, their `.sig` files, `SHA256SUMS.txt` and `latest.json` to this repository's GitHub Releases with `scripts/publish-github-release.sh`. The publish job runs in the `release` environment (add a required reviewer there to approve each release) and uses the built-in `GITHUB_TOKEN` with `contents: write`. |
+| Workflow      | Runs on                         | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`      | pushes to `main`, pull requests | Frontend checks, Rust checks, npm/Cargo dependency audits, then installer builds.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `build.yml`   | called by the two others        | Builds installers on five targets and uploads them as artifacts (14 days). With `sign: true` it also makes the signed updater files (`.sig`).                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `release.yml` | tags like `v0.1.0`              | Checks the tag looks like `vX.Y.Z` and that the updater public key and endpoint are set, writes the tag's version into `tauri.conf.json`, `Cargo.toml` and `package.json` (`scripts/set-version.mjs`), builds every target with signing, and publishes all the installers, their `.sig` files, `SHA256SUMS.txt` and `latest.json` to this repository's GitHub Releases with `scripts/publish-github-release.sh`. The publish job runs in the `release` environment (add a required reviewer there to approve each release) and uses the built-in `GITHUB_TOKEN` with `contents: write`. |
 
 Targets the CI workflows can build: Windows x64 (NSIS installer, MSI and portable exe), macOS Apple
 Silicon and Intel (dmg and the `.app.tar.gz` the updater needs), Linux x64 and arm64 (deb, rpm,
