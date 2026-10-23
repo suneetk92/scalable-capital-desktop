@@ -241,7 +241,7 @@ export function RecordTable({
               {order.map((id) => {
                 const column = columns.find((item) => item.path === id);
                 return column ? (
-                  <SortHeader key={id} layout={layout} label={column.label} column={id} sort={sort} onSort={sortColumn} />
+                  <SortHeader key={id} layout={layout} label={column.label} iconAfter={isSecurityName(column.path)} column={id} sort={sort} onSort={sortColumn} />
                 ) : (
                   <ColumnHead key={id} id={id} label="Actions" layout={layout} className={TH_NUM}>
                     Actions

@@ -388,6 +388,7 @@ export function SortHeader({
   sort,
   onSort,
   numeric = false,
+  iconAfter = false,
   className,
   layout,
 }: {
@@ -396,12 +397,13 @@ export function SortHeader({
   sort: SortState;
   onSort: (column: string) => void;
   numeric?: boolean;
+  iconAfter?: boolean;
   className?: string;
   /** Makes the column movable and resizable. */
   layout?: ColumnLayout;
 }) {
   const active = sort !== null && sort.key === column;
-  const button = <SortButton label={label} column={column} active={active} direction={sort?.direction ?? "descending"} onSort={onSort} />;
+  const button = <SortButton label={label} column={column} active={active} direction={sort?.direction ?? "descending"} onSort={onSort} iconAfter={iconAfter} />;
   if (layout) {
     return (
       <ColumnHead id={column} label={label} layout={layout} className={cx(numeric && TH_NUM, className)} sortState={active ? sort.direction : "none"}>
@@ -422,6 +424,7 @@ export function SortButton({
   active,
   direction,
   onSort,
+  iconAfter = false,
   title,
 }: {
   label: string;
@@ -430,10 +433,16 @@ export function SortButton({
   active: boolean;
   direction: "ascending" | "descending";
   onSort: (column: string) => void;
+  /** Puts the arrow after the label instead of before it. */
+  iconAfter?: boolean;
 }) {
   return (
     <button
-      className={cx("inline-flex cursor-pointer items-center gap-[0.3333rem] hover:text-ink-body", "w-full flex-row-reverse justify-start", active && "text-ink-body")}
+      className={cx(
+        "inline-flex cursor-pointer items-center gap-[0.3333rem] hover:text-ink-body",
+        iconAfter ? "w-full justify-end" : "w-full flex-row-reverse justify-start",
+        active && "text-ink-body",
+      )}
       type="button"
       title={title}
       aria-label={`Sort by ${label}`}

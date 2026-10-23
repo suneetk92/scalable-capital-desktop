@@ -126,10 +126,10 @@ const optionsOf = (values: (string | undefined)[], current: string, all: string)
 ];
 
 const COLUMNS = ["when", "kind", "name", "status", "quantity", "limit", "amount", "actions"];
-const HEADS: Record<string, { label: string; numeric?: boolean; className?: string }> = {
+const HEADS: Record<string, { label: string; numeric?: boolean; iconAfter?: boolean; className?: string }> = {
   when: { label: "Date" },
   kind: { label: "Type" },
-  name: { label: "Symbol / Name", className: NAME_COLUMN },
+  name: { label: "Symbol / Name", iconAfter: true, className: NAME_COLUMN },
   status: { label: "Status" },
   quantity: { label: "Quantity", numeric: true },
   limit: { label: "Limit price", numeric: true },

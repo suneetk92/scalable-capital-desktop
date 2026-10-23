@@ -399,7 +399,7 @@ export function ScreenerTable({
                 <RowCheckbox label="Select all rows on this page" checked={pageSelected} indeterminate={!pageSelected && pageSomeSelected} onChange={togglePage} />
               </th>
               <ColumnHead id="symbol" label="Symbol / Name" layout={columnLayout} className={NAME_COLUMN} sortState={activeSortKey === "symbol" ? sortDirection : "none"}>
-                <SortButton label="Symbol / Name" column="symbol" active={activeSortKey === "symbol"} direction={sortDirection} onSort={toggleSort} />
+                <SortButton iconAfter label="Symbol / Name" column="symbol" active={activeSortKey === "symbol"} direction={sortDirection} onSort={toggleSort} />
               </ColumnHead>
               {shownColumns.map((column) => (
                 <ColumnHead key={column.id} id={column.id} label={column.label} layout={columnLayout} className={TH_NUM} sortState={activeSortKey === column.id ? sortDirection : "none"}>
