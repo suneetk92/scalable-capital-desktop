@@ -73,6 +73,31 @@ export function JsonView({ value, label = "Raw data" }: { value: unknown; label?
   );
 }
 
+function JsonBlock({ label, value }: { label: string; value: unknown }) {
+  const [copied, setCopied] = useState(false);
+  const text = pretty(value);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between gap-2 text-ink-muted">
+        <span>{label}</span>
+        <button className={btn.secondary} type="button" onClick={() => void copy()}>
+          {copied ? "Copied" : "Copy as JSON"}
+        </button>
+      </div>
+      <pre className="mt-2 max-h-[17.3333rem] overflow-auto rounded-control bg-inset p-2.5 break-words whitespace-pre-wrap text-ink-muted select-text">{text}</pre>
+    </div>
+  );
+}
+
 /** Flat "label: value" list of everything simple inside a result. */
 export function KeyValues({ value, limit = 14 }: { value: unknown; limit?: number }) {
   const parsed = parseMaybeJson(value);
@@ -452,6 +477,7 @@ export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolio
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<ToolOutcome | null>(null);
+  const [request, setRequest] = useState<Rec | null>(null);
   const write = isWriteTool(tool.name);
   const dialogOnly = DIALOG_ONLY_TOOLS[tool.name];
   const blocked = isTradingTool(tool.name) && !tradingEnabled;
@@ -465,6 +491,7 @@ export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolio
     }
     setBusy(true);
     setError(null);
+    setRequest({ name: tool.name, arguments: built.args });
     try {
       const [result] = await callTools(invoke, [{ name: tool.name, arguments: built.args }]);
       setOutcome(result ?? null);
@@ -500,10 +527,11 @@ export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolio
           {busy ? action.busy : (runLabel ?? action.label)}
         </button>
       </DialogFooter>
-      {outcome?.ok && (
+      {outcome && (
         <div className="mt-3.5 border-t border-line pt-3">
-          {renderResult ? renderResult(outcome.result) : <KeyValues value={outcome.result} limit={20} />}
-          <JsonView value={outcome.result} />
+          {outcome.ok && (renderResult ? renderResult(outcome.result) : <KeyValues value={outcome.result} limit={20} />)}
+          {request && <JsonBlock label="Request" value={request} />}
+          <JsonBlock label="Response" value={outcome.ok ? outcome.result : { error: outcome.error }} />
         </div>
       )}
     </div>
