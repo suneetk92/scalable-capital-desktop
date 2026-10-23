@@ -75,50 +75,85 @@ const SHORTCUTS: [string, string][] = [
   ["Esc", "Close the open menu, dialog or panel"],
 ];
 
-function ShortcutRow({ id, label }: { id: string; label: string }) {
-  const combo = useShortcuts()[id];
+function CustomShortcuts() {
+  const shortcuts = useShortcuts();
+  const pages: [string, string][] = [
+    ...Object.entries(NAV_ITEMS)
+      .filter(([id]) => id !== "settings")
+      .map(([id, item]): [string, string] => [id, item.label]),
+    ...(extension.views ?? []).map((item): [string, string] => [item.id, item.label]),
+  ];
+  const labelOf = (id: string) => pages.find(([page]) => page === id)?.[1] ?? id;
+  const [page, setPage] = useState("");
   const [recording, setRecording] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const free = pages.filter(([id]) => !(id in shortcuts));
   return (
-    <div className="py-3">
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-ink-body">Open {label}</span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className={btn.secondary}
-            aria-label={`Shortcut to open ${label}`}
-            onClick={() => {
-              setRecording(true);
-              setProblem(null);
-            }}
-            onBlur={() => setRecording(false)}
-            onKeyDown={(event) => {
-              if (!recording) return;
-              event.preventDefault();
-              event.stopPropagation();
-              if (event.key === "Escape") return setRecording(false);
-              if (event.key === "Backspace" || event.key === "Delete") {
-                setShortcut(id, null);
-                return setRecording(false);
-              }
-              const next = comboOf(event.nativeEvent);
-              if (!next) return;
-              const refused = setShortcut(id, next);
-              setProblem(refused);
-              if (!refused) setRecording(false);
-            }}
-          >
-            {recording ? "Press keys, Backspace clears" : (combo ?? "Not set")}
-          </button>
+    <>
+      {Object.entries(shortcuts).map(([id, combo]) => (
+        <div key={id} className="flex items-center justify-between gap-4 py-3">
+          <dt className="text-ink-body">Open {labelOf(id)}</dt>
+          <dd className="flex items-center gap-2">
+            <kbd className="rounded border border-line-strong bg-raised px-1.5 py-0.5 text-ink-strong whitespace-pre">{combo}</kbd>
+            <button type="button" className={btn.secondary} aria-label={`Remove the shortcut to open ${labelOf(id)}`} onClick={() => setShortcut(id, null)}>
+              Remove
+            </button>
+          </dd>
         </div>
-      </div>
-      {problem && (
-        <p role="alert" className="mt-1.5 text-right text-danger-ink">
-          {problem}
-        </p>
+      ))}
+      {free.length > 0 && (
+        <div className="py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-ink-body">Add a shortcut to open a page</span>
+            <div className="flex items-center gap-2">
+              <Select
+                size="compact"
+                label="Page to open"
+                placeholder="Choose a page"
+                value={free.some(([id]) => id === page) ? page : ""}
+                onChange={(next: string) => {
+                  setPage(next);
+                  setProblem(null);
+                }}
+                options={free.map(([id, label]) => ({ value: id, label }))}
+              />
+              <button
+                type="button"
+                className={btn.secondary}
+                aria-label="Keys for the shortcut"
+                onClick={() => {
+                  setRecording(true);
+                  setProblem(page ? null : "Choose a page first.");
+                }}
+                onBlur={() => setRecording(false)}
+                onKeyDown={(event) => {
+                  if (!recording) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (event.key === "Escape") return setRecording(false);
+                  const combo = comboOf(event.nativeEvent);
+                  if (!combo) return;
+                  if (!page) return setProblem("Choose a page first.");
+                  const refused = setShortcut(page, combo);
+                  setProblem(refused);
+                  if (!refused) {
+                    setPage("");
+                    setRecording(false);
+                  }
+                }}
+              >
+                {recording ? "Press the keys…" : "Set keys"}
+              </button>
+            </div>
+          </div>
+          {problem && (
+            <p role="alert" className="mt-1.5 text-right text-danger-ink">
+              {problem}
+            </p>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -475,20 +510,9 @@ export function SettingsPage({
                   </dd>
                 </div>
               ))}
+              <CustomShortcuts />
             </dl>
-          </SectionCard>
-          <SectionCard title="Open a page with a keyboard shortcut">
-            <p className="mb-1 text-ink-muted">Select a button and press the keys. A combination that is already used by the app, the window or another page is refused.</p>
-            <div className="divide-y divide-line">
-              {[
-                ...Object.entries(NAV_ITEMS)
-                  .filter(([id]) => id !== "settings")
-                  .map(([id, item]) => [id, item.label]),
-                ...(extension.views ?? []).map((item) => [item.id, item.label]),
-              ].map(([id, label]) => (
-                <ShortcutRow key={id} id={id} label={label} />
-              ))}
-            </div>
+            <p className="text-ink-muted">A shortcut needs Ctrl or Alt. One the app, the window or another page already uses is refused.</p>
           </SectionCard>
           <SectionCard title="About">
             <Row label="Check for updates" hint={statusMessage(updater.state) || "Looks for a newer signed version"}>

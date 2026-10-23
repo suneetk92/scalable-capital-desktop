@@ -130,7 +130,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
 - **Scalable tools** (Settings, Scalable tools): every MCP tool the connection offers. A tool name is green when the app uses it and red when it does not, and a link jumps to the page that uses it. The table also shows
   how often this window called them (split into pages by the "Rows per page" setting), a connection test (`ping`), a **Schema** button and a Run button that builds a form
   from the tool's own input schema. Schema fetches the tool list from Scalable when you open it (nothing is stored in the app) and shows the arguments, the input schema and the output schema, with a Reload button. Tools that change data ask for confirmation and require the Trading switch.
-- **Page shortcuts**: Settings > Keyboard and about lets you assign a Ctrl or Alt shortcut to open any page. The
+- **Page shortcuts**: Settings > Keyboard and about > Keyboard shortcuts has "Add a shortcut to open a page": choose a page from the list, then press the keys. The
   app refuses a combination that a built-in shortcut, the window or another page already uses.
 - **Command palette** (Ctrl+P): jump to a page, run common actions or open a security by name.
 - **Settings** (Ctrl+,): theme (dark, light, system), font size and family, table density,
