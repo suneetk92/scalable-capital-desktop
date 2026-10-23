@@ -1,5 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
@@ -11,6 +12,32 @@ const host = process.env.TAURI_DEV_HOST;
 
 type ExtensionConfig = { plugins?: PluginOption[]; test?: { include?: string[]; setupFiles?: string[] } };
 type ExtensionBuild = { entries: string[]; plugins: PluginOption[]; include: string[]; setupFiles: string[] };
+
+/** The highest plain `X.Y.Z` tag of an extension that is its own git repository, or undefined. */
+function taggedVersion(dir: string): string | undefined {
+  if (!existsSync(resolve(dir, ".git"))) return undefined;
+  try {
+    const tags = execFileSync("git", ["tag", "--list", "[0-9]*.[0-9]*.[0-9]*", "--sort=-v:refname"], { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    return tags.split("\n").find((tag) => /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(tag));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Shows the version of an extension's latest tag instead of the one in its `extension.json`, when it has tags. */
+function extensionVersion(dir: string): Plugin {
+  const manifest = resolve(dir, "extension.json").replaceAll("\\", "/");
+  return {
+    name: "extension-version",
+    enforce: "pre",
+    load(id) {
+      if (id.replaceAll("\\", "/") !== manifest) return undefined;
+      const version = taggedVersion(dir);
+      const json = JSON.parse(readFileSync(manifest, "utf8")) as { version?: string };
+      return version ? JSON.stringify({ ...json, version }) : undefined;
+    },
+  };
+}
 
 /**
  * The extensions of the build: the ones listed in `bundled-extensions.json`, which ship with the app, and with
@@ -27,6 +54,7 @@ async function extensionBuild(mode: string): Promise<ExtensionBuild> {
     const entry = resolve(dir, "web/index.ts");
     if (!existsSync(entry)) throw new Error(`No extension at ${entry}.`);
     build.entries.push(entry);
+    build.plugins.push(extensionVersion(dir));
     const file = resolve(dir, "vite.mjs");
     const config = existsSync(file) ? ((await import(pathToFileURL(file).href)) as { default: ExtensionConfig }).default : {};
     build.plugins.push(...(config.plugins ?? []));
@@ -44,7 +72,10 @@ function appExtensions(entries: string[]): Plugin {
     resolveId: (source) => (source === id ? `\0${id}` : undefined),
     load: (source) =>
       source === `\0${id}`
-        ? [...entries.map((entry, index) => `import extension${index} from ${JSON.stringify(entry.replaceAll("\\", "/"))};`), `export default [${entries.map((_, index) => `extension${index}`).join(", ")}];`].join("\n")
+        ? [
+            ...entries.map((entry, index) => `import extension${index} from ${JSON.stringify(entry.replaceAll("\\", "/"))};`),
+            `export default [${entries.map((_, index) => `extension${index}`).join(", ")}];`,
+          ].join("\n")
         : undefined,
   };
 }

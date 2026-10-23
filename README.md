@@ -202,7 +202,8 @@ ones with their versions.
 
 Change an extension's version with `node scripts/set-extension-version.mjs <id> X.Y.Z`. Extensions are compiled
 into the app, so a new extension version reaches users with the next app release; updating an extension alone
-would need a separate loader and feed, which the app does not have.
+would need a separate loader and feed, which the app does not have. An extension that is its own git repository
+shows the version of its highest plain `X.Y.Z` tag at build time; `extension.json` is the fallback when it has no such tag.
 
 ## Project layout
 
