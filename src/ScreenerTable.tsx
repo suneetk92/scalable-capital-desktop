@@ -1,5 +1,5 @@
 import { Bars2Icon, ChevronDownIcon, MagnifyingGlassIcon, RectangleGroupIcon, StarIcon, TableCellsIcon } from "@heroicons/react/24/outline";
-import { useCallback, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useCallback, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { ColumnHead, resizedTable } from "./ColumnHead";
 import { ColumnPicker } from "./ColumnPicker";
@@ -16,9 +16,10 @@ import { btn, cx, field, NAME_COLUMN, PANEL, PanelFooter, PanelHeader, SignGlyph
 import { canMoveHolding, UNGROUPED_ID, type SecurityGroup } from "./groups";
 import { formatDate, pluralize } from "./format";
 import { TOOL } from "./commands";
+import { SecuritySearchResults } from "./SecuritySearch";
+import type { Invoke } from "./tools";
 import { useRowWindow } from "./hooks/useRowWindow";
 import { useSectionDrag, type SectionDrag } from "./hooks/useSectionDrag";
-
 
 export function ScreenerTable({
   view,
@@ -38,12 +39,16 @@ export function ScreenerTable({
   lastUpdated,
   showDiagnostics,
   searchInput,
+  invoke,
+  watchedIsins,
+  heldIsins,
   onSelectView,
   onChangeColumns,
   onCopyCsv,
   onBulkAddToGroup,
   onBulkWatchlist,
   onOpenSecurity,
+  onOpenFound,
   onOpenOrder,
   onRefresh,
   onMoveGroup,
@@ -71,11 +76,17 @@ export function ScreenerTable({
   lastUpdated: Date | null;
   showDiagnostics: boolean;
   searchInput: RefObject<HTMLInputElement | null>;
+  invoke: Invoke;
+  /** ISINs on the watchlist, or null when it could not be loaded. */
+  watchedIsins: ReadonlySet<string> | null;
+  heldIsins: ReadonlySet<string>;
   onSelectView: (view: View) => void;
   onCopyCsv: (rows?: ScreenerRow[]) => Promise<void>;
   onBulkAddToGroup: (group: SecurityGroup) => Promise<void>;
   onBulkWatchlist: (add: boolean) => Promise<void>;
   onOpenSecurity: (row: ScreenerRow) => void;
+  /** Opens a security found by the search box that is not in the table. */
+  onOpenFound: (security: { isin: string; name: string }) => void;
   onOpenOrder: (side: "buy" | "sell", row: ScreenerRow | null) => void;
   onRefresh: () => void;
   /** Puts group `from` in the place of group `to` (the order is kept on this computer). */
@@ -121,8 +132,20 @@ export function ScreenerTable({
   } = table;
   const rowKeys = tableItems.map((item) => (item.kind === "header" ? `group:${item.section.key}` : item.kind === "pager" ? `pager:${item.section.key}` : `row:${item.row.rowId}`));
   const { bodyRef, window: rowWindow } = useRowWindow(rowKeys, tableScroll);
-  const latestHandlers = useRef({ toggleRow, onOpenSecurity, onOpenOrder, toolActions });
-  latestHandlers.current = { toggleRow, onOpenSecurity, onOpenOrder, toolActions };
+  // The search text whose security results were closed (Escape, a click elsewhere or a pick); typing more shows them again.
+  const [dismissed, setDismissed] = useState("");
+  const latestHandlers = useRef({
+    toggleRow,
+    onOpenSecurity,
+    onOpenOrder,
+    toolActions,
+  });
+  latestHandlers.current = {
+    toggleRow,
+    onOpenSecurity,
+    onOpenOrder,
+    toolActions,
+  };
   const handleToggleRow = useCallback((rowId: string, checked: boolean) => latestHandlers.current.toggleRow(rowId, checked), []);
   const handleOpenSecurity = useCallback((row: ScreenerRow) => latestHandlers.current.onOpenSecurity(row), []);
   const handleOpenOrder = useCallback((side: "buy" | "sell", row: ScreenerRow) => latestHandlers.current.onOpenOrder(side, row), []);
@@ -130,7 +153,11 @@ export function ScreenerTable({
     void latestHandlers.current.toolActions.run(
       TOOL.removeWatchlistItem,
       { isin: row.isin },
-      { confirm: `Remove ${row.name} from your watchlist?`, confirmLabel: "Remove", done: `${row.name} removed from your watchlist` },
+      {
+        confirm: `Remove ${row.name} from your watchlist?`,
+        confirmLabel: "Remove",
+        done: `${row.name} removed from your watchlist`,
+      },
     );
   }, []);
   // The column only appears when a button would be in it; read-only mode hides the buy, sell and remove buttons.
@@ -182,12 +209,22 @@ export function ScreenerTable({
     const item = tableItems[Number(element.closest<HTMLElement>("tr[data-index]")?.dataset.index ?? -1)];
     if (!item || item.kind === "pager") return;
     if (item.kind === "header") {
-      if (canReorder && groupKeys.includes(item.section.key)) startDrag(event, { kind: "section", key: item.section.key, label: item.section.title });
+      if (canReorder && groupKeys.includes(item.section.key))
+        startDrag(event, {
+          kind: "section",
+          key: item.section.key,
+          label: item.section.title,
+        });
       return;
     }
     // The row's own buttons and checkbox keep working; a drag starts anywhere else in the row.
     if (!canMoveRows || !item.sectionKey || !item.row.isin || element.closest("button, input, a, label, [role=checkbox]")) return;
-    startDrag(event, { kind: "row", key: item.sectionKey, row: item.row, label: item.row.name });
+    startDrag(event, {
+      kind: "row",
+      key: item.sectionKey,
+      row: item.row,
+      label: item.row.name,
+    });
   }
 
   function handleHeaderKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>, key: string) {
@@ -211,7 +248,29 @@ export function ScreenerTable({
     <section className={PANEL} aria-label="Market screener">
       <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
         <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5">
-          <SearchBox inputRef={searchInput} value={query} onChange={setQuery} placeholder="Search symbol or name" label="Search holdings and watchlist" shortcut />
+          <div
+            className="relative max-[900px]:flex-1"
+            onKeyDown={(event) => event.key === "Escape" && setDismissed(query)}
+            onBlur={(event) => !event.currentTarget.contains(event.relatedTarget) && setDismissed(query)}
+          >
+            <SearchBox inputRef={searchInput} value={query} onChange={setQuery} placeholder="Search symbol or name" label="Search holdings and watchlist" shortcut />
+            {dismissed !== query && (
+              <SecuritySearchResults
+                text={query}
+                invoke={invoke}
+                enabled={toolActions.has("search_securities")}
+                watched={watchedIsins}
+                held={heldIsins}
+                onOpen={(hit) => {
+                  setDismissed(query);
+                  onOpenFound(hit);
+                }}
+                onAddToWatchlist={
+                  toolActions.has(TOOL.addWatchlistItem) ? (hit) => void toolActions.run(TOOL.addWatchlistItem, { isin: hit.isin }, { done: `${hit.name} added to your watchlist` }) : undefined
+                }
+              />
+            )}
+          </div>
           <FiltersPopover count={activeFilters} onClear={clearFilters}>
             <div className={FILTER_TITLE}>Day change</div>
             <RadioList<ChangeFilter>
@@ -295,7 +354,12 @@ export function ScreenerTable({
               }
               items={groups
                 .filter((group) => !group.isDefault)
-                .map((group): MenuEntry => ({ id: group.id, label: group.name, icon: RectangleGroupIcon, onSelect: () => void onBulkAddToGroup(group) }))}
+                .map((group): MenuEntry => ({
+                  id: group.id,
+                  label: group.name,
+                  icon: RectangleGroupIcon,
+                  onSelect: () => void onBulkAddToGroup(group),
+                }))}
             />
           )}
           {view === "portfolio" && !watchlistUnknown && toolActions.has(TOOL.addWatchlistItem) && (

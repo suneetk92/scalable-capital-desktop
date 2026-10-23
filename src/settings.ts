@@ -114,7 +114,11 @@ export function sanitizeSettings(raw: Partial<Record<keyof Settings, unknown>>):
     showDiagnostics: typeof raw.showDiagnostics === "boolean" ? raw.showDiagnostics : DEFAULT_SETTINGS.showDiagnostics,
     tableColumns: Array.isArray(raw.tableColumns) ? sanitizeColumns(raw.tableColumns) : [...DEFAULT_SETTINGS.tableColumns],
     // Settings saved before the two tables had their own columns: the Watchlist starts with the Portfolio's columns.
-    watchlistColumns: Array.isArray(raw.watchlistColumns) ? sanitizeColumns(raw.watchlistColumns) : Array.isArray(raw.tableColumns) ? sanitizeColumns(raw.tableColumns) : [...DEFAULT_SETTINGS.watchlistColumns],
+    watchlistColumns: Array.isArray(raw.watchlistColumns)
+      ? sanitizeColumns(raw.watchlistColumns)
+      : Array.isArray(raw.tableColumns)
+        ? sanitizeColumns(raw.tableColumns)
+        : [...DEFAULT_SETTINGS.watchlistColumns],
     alertWatch: typeof raw.alertWatch === "boolean" ? raw.alertWatch : DEFAULT_SETTINGS.alertWatch,
     alertMinutes: ALERT_MINUTE_OPTIONS.find((minutes) => minutes === raw.alertMinutes) ?? DEFAULT_SETTINGS.alertMinutes,
     alertToasts: typeof raw.alertToasts === "boolean" ? raw.alertToasts : DEFAULT_SETTINGS.alertToasts,

@@ -40,7 +40,14 @@ export function AlertsPage({ common, searchInput, onOpenSecurity }: { common: Co
         toolbar={
           <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
             <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter price alerts">
-              <SearchBox inputRef={searchInput} value={filter.text} onChange={(text) => change({ text })} placeholder="Search symbol or name" label="Search price alerts by symbol or name" shortcut={searchInput !== undefined} />
+              <SearchBox
+                inputRef={searchInput}
+                value={filter.text}
+                onChange={(text) => change({ text })}
+                placeholder="Search symbol or name"
+                label="Search price alerts by symbol or name"
+                shortcut={searchInput !== undefined}
+              />
               <FiltersPopover count={activeFilters} onClear={() => change({ direction: "", status: "" })}>
                 <div className={FILTER_TITLE}>Direction</div>
                 <RadioList<AlertFilter["direction"]>
@@ -78,7 +85,11 @@ export function AlertsPage({ common, searchInput, onOpenSecurity }: { common: Co
             pageSize={common.pageSize}
             emptyTitle={filtering && records.length > 0 ? "No matching alerts" : "No price alerts"}
             emptyIcon={BellAlertIcon}
-            empty={filtering && records.length > 0 ? "Try another search or clear the filters." : "Get notified when a security reaches a price. Create an alert with New alert at the top, or from a security’s details."}
+            empty={
+              filtering && records.length > 0
+                ? "Try another search or clear the filters."
+                : "Get notified when a security reaches a price. Create an alert with New alert at the top, or from a security’s details."
+            }
             actions={
               actions.has("remove_price_alert")
                 ? (record) => {

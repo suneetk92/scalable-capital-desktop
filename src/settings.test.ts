@@ -134,7 +134,10 @@ describe("settings storage", () => {
 
   it("keeps separate columns for the Portfolio and the Watchlist", () => {
     const settings = sanitizeSettings({ tableColumns: ["price", "quantity"], watchlistColumns: ["price", "bid"] });
-    expect([settings.tableColumns, settings.watchlistColumns]).toEqual([["price", "quantity"], ["price", "bid"]]);
+    expect([settings.tableColumns, settings.watchlistColumns]).toEqual([
+      ["price", "quantity"],
+      ["price", "bid"],
+    ]);
   });
 
   it("starts the Watchlist with the saved Portfolio columns when it has none of its own", () => {

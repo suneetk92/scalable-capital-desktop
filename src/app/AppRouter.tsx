@@ -161,11 +161,15 @@ function PortfolioRoute() {
       lastUpdated={data.lastUpdated}
       showDiagnostics={data.settings.showDiagnostics}
       searchInput={data.searchInput}
+      invoke={data.common.invoke}
+      watchedIsins={data.watchedIsins}
+      heldIsins={data.heldIsins}
       onSelectView={data.setView}
       onCopyCsv={commands.copyCsv}
       onBulkAddToGroup={commands.bulkAddToGroup}
       onBulkWatchlist={commands.bulkWatchlist}
       onOpenSecurity={commands.openSecurity}
+      onOpenFound={commands.openFound}
       onOpenOrder={commands.openOrder}
       onRefresh={() => void data.loadDashboard(false)}
       onMoveGroup={data.moveGroup}

@@ -52,10 +52,22 @@ export function SavingsPage({
         toolbar={
           <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
             <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter savings plans">
-              <SearchBox inputRef={searchInput} value={filter.text} onChange={(text) => change({ text })} placeholder="Search symbol or name" label="Search savings plans by symbol or name" shortcut={searchInput !== undefined} />
+              <SearchBox
+                inputRef={searchInput}
+                value={filter.text}
+                onChange={(text) => change({ text })}
+                placeholder="Search symbol or name"
+                label="Search savings plans by symbol or name"
+                shortcut={searchInput !== undefined}
+              />
               <FiltersPopover count={filter.frequency !== "" ? 1 : 0} onClear={() => change({ frequency: "" })}>
                 <div className={FILTER_TITLE}>Frequency</div>
-                <RadioList<string> label="Frequency" value={filter.frequency} onChange={(frequency) => change({ frequency })} options={[["", "All"], ...frequencies.map((value): [string, string] => [value, frequencyLabel(value)])]} />
+                <RadioList<string>
+                  label="Frequency"
+                  value={filter.frequency}
+                  onChange={(frequency) => change({ frequency })}
+                  options={[["", "All"], ...frequencies.map((value): [string, string] => [value, frequencyLabel(value)])]}
+                />
               </FiltersPopover>
             </div>
           </div>
