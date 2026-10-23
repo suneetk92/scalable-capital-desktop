@@ -1,4 +1,6 @@
 import { type ReactNode } from "react";
+import { useLastUpdated } from "../app/AppContext";
+import { formatDate } from "../format";
 import { SkeletonRows } from "../controls";
 import { useToolQuery, type QueryEntry } from "../toolActions";
 import { type Common, type PagePortfolio } from "../types";
@@ -49,6 +51,12 @@ export function perPortfolio(portfolios: PagePortfolio[], extra: Rec = {}): Rec[
   return portfolios.length > 0 ? portfolios.map((portfolio) => ({ portfolioId: portfolio.portfolioId, ...extra })) : [{ ...extra }];
 }
 
+/** "Updated 23:32" for the title bar of a table panel; the time of the last account refresh. */
+export function UpdatedAt() {
+  const lastUpdated = useLastUpdated();
+  return lastUpdated ? <span>Updated {formatDate(lastUpdated, { hour: "2-digit", minute: "2-digit" })}</span> : null;
+}
+
 /** A panel with a title bar like the Portfolio table's. `flush` is for a table, which sits against the panel edges; `footer` ends the panel with a PanelFooter. */
 export function Section({
   title,
@@ -73,6 +81,7 @@ export function Section({
       {toolbar}
       <PanelHeader title={title}>
         {hint}
+        <UpdatedAt />
         {actions}
       </PanelHeader>
       <div className={flush ? undefined : PANEL_BODY}>{children}</div>

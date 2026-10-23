@@ -440,7 +440,7 @@ export function ScreenerTable({
                   >
                     <td className="h-[2.5333rem]! border-line-strong! p-0!" colSpan={columnCount}>
                       <button
-                        className="group/header flex min-h-[2.5333rem] w-full cursor-pointer items-center gap-3 px-4 text-left text-ink-strong"
+                        className="group/header flex min-h-[2.5333rem] w-full cursor-pointer items-center justify-start! gap-3 px-4 text-left text-ink-strong"
                         type="button"
                         aria-expanded={!collapsed}
                         aria-keyshortcuts={reorderable ? "Alt+ArrowUp Alt+ArrowDown" : undefined}

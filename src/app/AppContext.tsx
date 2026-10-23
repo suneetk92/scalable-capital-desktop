@@ -15,3 +15,8 @@ export function useApp() {
   if (!context) throw new Error("App state is unavailable outside AppProvider.");
   return context;
 }
+
+/** When the account data was last loaded; null before the first load or outside the provider. */
+export function useLastUpdated() {
+  return useContext(AppContext)?.data.lastUpdated ?? null;
+}

@@ -15,7 +15,7 @@ import { csvCell } from "../screener";
 import { formatCell, humanize } from "../tools";
 import { pick, pickString, type Rec } from "../response";
 import type { FoundSecurity } from "./Discover";
-import { Loading, DetailsModal } from "./shared";
+import { Loading, DetailsModal, UpdatedAt } from "./shared";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
 
@@ -326,6 +326,7 @@ export function TransactionsPage({
               {filtering && rows.length !== visible.length ? ` (of ${rows.length})` : ""}
             </span>
           )}
+          <UpdatedAt />
         </PanelHeader>
         {(((history.loading || preparing) && rows.length === 0) || history.error) && (
           <div className={PANEL_BODY}>
