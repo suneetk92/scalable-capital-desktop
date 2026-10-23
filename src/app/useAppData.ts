@@ -24,6 +24,7 @@ import type { Provider } from "../providerStatus";
 import { profileName } from "../profile";
 import { connectionCheckDue, nextRefreshDelay, wokeFromSleep } from "../refreshSchedule";
 import type { DrawerTarget } from "../SecurityDrawer";
+import { comboOf, pageForCombo, useShortcuts } from "../shortcuts";
 import { intervalLabel } from "../refreshOptions";
 import { useLightTheme, useSettings } from "../settings";
 import { useToolActions, useToolQuery } from "../toolActions";
@@ -107,6 +108,9 @@ export function useAppData() {
     setTradingEnabled(marketOpen && tradingAtStartRef.current);
   }, [marketOpen]);
 
+  const shortcuts = useShortcuts();
+  const shortcutsRef = useRef(shortcuts);
+  shortcutsRef.current = shortcuts;
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.code === "KeyP" && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey) {
@@ -117,6 +121,12 @@ export function useAppData() {
       if (event.code === "Comma" && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey) {
         event.preventDefault();
         setView("settings");
+        return;
+      }
+      const page = pageForCombo(comboOf(event) ?? "", shortcutsRef.current);
+      if (page) {
+        event.preventDefault();
+        setView(page);
         return;
       }
       if (event.code !== "KeyK" || event.shiftKey) return;

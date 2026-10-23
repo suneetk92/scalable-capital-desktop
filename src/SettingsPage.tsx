@@ -11,7 +11,8 @@ import { REFRESH_OPTIONS } from "./refreshOptions";
 import { extension, installedExtensions } from "./extensions";
 import type { useBackground } from "./hooks/useBackground";
 import type { useUpdater } from "./hooks/useUpdater";
-import type { View } from "./nav";
+import { NAV_ITEMS, type View } from "./nav";
+import { comboOf, setShortcut, useShortcuts } from "./shortcuts";
 import { ToolsPage } from "./pages/Tools";
 import { SessionPanel, type SessionState } from "./SessionPanel";
 import type { Common } from "./types";
@@ -73,6 +74,53 @@ const SHORTCUTS: [string, string][] = [
   ["Alt+↑ or Alt+↓", "Move the focused sidebar item"],
   ["Esc", "Close the open menu, dialog or panel"],
 ];
+
+function ShortcutRow({ id, label }: { id: string; label: string }) {
+  const combo = useShortcuts()[id];
+  const [recording, setRecording] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  return (
+    <div className="py-3">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-ink-body">Open {label}</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={btn.secondary}
+            aria-label={`Shortcut to open ${label}`}
+            onClick={() => {
+              setRecording(true);
+              setProblem(null);
+            }}
+            onBlur={() => setRecording(false)}
+            onKeyDown={(event) => {
+              if (!recording) return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (event.key === "Escape") return setRecording(false);
+              if (event.key === "Backspace" || event.key === "Delete") {
+                setShortcut(id, null);
+                return setRecording(false);
+              }
+              const next = comboOf(event.nativeEvent);
+              if (!next) return;
+              const refused = setShortcut(id, next);
+              setProblem(refused);
+              if (!refused) setRecording(false);
+            }}
+          >
+            {recording ? "Press keys, Backspace clears" : (combo ?? "Not set")}
+          </button>
+        </div>
+      </div>
+      {problem && (
+        <p role="alert" className="mt-1.5 text-right text-danger-ink">
+          {problem}
+        </p>
+      )}
+    </div>
+  );
+}
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: PaintBrushIcon },
@@ -428,6 +476,19 @@ export function SettingsPage({
                 </div>
               ))}
             </dl>
+          </SectionCard>
+          <SectionCard title="Open a page with a keyboard shortcut">
+            <p className="mb-1 text-ink-muted">Select a button and press the keys. A combination that is already used by the app, the window or another page is refused.</p>
+            <div className="divide-y divide-line">
+              {[
+                ...Object.entries(NAV_ITEMS)
+                  .filter(([id]) => id !== "settings")
+                  .map(([id, item]) => [id, item.label]),
+                ...(extension.views ?? []).map((item) => [item.id, item.label]),
+              ].map(([id, label]) => (
+                <ShortcutRow key={id} id={id} label={label} />
+              ))}
+            </div>
           </SectionCard>
           <SectionCard title="About">
             <Row label="Check for updates" hint={statusMessage(updater.state) || "Looks for a newer signed version"}>
