@@ -87,7 +87,7 @@ if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   gh release upload "$tag" "${files[@]}" "${manifest[@]}" --repo "$repo" --clobber
   gh release edit "$tag" --repo "$repo" --notes-file "$notes"
 else
-  gh release create "$tag" "${files[@]}" --repo "$repo" --draft --title "Scalable Capital Desktop $tag" --notes-file "$notes"
+  gh release create "$tag" "${files[@]}" --repo "$repo" --draft --title "$tag" --notes-file "$notes"
   [ "${#manifest[@]}" -eq 0 ] || gh release upload "$tag" "${manifest[@]}" --repo "$repo" --clobber
   gh release edit "$tag" --repo "$repo" --draft=false "${flags[@]}"
 fi
