@@ -67,6 +67,7 @@ describe("sanitizeSettings", () => {
       pageSize: 0,
       showDiagnostics: true,
       tableColumns: ["price", "Sector"],
+      watchlistColumns: ["price", "bid"],
       alertWatch: false,
       alertMinutes: 15,
       alertToasts: true,
@@ -129,5 +130,14 @@ describe("settings storage", () => {
     const settings = parseStoredSettings(JSON.stringify({ tableColumns: ["price", "private-column"], privateSettings: { refresh: 30 } }));
     expect(settings?.tableColumns).toEqual(["price", "private-column"]);
     expect(JSON.parse(serializeSettings(settings!)).privateSettings).toEqual({ refresh: 30 });
+  });
+
+  it("keeps separate columns for the Portfolio and the Watchlist", () => {
+    const settings = sanitizeSettings({ tableColumns: ["price", "quantity"], watchlistColumns: ["price", "bid"] });
+    expect([settings.tableColumns, settings.watchlistColumns]).toEqual([["price", "quantity"], ["price", "bid"]]);
+  });
+
+  it("starts the Watchlist with the saved Portfolio columns when it has none of its own", () => {
+    expect(sanitizeSettings({ tableColumns: ["price", "quantity"] }).watchlistColumns).toEqual(["price", "quantity"]);
   });
 });

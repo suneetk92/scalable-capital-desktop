@@ -28,8 +28,10 @@ export type Settings = {
   pageSize: number;
   /** Shows the raw-data views (Settings → Raw data, tool results, security details, order preview) and the access-token copy button. */
   showDiagnostics: boolean;
-  /** Column ids of the Portfolio and Watchlist tables, after the symbol, in the order shown. */
+  /** Column ids of the Portfolio table, after the symbol, in the order shown. */
   tableColumns: string[];
+  /** Column ids of the Watchlist table, after the symbol, in the order shown. */
+  watchlistColumns: string[];
   /** Checks Scalable for fired price alerts while the app runs and announces them. */
   alertWatch: boolean;
   /** Minutes between two alert checks. */
@@ -78,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pageSize: 10,
   showDiagnostics: false,
   tableColumns: [...new Set([...DEFAULT_COLUMNS, ...(extension.tableColumns?.defaults ?? [])])],
+  watchlistColumns: [...new Set([...DEFAULT_COLUMNS, ...(extension.tableColumns?.defaults ?? [])])],
   alertWatch: true,
   alertMinutes: 5,
   alertToasts: false,
@@ -110,6 +113,8 @@ export function sanitizeSettings(raw: Partial<Record<keyof Settings, unknown>>):
     pageSize: typeof raw.pageSize === "number" && PAGE_SIZE_OPTIONS.some(([size]) => size === raw.pageSize) ? raw.pageSize : DEFAULT_SETTINGS.pageSize,
     showDiagnostics: typeof raw.showDiagnostics === "boolean" ? raw.showDiagnostics : DEFAULT_SETTINGS.showDiagnostics,
     tableColumns: Array.isArray(raw.tableColumns) ? sanitizeColumns(raw.tableColumns) : [...DEFAULT_SETTINGS.tableColumns],
+    // Settings saved before the two tables had their own columns: the Watchlist starts with the Portfolio's columns.
+    watchlistColumns: Array.isArray(raw.watchlistColumns) ? sanitizeColumns(raw.watchlistColumns) : Array.isArray(raw.tableColumns) ? sanitizeColumns(raw.tableColumns) : [...DEFAULT_SETTINGS.watchlistColumns],
     alertWatch: typeof raw.alertWatch === "boolean" ? raw.alertWatch : DEFAULT_SETTINGS.alertWatch,
     alertMinutes: ALERT_MINUTE_OPTIONS.find((minutes) => minutes === raw.alertMinutes) ?? DEFAULT_SETTINGS.alertMinutes,
     alertToasts: typeof raw.alertToasts === "boolean" ? raw.alertToasts : DEFAULT_SETTINGS.alertToasts,

@@ -1,4 +1,3 @@
-import { Tab, TabGroup, TabList } from "@headlessui/react";
 import { Bars2Icon, ChevronDownIcon, MagnifyingGlassIcon, RectangleGroupIcon, StarIcon, TableCellsIcon } from "@heroicons/react/24/outline";
 import { useCallback, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
@@ -13,14 +12,13 @@ import { columnById, DEFAULT_COLUMNS, type MarketRecord } from "./marketColumns"
 import { extension } from "./extensions";
 import { formatChange, formatMoney, type ChangeFilter, type ScreenerRow } from "./screener";
 import type { ToolActions } from "./toolActions";
-import { btn, cx, field, NAME_COLUMN, PANEL, PanelFooter, PanelHeader, SignGlyph, signClass, TABLE, TABS, tabClass, TH_NUM } from "./ui";
+import { btn, cx, field, NAME_COLUMN, PANEL, PanelFooter, PanelHeader, SignGlyph, signClass, TABLE, TH_NUM } from "./ui";
 import { canMoveHolding, UNGROUPED_ID, type SecurityGroup } from "./groups";
 import { formatDate, pluralize } from "./format";
 import { TOOL } from "./commands";
 import { useRowWindow } from "./hooks/useRowWindow";
 import { useSectionDrag, type SectionDrag } from "./hooks/useSectionDrag";
 
-const TAB_FOCUS = "outline-none data-focus:outline-2 data-focus:outline-accent";
 
 export function ScreenerTable({
   view,
@@ -34,8 +32,6 @@ export function ScreenerTable({
   extensionError,
   extensionCurrency,
   groups,
-  portfolioCount,
-  watchlistCount,
   watchlistUnknown,
   tradingEnabled,
   toolActions,
@@ -69,8 +65,6 @@ export function ScreenerTable({
   extensionCurrency: string;
   onChangeColumns: (columns: string[]) => void;
   groups: SecurityGroup[];
-  portfolioCount: number;
-  watchlistCount: number;
   watchlistUnknown: boolean;
   tradingEnabled: boolean;
   toolActions: ToolActions;
@@ -215,17 +209,7 @@ export function ScreenerTable({
 
   return (
     <section className={PANEL} aria-label="Market screener">
-      <div className="flex min-h-[3.6667rem] items-center justify-between gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start max-[900px]:pt-0">
-        <TabGroup selectedIndex={view === "watchlist" ? 1 : 0} onChange={(index) => onSelectView(index === 1 ? "watchlist" : "portfolio")} className="self-stretch">
-          <TabList className={`${TABS} h-full max-[900px]:h-[3.2667rem]`} aria-label="Screener data">
-            <Tab className={({ selected }) => cx(tabClass(selected), TAB_FOCUS)}>
-              <TableCellsIcon /> Portfolio <span>{portfolioCount}</span>
-            </Tab>
-            <Tab className={({ selected }) => cx(tabClass(selected), TAB_FOCUS)}>
-              <StarIcon /> Watchlist <span>{watchlistUnknown ? "—" : watchlistCount}</span>
-            </Tab>
-          </TabList>
-        </TabGroup>
+      <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
         <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5">
           <SearchBox inputRef={searchInput} value={query} onChange={setQuery} placeholder="Search symbol or name" label="Search holdings and watchlist" shortcut />
           <FiltersPopover count={activeFilters} onClear={clearFilters}>

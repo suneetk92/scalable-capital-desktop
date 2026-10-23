@@ -137,14 +137,15 @@ function PortfolioRoute() {
   const view = data.view === "portfolio" || data.view === "watchlist" ? (data.view as "portfolio" | "watchlist") : null;
   if (!view) return null;
   const onChangeColumns = (columns: string[]) => {
-    const hidden = data.settings.tableColumns.filter((id) => !columnById(id) && !extension.tableColumns?.column(id));
-    data.updateSettings({ tableColumns: [...columns, ...hidden] });
+    const key = view === "watchlist" ? "watchlistColumns" : "tableColumns";
+    const hidden = data.settings[key].filter((id) => !columnById(id) && !extension.tableColumns?.column(id));
+    data.updateSettings({ [key]: [...columns, ...hidden] });
   };
   return (
     <ScreenerTable
       view={view}
       table={data.table}
-      columns={data.settings.tableColumns}
+      columns={view === "watchlist" ? data.settings.watchlistColumns : data.settings.tableColumns}
       extensionEnabled={data.marketTableOpen}
       marketRecords={data.market.records}
       logos={data.logos}
@@ -154,8 +155,6 @@ function PortfolioRoute() {
       extensionCurrency={MARKET_CURRENCY}
       onChangeColumns={onChangeColumns}
       groups={data.allGroups}
-      portfolioCount={data.portfolioRows.length}
-      watchlistCount={data.watchlistRows.length}
       watchlistUnknown={data.watchlistUnknown}
       tradingEnabled={data.tradingEnabled}
       toolActions={data.toolActions}

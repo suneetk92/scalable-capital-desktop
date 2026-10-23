@@ -436,7 +436,7 @@ export function useAppData() {
   };
   const extensionData: ExtensionData = extension.useData?.(extensionContext) ?? {};
   const extensionRuntime: ExtensionRuntime = extension.runtime?.(extensionData) ?? {};
-  const tableColumns = settings.tableColumns;
+  const tableColumns = view === "watchlist" ? settings.watchlistColumns : settings.tableColumns;
   const market = {
     records: extension.tableColumns?.records(extensionData) ?? new Map<string, MarketRecord>(),
     loading: extensionRuntime.tableLoading ?? false,

@@ -35,7 +35,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
 - **Sign-in** with Scalable Capital's OAuth server (`https://mcp.scalable.capital`): Dynamic Client
   Registration, PKCE (S256) and a loopback redirect (`http://127.0.0.1:43127/`). Tokens are kept in
   the OS keyring and the session is restored on the next start.
-- **Portfolio and Watchlist tables**: sorting, search (Ctrl+K or Alt+K), a Filters menu (gainers or
+- **Portfolio and Watchlist tables** (two pages of the sidebar, each with its own columns, widths and column order, remembered separately): sorting, search (Ctrl+K or Alt+K), a Filters menu (gainers or
   losers only, "Also held in portfolio" on the Watchlist, a group filter, and "Divide rows into groups" on
   the Portfolio), row selection with bulk actions (add to a group, add to or remove from the watchlist,
   Copy CSV), Copy CSV for the rows shown, and an "Updated" time. The Refresh button next to the page title
