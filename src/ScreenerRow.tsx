@@ -186,7 +186,7 @@ export const ScreenerRowView = memo(function ScreenerRowView({
       })}
       {hasRowActions && (
         <td className={TD_NUM}>
-          <div className="flex justify-end gap-1.5">
+          <div className="flex justify-end gap-1.5 [&>*]:shrink-0">
             {tradingEnabled && (
               <button className={btn.buy} type="button" disabled={!row.isin} onClick={() => onOpenOrder("buy", row)} aria-label={`Buy ${row.name}`}>
                 Buy

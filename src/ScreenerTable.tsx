@@ -183,7 +183,9 @@ export function ScreenerTable({
       onChangeColumns(to === "symbol" ? (after ? moveColumn(ids, from, ids[0] ?? from, false) : ids) : moveColumn(ids, from, to, after));
     },
   };
-  const resized = resizedTable(widths, 5.75 + (hasRowActions ? 8.6667 : 0));
+  // Buy and Remove sit side by side on the watchlist, which needs more room than Buy and Sell.
+  const actionsWidth = view === "watchlist" && tradingEnabled && toolActions.has(TOOL.removeWatchlistItem) ? 11.5 : 8.6667;
+  const resized = resizedTable(widths, 5.75 + (hasRowActions ? actionsWidth : 0));
   const columnCount = 3 + shownColumns.length + (hasRowActions ? 1 : 0);
   const filtered = query !== "" || activeFilters > 0;
 
@@ -415,7 +417,7 @@ export function ScreenerTable({
                 </ColumnHead>
               ))}
               {hasRowActions && (
-                <th scope="col" className="w-[8.6667rem] min-w-[8.6667rem] text-right">
+                <th scope="col" className="text-right" style={{ width: `${actionsWidth}rem`, minWidth: `${actionsWidth}rem` }}>
                   {tradingEnabled ? "Trade" : "Actions"}
                 </th>
               )}

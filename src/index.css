@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Extensions may be git-excluded (a private folder), which Tailwind skips on its own. */
+@source "../extensions/*/web";
 
 /*
  * Everything visual lives in the components as Tailwind utilities (see src/ui.tsx for the shared kit).
