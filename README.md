@@ -200,10 +200,10 @@ ones with their versions.
   stop loss and buy stop, in TypeScript (`web/`) and Rust (`src-tauri/`). Its README has the details.
 - Another extension can join a build from a local folder; it is not part of this repository.
 
-Change an extension's version with `node scripts/set-extension-version.mjs <id> X.Y.Z`. Extensions are compiled
+Change an extension's version with `node scripts/set-extension-version.mjs <id> X.Y.Z` (for one that is its own git repository, tag it instead). Extensions are compiled
 into the app, so a new extension version reaches users with the next app release; updating an extension alone
 would need a separate loader and feed, which the app does not have. An extension that is its own git repository
-shows the version of its highest plain `X.Y.Z` tag at build time; `extension.json` is the fallback when it has no such tag.
+shows the version of its highest `X.Y.Z` or `vX.Y.Z` tag at build time, and its `extension.json` has no version.
 
 ## Project layout
 
