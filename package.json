@@ -16,6 +16,7 @@
     "format": "vp fmt \"src/**/*.{ts,tsx}\" \"scripts/**/*.{mjs,js,ts}\" vite.config.ts",
     "format:check": "vp fmt --check \"src/**/*.{ts,tsx}\" \"scripts/**/*.{mjs,js,ts}\" vite.config.ts",
     "test": "vp test run",
+    "test:ui": "playwright test",
     "preview": "vp preview",
     "tauri": "tauri",
     "tauri-dev": "tauri dev"
@@ -31,6 +32,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.3",
     "@tauri-apps/cli": "2.12.3",
     "@testing-library/dom": "10.4.2",

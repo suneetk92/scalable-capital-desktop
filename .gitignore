@@ -22,3 +22,7 @@ hs_err_pid*
 # Browser network captures hold session cookies
 *.har
 .vitest/
+
+# Playwright UI test output
+e2e/output
+test-results

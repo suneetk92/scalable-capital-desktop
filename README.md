@@ -453,6 +453,7 @@ npm run format:check                     # Oxfmt through Vite+ (Prettier-compati
 npm run check:tauri                      # Tauri npm/Cargo major.minor versions match
 npm run check:exports                    # no unused exports in src/
 npm test                                 # Vitest: colocated src/*.test.ts(x) and scripts/*.test.mjs
+npm run test:ui                          # Playwright: real layout in headless Chromium, mocked Tauri runtime
 npx vp build                             # production frontend bundle
 npm audit --audit-level=high
 npm audit signatures
@@ -463,6 +464,7 @@ npm audit signatures
 ```
 
 Frontend logic and mocked-invoke UI smoke tests live beside their modules as `*.test.ts` or `*.test.tsx`; Node-side script tests live in `scripts/*.test.mjs`.
+`e2e/` holds the Playwright UI tests. They start the dev server, mock `window.__TAURI_INTERNALS__` with made-up data (`e2e/mockTauri.ts`, `e2e/mockData.ts`) and check real layout, such as header and value alignment. Screenshots go to `e2e/output/`. Tool answers are generated from the output schemas in `tests/fixtures/mcp-tool-list.json` (`e2e/schemaData.ts`), and the mock refuses any non-read tool.
 Rust unit tests are inline `mod tests` modules next to the code they cover. Use mocked Tauri `invoke` data for
 anything that changes data; never call a write tool against a real account when testing.
 

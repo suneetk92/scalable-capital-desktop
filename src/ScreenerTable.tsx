@@ -149,7 +149,7 @@ export function ScreenerTable({
       }),
     [columnOf, columns, extensionEnabled],
   );
-  const isColumnText = (column: (typeof shownColumns)[number]) => (column.source === "scalable" ? isTextColumn(column) : (extension.tableColumns?.isTextColumn?.(column) ?? isTextColumn(column)));
+  const isColumnText = (column: (typeof shownColumns)[number]) => (column.source === "scalable" ? column.id === "exchange" : (extension.tableColumns?.isTextColumn?.(column) ?? isTextColumn(column)));
   const usesExtensionData = shownColumns.some((column) => column.source !== "scalable");
   const [widths, setWidths] = useColumnWidths(`screener-${view}`);
   const columnLayout: ColumnLayout = {
@@ -351,11 +351,11 @@ export function ScreenerTable({
                   id={column.id}
                   label={column.label}
                   layout={columnLayout}
-                  className={isColumnText(column) || column.id === "exchange" ? "min-w-[8.6667rem] text-left" : TH_NUM}
+                  className={isColumnText(column) ? "min-w-[8.6667rem] text-left" : TH_NUM}
                   sortState={activeSortKey === column.id ? sortDirection : "none"}
                 >
                   <SortButton
-                    start={isColumnText(column) || column.id === "exchange"}
+                    start={isColumnText(column)}
                     label={column.label}
                     title={column.hint}
                     column={column.id}
