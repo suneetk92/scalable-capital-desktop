@@ -78,7 +78,7 @@ export function findUnusedExports(entries, apiFiles = []) {
   const knownFiles = new Set(files.keys());
   const exports = new Map([...files].map(([fileName, file]) => [fileName, exportedSymbols(file)]));
   const used = new Map([...files.keys()].map((fileName) => [fileName, new Set()]));
-  const use = (fileName, symbol) => used.get(fileName)?.add(symbol);
+  const markUsed = (fileName, symbol) => used.get(fileName)?.add(symbol);
 
   for (const [fileName, file] of files) {
     const markDynamicImports = (node) => {
@@ -90,11 +90,11 @@ export function findUnusedExports(entries, apiFiles = []) {
           const callback = ts.isCallExpression(chained) && ts.isPropertyAccessExpression(chained.expression) && chained.expression.name.text === "then" ? chained.arguments[0] : undefined;
           const parameter = callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback.parameters[0] : undefined;
           if (!importedFile || !parameter) {
-            for (const name of exports.get(importedFile) ?? []) use(importedFile, name);
+            for (const name of exports.get(importedFile) ?? []) markUsed(importedFile, name);
           } else if (ts.isIdentifier(parameter.name)) {
             const findProperties = (child) => {
               if (ts.isPropertyAccessExpression(child) && ts.isIdentifier(child.expression) && child.expression.text === parameter.name.text) {
-                use(importedFile, child.name.text);
+                markUsed(importedFile, child.name.text);
               } else if (
                 ts.isElementAccessExpression(child) &&
                 ts.isIdentifier(child.expression) &&
@@ -102,7 +102,7 @@ export function findUnusedExports(entries, apiFiles = []) {
                 child.argumentExpression &&
                 ts.isStringLiteral(child.argumentExpression)
               ) {
-                use(importedFile, child.argumentExpression.text);
+                markUsed(importedFile, child.argumentExpression.text);
               }
               ts.forEachChild(child, findProperties);
             };
@@ -111,11 +111,11 @@ export function findUnusedExports(entries, apiFiles = []) {
             for (const element of parameter.name.elements) {
               if (!ts.isIdentifier(element.name)) continue;
               if (identifierIsUsed(callback.body, element.name.text, parameter)) {
-                use(importedFile, element.propertyName?.getText().replace(/["']/g, "") ?? element.name.text);
+                markUsed(importedFile, element.propertyName?.getText().replace(/["']/g, "") ?? element.name.text);
               }
             }
           } else {
-            for (const name of exports.get(importedFile) ?? []) use(importedFile, name);
+            for (const name of exports.get(importedFile) ?? []) markUsed(importedFile, name);
           }
         }
       }
@@ -127,16 +127,16 @@ export function findUnusedExports(entries, apiFiles = []) {
         const importedFile = resolveSource(fileName, statement.moduleSpecifier.text, knownFiles);
         const clause = statement.importClause;
         if (!importedFile || !clause) continue;
-        if (clause.name && identifierIsUsed(file, clause.name.text, statement)) use(importedFile, "default");
+        if (clause.name && identifierIsUsed(file, clause.name.text, statement)) markUsed(importedFile, "default");
         if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) {
           if (identifierIsUsed(file, clause.namedBindings.name.text, statement)) {
-            for (const name of exports.get(importedFile) ?? []) use(importedFile, name);
+            for (const name of exports.get(importedFile) ?? []) markUsed(importedFile, name);
           }
         } else if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
           for (const element of clause.namedBindings.elements) {
             const local = element.name.text;
             const imported = element.propertyName?.text ?? local;
-            if (identifierIsUsed(file, local, statement)) use(importedFile, imported);
+            if (identifierIsUsed(file, local, statement)) markUsed(importedFile, imported);
           }
         }
       }
@@ -144,10 +144,10 @@ export function findUnusedExports(entries, apiFiles = []) {
         const importedFile = resolveSource(fileName, statement.moduleSpecifier.text, knownFiles);
         if (!importedFile) continue;
         if (!statement.exportClause) {
-          for (const name of exports.get(importedFile) ?? []) use(importedFile, name);
+          for (const name of exports.get(importedFile) ?? []) markUsed(importedFile, name);
         } else if (ts.isNamedExports(statement.exportClause)) {
           for (const element of statement.exportClause.elements) {
-            use(importedFile, element.propertyName?.text ?? element.name.text);
+            markUsed(importedFile, element.propertyName?.text ?? element.name.text);
           }
         }
       }

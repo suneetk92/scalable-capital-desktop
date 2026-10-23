@@ -51,7 +51,7 @@ describe("parseGroupData", () => {
     expect(data.groups[0].sinceBuyPerformance).toBe(0.2);
   });
 
-  it("finds Since buy in a performance list and ignores a holding\'s own figure", () => {
+  it("finds Since buy in a performance list and ignores a holding's own figure", () => {
     const performance = [
       { timeframe: "ONE_WEEK", performance: 0.5, simpleAbsoluteReturn: 99 },
       { timeframe: "SINCE_BUY", performance: 0.1, simpleAbsoluteReturn: 12 },
