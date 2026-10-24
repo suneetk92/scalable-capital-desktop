@@ -463,7 +463,7 @@ export const field = {
 export const EMPTY = "text-ink-muted";
 
 /** Paragraph inside a dialog. */
-export const MODAL_TEXT = "leading-relaxed text-ink-soft";
+export const MODAL_TEXT = "break-words leading-relaxed text-ink-soft";
 
 /* ---------- Lists with a label on the left and a value on the right ---------- */
 
