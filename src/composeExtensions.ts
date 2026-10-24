@@ -57,7 +57,10 @@ export function composeExtensions(list: readonly AppExtension[]): ComposedExtens
 
   return {
     variantName: list.find((extension) => extension.variantName)?.variantName,
-    hasDock: (view) => ownerOf(list, view)?.dock !== undefined,
+    hasDock: (view) => {
+      const owner = ownerOf(list, view);
+      return owner?.dock !== undefined && owner.views?.find((item) => item.id === view)?.dock !== false;
+    },
     useData(context: ExtensionDataContext) {
       const byId: DataById = {};
       for (const extension of list) byId[extension.id] = extension.useData?.(context);

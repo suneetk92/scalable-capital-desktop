@@ -79,6 +79,8 @@ export type ExtensionView = {
   after: View;
   /** Whether the page shows the Trading switch next to its title. */
   trading?: boolean;
+  /** Set to false when the page has no content for the extension's side panel, so the panel is not shown empty. */
+  dock?: boolean;
   /** The number shown next to the page in the sidebar. */
   count?(context: ExtensionContext): number | string | undefined;
   /** Replaces the header's Refresh button on this page. */
