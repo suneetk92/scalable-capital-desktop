@@ -27,6 +27,9 @@ export type ExtensionRuntime = {
   enabled?: boolean;
   busy?: boolean;
   refreshLabel?: string | null;
+  /** When the page last loaded, and how often it reloads by itself: together they draw the bar on the Refresh button. */
+  lastLoadedAt?: number | null;
+  intervalMs?: number;
   refresh?(): void;
   toggleAutoRefresh?(): void;
   autoRefresh?: boolean;

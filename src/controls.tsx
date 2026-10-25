@@ -636,17 +636,18 @@ export function RefreshButton({
   lastLoadedAt: number | null;
   intervalMs: number;
 }) {
-  const share = useElapsedShare(lastLoadedAt, intervalMs, auto && lastLoadedAt !== null && !busy);
+  const showBar = auto && lastLoadedAt !== null && !busy;
+  const share = useElapsedShare(lastLoadedAt, intervalMs, showBar);
   return (
     <button
       className={cx(btn.mode(auto), "relative overflow-hidden")}
       type="button"
       onClick={onRefresh}
       disabled={busy}
-      title={auto ? `Reload now. Data refreshes by itself every ${label}; the bar drains to empty when the next reload happens. Change this in Settings.` : "Reload the current data now."}
+      title={auto ? `Reload now. Data refreshes by itself every ${label}.${lastLoadedAt !== null ? " The bar drains to empty when the next reload happens." : ""} Change this in Settings.` : "Reload the current data now."}
     >
       <ArrowPathIcon aria-hidden="true" className={busy ? SPIN : ""} /> Refresh
-      {auto && lastLoadedAt !== null && !busy && (
+      {showBar && (
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-heading/10">
           <span className="block h-full bg-accent transition-[width] duration-1000 ease-linear" style={{ width: `${(1 - share) * 100}%` }} />
         </span>
