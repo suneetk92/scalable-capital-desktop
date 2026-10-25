@@ -69,11 +69,7 @@ function ProtectionActions({ invoke, security, portfolioId, quantity, portfolios
     null,
     createElement("button", { className: btn.secondary, type: "button", onClick: () => setOpen(true) }, "Set trailing stop loss"),
     open &&
-      createElement(
-        Suspense,
-        { fallback: null },
-        createElement(TrailingStopDialog, { security, portfolioId, quantity, portfolios, held, invoke, tradingEnabled: true, onClose: () => setOpen(false) }),
-      ),
+      createElement(Suspense, { fallback: null }, createElement(TrailingStopDialog, { security, portfolioId, quantity, portfolios, held, invoke, manageEnabled: true, onClose: () => setOpen(false) })),
   );
 }
 

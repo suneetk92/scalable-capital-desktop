@@ -26,19 +26,40 @@ const BLOCKED_GENERIC_TOOLS: [&str; 3] = [
 ];
 
 pub(crate) const TRADING_OFF: &str =
-    "Trading is switched off. Turn on Trading (top right) to run tools that change Scalable data.";
+    "Trading is switched off. Switch to Full access (top right) while the exchange is open to place orders or change savings plans.";
+
+pub(crate) const MANAGE_OFF: &str =
+    "The app is in Read-only mode. Switch to Restricted or Full access (top right) to change watchlists, price alerts and portfolio groups.";
+
+/// How much the user has allowed: nothing but reading, watchlists, price alerts and portfolio
+/// groups (Scalable's "Limited access"), or everything including orders and savings plans.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AccessMode {
+    Readonly,
+    Restricted,
+    Full,
+}
 
 /// Whether the user has switched Trading on. Starts off on every launch; the UI sends its saved
 /// choice when it loads, so a reload or a missed message can only ever fail closed. Outside the
 /// exchange hours (`hours.rs`) Trading counts as off whatever the switch says.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct TradingGate {
+    /// Full access: orders and savings plans, only while the exchange is open.
     pub(super) enabled: Arc<AtomicBool>,
+    /// Restricted access: watchlists, price alerts and portfolio groups, at any hour.
+    pub(super) manage: Arc<AtomicBool>,
 }
 
 impl TradingGate {
     pub(crate) fn is_on(&self) -> bool {
         self.enabled.load(Ordering::SeqCst) && exchange_open()
+    }
+
+    /// Whether tools that manage watchlists, price alerts and portfolio groups may run. Full access includes it.
+    pub(crate) fn manage_on(&self) -> bool {
+        self.manage.load(Ordering::SeqCst) || self.enabled.load(Ordering::SeqCst)
     }
 
     #[cfg(test)]
@@ -56,14 +77,34 @@ pub(super) fn is_read_tool(name: &str) -> bool {
             .any(|prefix| name.starts_with(prefix))
 }
 
-/// The Trading switch is a fail-closed gate: every unknown or non-read tool needs it enabled.
+/// Tools of Scalable's "Limited access" level: they change watchlists, price alerts and portfolio groups, never money. Keep in sync with `isManageTool` in `src/tools.ts`.
+pub(super) fn is_manage_tool(name: &str) -> bool {
+    let name = name.trim().to_ascii_lowercase();
+    !is_read_tool(&name)
+        && ["watchlist", "price_alert", "portfolio_group"]
+            .iter()
+            .any(|part| name.contains(part))
+}
+
+/// The Trading gate is fail-closed: every unknown or non-read tool needs Full access, except the manage tools, which need Restricted access.
 pub(super) fn is_trading_tool(name: &str) -> bool {
-    !is_read_tool(name)
+    !is_read_tool(name) && !is_manage_tool(name)
 }
 
 /// The error to return when `name` may not run right now, or `None` when it may.
 fn trading_block(gate: &TradingGate, name: &str) -> Option<&'static str> {
+    if is_manage_tool(name) {
+        return (!gate.manage_on()).then_some(MANAGE_OFF);
+    }
     (is_trading_tool(name) && !gate.is_on()).then_some(TRADING_OFF)
+}
+
+/// Like `trading_block` for the backend's own calls, which also treat a preview as Trading.
+pub(super) fn call_block(gate: &TradingGate, name: &str) -> Option<&'static str> {
+    if name.trim().to_ascii_lowercase().starts_with("preview_") {
+        return (!gate.is_on()).then_some(TRADING_OFF);
+    }
+    trading_block(gate, name)
 }
 
 /// Why the generic runner refuses `name` before anything is sent, or `None` when it may run.
@@ -80,8 +121,30 @@ fn generic_refusal(gate: &TradingGate, name: &str) -> Option<String> {
 /// Sets the Trading switch. Switching off also drops all pending order and savings-plan previews.
 /// Used by the switch command and by sign-out.
 pub fn switch_trading(gate: &TradingGate, state: &TradeState, plans: &SavingsState, enabled: bool) {
-    gate.enabled.store(enabled, Ordering::SeqCst);
-    if !enabled {
+    switch_access(
+        gate,
+        state,
+        plans,
+        if enabled {
+            AccessMode::Full
+        } else {
+            AccessMode::Readonly
+        },
+    );
+}
+
+/// Sets the access mode. Leaving Full access drops all pending order and savings-plan previews.
+pub fn switch_access(
+    gate: &TradingGate,
+    state: &TradeState,
+    plans: &SavingsState,
+    mode: AccessMode,
+) {
+    gate.enabled
+        .store(mode == AccessMode::Full, Ordering::SeqCst);
+    gate.manage
+        .store(mode != AccessMode::Readonly, Ordering::SeqCst);
+    if mode != AccessMode::Full {
         state.clear_pending();
         plans.clear_pending();
     }
@@ -90,13 +153,13 @@ pub fn switch_trading(gate: &TradingGate, state: &TradeState, plans: &SavingsSta
 /// Called by the UI on load and whenever the Trading switch changes. Not async, so calls are
 /// handled in the order they were sent.
 #[tauri::command]
-pub fn set_trading_enabled(
+pub fn set_access_mode(
     gate: State<'_, TradingGate>,
     state: State<'_, TradeState>,
     plans: State<'_, SavingsState>,
-    enabled: bool,
+    mode: AccessMode,
 ) {
-    switch_trading(&gate, &state, &plans, enabled);
+    switch_access(&gate, &state, &plans, mode);
 }
 
 #[derive(Deserialize)]
@@ -144,7 +207,7 @@ pub async fn call_tools(
             .error
             .as_deref()
             .is_some_and(session::is_stale_session_error);
-        if stale && !is_trading_tool(&calls[index].name) {
+        if stale && is_read_tool(&calls[index].name) {
             retry.push(index);
         }
         outcomes.push(outcome);
@@ -205,10 +268,10 @@ async fn run_batch(
             continue;
         }
         let mut client = mcp.clone();
-        let gate_enabled = gate.enabled.clone();
+        let gate = gate.clone();
         tasks.spawn(async move {
-            let outcome = if !is_read_tool(&name) && !gate_enabled.load(Ordering::SeqCst) {
-                Err(TRADING_OFF.to_owned())
+            let outcome = if let Some(reason) = trading_block(&gate, &name) {
+                Err(reason.to_owned())
             } else {
                 client.call_tool(&name, arguments).await
             };
@@ -285,7 +348,7 @@ pub(super) struct Pending<R> {
 impl<R> Previews<R> {
     /// Keeps a preview for the confirmation step. The gate is checked while holding the lock,
     /// so a preview whose network call finished after Trading was switched off is dropped
-    /// instead of being stored behind the clearing done by `set_trading_enabled`.
+    /// instead of being stored behind the clearing done by `set_access_mode`.
     pub(super) fn store_preview(
         &self,
         gate: &TradingGate,
@@ -589,17 +652,22 @@ fn take_submission(
 mod tests {
     use super::*;
 
-    /// The write tools Scalable publishes, from the shared policy fixture.
-    fn write_tools() -> Vec<String> {
+    /// The tool names under one key of the shared policy fixture.
+    fn policy_names(key: &str) -> Vec<String> {
         let policy: Value =
             serde_json::from_str(include_str!("../../../tests/fixtures/tool-policy.json"))
                 .expect("tests/fixtures/tool-policy.json is valid");
-        policy["trading"]
+        policy[key]
             .as_array()
             .expect("a list of names")
             .iter()
             .map(|name| name.as_str().expect("a name").to_owned())
             .collect()
+    }
+
+    /// The tools that need Full access.
+    fn write_tools() -> Vec<String> {
+        policy_names("trading")
     }
 
     fn calls_for(names: &[String]) -> Vec<ToolCall> {
@@ -762,24 +830,21 @@ mod tests {
 
     #[test]
     fn classifies_trading_tools_like_the_ui() {
-        let policy: Value =
-            serde_json::from_str(include_str!("../../../tests/fixtures/tool-policy.json"))
-                .expect("tests/fixtures/tool-policy.json is valid");
-        let names = |key: &str| -> Vec<String> {
-            policy[key]
-                .as_array()
-                .expect("a list of names")
-                .iter()
-                .map(|name| name.as_str().expect("a name").to_owned())
-                .collect()
-        };
-        for name in names("trading") {
+        for name in policy_names("trading") {
             assert!(is_trading_tool(&name), "{name} should be a trading tool");
+            assert!(!is_manage_tool(&name), "{name} should not be a manage tool");
         }
-        for name in names("notTrading") {
+        for name in policy_names("manage") {
+            assert!(is_manage_tool(&name), "{name} should be a manage tool");
             assert!(
                 !is_trading_tool(&name),
                 "{name} should not be a trading tool"
+            );
+        }
+        for name in policy_names("notTrading") {
+            assert!(
+                !is_trading_tool(&name) && !is_manage_tool(&name),
+                "{name} should be a read tool"
             );
         }
     }
@@ -791,7 +856,8 @@ mod tests {
         assert!(trading_block(&gate, "submit_savings_plan").is_some());
         assert!(trading_block(&gate, "remove_savings_plan").is_some());
         assert!(trading_block(&gate, "upsert_savings_plan").is_some());
-        assert!(trading_block(&gate, "create_price_alert").is_some());
+        assert_eq!(trading_block(&gate, "create_price_alert"), Some(MANAGE_OFF));
+        assert_eq!(trading_block(&gate, "add_watchlist_item"), Some(MANAGE_OFF));
         assert!(trading_block(&gate, "unknown_future_tool").is_some());
         assert!(trading_block(&gate, "get_portfolio_holdings").is_none());
         gate.enabled.store(true, Ordering::SeqCst);
@@ -799,6 +865,24 @@ mod tests {
         assert!(trading_block(&gate, "submit_savings_plan").is_none());
         gate.enabled.store(false, Ordering::SeqCst);
         assert!(trading_block(&gate, "cancel_order").is_some());
+    }
+
+    #[test]
+    fn restricted_access_manages_lists_but_not_money() {
+        let gate = TradingGate::default();
+        let (orders, plans) = (TradeState::default(), SavingsState::default());
+        switch_access(&gate, &orders, &plans, AccessMode::Restricted);
+        for name in policy_names("manage") {
+            assert!(trading_block(&gate, &name).is_none(), "{name}");
+        }
+        for name in policy_names("trading") {
+            assert_eq!(trading_block(&gate, &name), Some(TRADING_OFF), "{name}");
+        }
+        assert_eq!(call_block(&gate, "preview_buy_order"), Some(TRADING_OFF));
+        switch_access(&gate, &orders, &plans, AccessMode::Readonly);
+        assert_eq!(trading_block(&gate, "add_watchlist_item"), Some(MANAGE_OFF));
+        switch_access(&gate, &orders, &plans, AccessMode::Full);
+        assert!(trading_block(&gate, "add_watchlist_item").is_none());
     }
 
     #[test]

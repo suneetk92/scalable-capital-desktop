@@ -35,7 +35,7 @@ export function AlertsPage({ common, searchInput, onOpenSecurity }: { common: Co
       <Section
         title="Price alerts"
         flush
-        footer={<PanelFooter tradingEnabled={common.tradingEnabled} />}
+        footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}
         hint={filtering ? `${pluralize(visible.length, "alert")} match${records.length !== visible.length ? ` (of ${records.length})` : ""}` : pluralize(records.length, "alert")}
         toolbar={
           <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">

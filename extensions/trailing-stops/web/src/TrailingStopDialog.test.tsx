@@ -25,7 +25,7 @@ describe("trailing stop dialog", () => {
         portfolios={portfolios}
         held={[{ portfolioId: "portfolio-1", isin: security.isin, name: security.name, symbol: security.symbol, currency: security.currency, quantity: 5 }]}
         invoke={invoke}
-        tradingEnabled
+        manageEnabled
         onClose={onClose}
       />,
     );
@@ -42,7 +42,7 @@ describe("trailing stop dialog", () => {
 
   it("creates a trailing buy stop with an amount", async () => {
     const invoke = mockInvoke((command) => (command === "add_trailing_stop" ? { id: "stop-2" } : undefined));
-    render(<TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} tradingEnabled onClose={vi.fn()} />);
+    render(<TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} manageEnabled onClose={vi.fn()} />);
 
     fireEvent.change(screen.getByRole("textbox", { name: /amount to spend/i }), { target: { value: "250" } });
     fireEvent.change(screen.getByRole("textbox", { name: /distance above the low/i }), { target: { value: "5" } });

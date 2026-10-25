@@ -280,27 +280,39 @@ minutes; it starts a new one after an authorisation error, on sign-out and on "R
 
 ## Trading (buy and sell)
 
-Trading is **off by default**. Turning it on, from any switch or the command palette, asks for
-confirmation first; turning it off does not. The top bar switch and the command palette change only the current session; Settings, Trading, **Enable trading at start** is the one saved choice (it also switches Trading on or off right away), and with it on every launch starts with Trading on while the exchange is open. Turn on the "Read-only / Trading on" switch in the top bar (or
-Settings, Trading; the switch is on every page except Settings, and all of them show one shared state) to show **Buy** and **Sell** buttons per row and a **New order** button with
-security search (on Overview, Portfolio, Watchlist, Discover and Transactions; Groups, Alerts and Savings have
-their own "New …" button instead). The same switch shows the buttons that create, change or delete data (watchlist,
-price alerts, portfolio groups, savings plans); while it is off they are hidden and Run in Settings,
-Scalable tools is disabled. Hiding is a convenience in the UI; the Rust backend also refuses every
-non-read tool, including unknown tools, until Trading is on.
+The app has three access levels, matching Scalable's MCP access levels. The access button in the top bar (on every
+page except Settings) cycles Read-only, Restricted, Full and back (Full is skipped while the exchange is closed); the
+command palette and the account menu change the level too:
 
-- The switch is a backend-enforced **kill switch**, not just a UI preference. The switch itself is not saved: every
-  launch, and every reload of the window, starts read-only unless Enable trading at start is on, and the UI tells the backend on every
-  change. Signing out also switches it off (in Rust and in the UI) and drops all pending previews, so
-  the next sign-in starts read-only too, until the next launch. While it is off, only `ping` and tools whose names start with `get_`, `list_`, `search_` or
-  `preview_` may run; every other tool, including unknown future tools, is denied, and a batch that is
-  refused as a whole does not even open a session. The order and
-  savings-plan dialogs also cannot preview while it is off.
-- Trading also counts as off outside the exchange hours of the European Investor Exchange (Monday to
+| Level      | What the app allows                                                                                               | When                       |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| Read-only  | Only reading: `ping` and the `get_`, `list_`, `search_` tools.                                                    | Always; the default.       |
+| Restricted | Read-only plus watchlists, price alerts, portfolio groups and trailing stops (create, change, remove).            | At any hour, also off-hours. |
+| Full       | Everything, including buy and sell orders, savings plans, previews and the watching of trailing stops.            | Only while the exchange is open. |
+
+Full access asks for confirmation first; Restricted and Read-only do not. The level is not saved; **Start with** in
+Settings, Trading is the one saved choice: every launch starts with that level (Read-only by default), and Full starts as
+Restricted while the exchange is closed, then becomes Full at the next opening. The top bar changes only the current session.
+Full access shows the **Buy** and **Sell** buttons per row and a
+**New order** button with security search (on Overview, Portfolio, Watchlist, Discover and Transactions; Groups,
+Alerts and Savings have their own "New …" button instead). Restricted access shows the buttons that create, change or
+delete watchlists, price alerts and portfolio groups; savings-plan buttons need Full access. While a level is not
+allowed, its buttons are hidden and Run in Settings, Scalable tools is disabled. Hiding is a convenience in the UI; the
+Rust backend also refuses every tool above the current level, including unknown tools (they need Full access).
+
+- The level is a backend-enforced **kill switch**, not just a UI preference. The UI tells the backend on every
+  change and every reload of the window. Signing out switches it to read-only (in Rust and in the UI) and drops all
+  pending previews, so the next sign-in starts read-only too, until the next launch. Below Full access, only `ping`
+  and tools whose names start with `get_`, `list_`, `search_` or `preview_` may run, plus the watchlist,
+  price-alert and portfolio-group tools in Restricted access (`tests/fixtures/tool-policy.json` lists the tools of
+  each level); every other tool, including unknown future tools, is denied, and a batch that is refused as a whole
+  does not even open a session. The order and savings-plan dialogs also cannot preview below Full access.
+- Full access also counts as off outside the exchange hours of the European Investor Exchange (Monday to
   Friday, 06:00 to 23:00 Berlin time; closed on its holidays, opening at 07:30 on some and closing at
   14:00 on 30 December, see `src-tauri/src/mcp/hours.rs`, mirrored for display in `src/marketHours.ts`).
-  The gate checks the clock on every call, the switch cannot be turned on while the exchange is
-  closed, and it drops back to Read-only at closing time.
+  The gate checks the clock on every call, Full access cannot be chosen while the exchange is closed, and it drops
+  back to Restricted at closing time. Restricted access needs no exchange hours, so watchlists, price alerts, groups
+  and trailing stops can be set up at any time.
 - The submit tools (`submit_buy_order`, `submit_sell_order`, `submit_savings_plan`) can only be sent
   from their own dialogs, which preview first. The backend refuses them from the tool runner too, and
   Run is disabled for them in Settings, Scalable tools.
@@ -349,12 +361,12 @@ non-read tool, including unknown tools, until Trading is on.
   tick that the app may sell without asking again. The app remembers the highest price from then on (the
   bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (on the Trailing stops page the header Refresh uses this frequency, shows its countdown bar and reads the prices right away; it only runs while a stop is active; the sidebar shows how many stops exist) (Settings, Trailing stops, "Trailing stops check frequency", for both stop losses and buy stops: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at
   or below the high minus the distance it sells the shares at market with `preview_sell_order` and
-  `submit_sell_order`. **Edit** on a watching row changes its shares and distance (the high is kept; it needs Trading on); on a "Needs you" row it starts watching again from the last price, after you have checked in Scalable that nothing was sold. A thin bar under **Now** shows how much of the distance between the high and the sell price is left. With Trading off the **Now** price still follows the market, but the high is not raised and nothing is sold (the row shows "Paused, Trading is off" and **Stop watching** is disabled until Trading is on). Limits and safeguards:
-  - It works only while the app runs (the tray keeps it running), is signed in and **Trading is on**. It is
+  `submit_sell_order`. **Edit** on a watching row changes its shares and distance (the high is kept; it needs Restricted or Full access); on a "Needs you" row it starts watching again from the last price, after you have checked in Scalable that nothing was sold. A thin bar under **Now** shows how much of the distance between the high and the sell price is left. With Trading off the **Now** price still follows the market, but the high is not raised and nothing is sold (the row shows "Paused, Full access is off" and **Stop watching** is disabled until Full access is on). Limits and safeguards:
+  - It works only while the app runs (the tray keeps it running), is signed in and **Full access is on** (starting or editing a stop needs only Restricted access). It is
     not a Scalable order: nothing protects the position while the app is closed, offline or in Read-only mode,
     and a fast drop, a closed market or a price gap can fill well below the trigger.
-  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens), but the Trading switch is not
-    saved, so after a restart they wait until Trading is on again (automatically with Enable trading at start).
+  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens), but the access level is not
+    saved, so after a restart they wait until Full access is on again (automatically when Start with is Full).
   - It never accepts a warning for you: when the sell preview asks for an acknowledgement or a questionnaire,
     the stop is marked "Needs you" and a notification is shown. An outdated quote or an untradable security
     makes it wait and try again at the next check; a preview price more than 25% below the price that triggered the stop
@@ -400,7 +412,7 @@ assistant, app and portfolio. If tools are missing after you change it, sign out
 | No access      | The MCP server cannot be used.                                         | MCP cannot be used; no account data can be loaded through it.                                                                    |
 | Read-only      | Reading account, portfolio, market data and similar information.       | Portfolio, overview, discover, transactions and other read screens. Watchlist, price alert, group and order actions are missing. |
 | Limited access | Read-only plus managing watchlists, price alerts and portfolio groups. | Everything in Read-only plus watchlist, price alert and group actions. Savings-plan and order actions are missing.               |
-| Full access    | Everything, including savings-plan changes and buy and sell orders.    | Everything above. Order and savings-plan changes also need the Trading switch.                                                   |
+| Full access    | Everything, including savings-plan changes and buy and sell orders.    | Everything above. Order and savings-plan changes also need Full access in the app. In the app, Restricted access matches Limited access; Full access matches Full access.                                                   |
 
 What the level allows is decided by Scalable. Settings, Scalable tools always shows the tools your
 connection really offers.

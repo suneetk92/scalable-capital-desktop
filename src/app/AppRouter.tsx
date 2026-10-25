@@ -126,7 +126,7 @@ function SettingsRoute() {
       settings={data.settings}
       marketOpen={data.marketOpen}
       onChange={data.updateSettings}
-      onToggleTrading={commands.toggleTradingAtStart}
+      onChangeStartAccess={commands.chooseStartAccess}
       onReset={data.resetSettings}
       session={data.session}
       common={data.common}
@@ -167,6 +167,7 @@ function PortfolioRoute() {
       groups={data.allGroups}
       watchlistUnknown={data.watchlistUnknown}
       tradingEnabled={data.tradingEnabled}
+      manageEnabled={data.manageEnabled}
       toolActions={data.toolActions}
       lastUpdated={data.lastUpdated}
       showDiagnostics={data.settings.showDiagnostics}

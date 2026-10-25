@@ -449,7 +449,7 @@ export function TransactionsPage({
               )}
             </>
           ))}
-        <PanelFooter tradingEnabled={common.tradingEnabled} />
+        <PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />
       </section>
       {detail && (
         <DetailsModal

@@ -37,6 +37,7 @@ import {
   formatCell,
   humanize,
   INSTRUMENT_EXAMPLES,
+  isManageTool,
   isTradingTool,
   isWriteTool,
   pretty,
@@ -465,6 +466,7 @@ type PanelProps = {
   portfolios?: PagePortfolio[];
   invoke: Invoke;
   tradingEnabled: boolean;
+  manageEnabled: boolean;
   runLabel?: string;
   hideHeader?: boolean;
   renderResult?: (result: unknown) => ReactNode;
@@ -472,7 +474,7 @@ type PanelProps = {
 };
 
 /** Form generated from a tool's input schema, with a Run button and the result below. */
-export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolios, invoke, tradingEnabled, runLabel, hideHeader = false, renderResult, onResult }: PanelProps) {
+export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolios, invoke, tradingEnabled, manageEnabled, runLabel, hideHeader = false, renderResult, onResult }: PanelProps) {
   const [values, setValues] = useState<FormValues>(() => initialValues(tool, prefill, portfolios));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -480,7 +482,7 @@ export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolio
   const [request, setRequest] = useState<Rec | null>(null);
   const write = isWriteTool(tool.name);
   const dialogOnly = DIALOG_ONLY_TOOLS[tool.name];
-  const blocked = isTradingTool(tool.name) && !tradingEnabled;
+  const blocked = (isTradingTool(tool.name) && !tradingEnabled) || (isManageTool(tool.name) && !manageEnabled);
   const action = actionLabel(tool.name);
 
   async function run() {
@@ -520,7 +522,13 @@ export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolio
       )}
       <ToolForm tool={tool} values={values} onChange={setValues} portfolios={portfolios} />
       {dialogOnly && <div className={`${field.note} mb-3`}>This tool is only sent from {dialogOnly}, which previews and confirms it first. It cannot be run from here.</div>}
-      {blocked && !dialogOnly && <div className={`${field.note} mb-3`}>This tool moves money or orders. Turn on Trading (top right) to use it.</div>}
+      {blocked && !dialogOnly && (
+        <div className={`${field.note} mb-3`}>
+          {isManageTool(tool.name)
+            ? "Read-only mode. Switch to Restricted or Full access (top right) to use this tool."
+            : "This tool moves money or orders. Switch to Full access (top right, while the exchange is open) to use it."}
+        </div>
+      )}
       {error && <Alert>{error}</Alert>}
       <DialogFooter>
         <button className={write && action.destructive ? btn.danger : btn.primary} type="button" disabled={busy || blocked || dialogOnly !== undefined} onClick={() => void run()}>
@@ -545,6 +553,7 @@ export function ToolRunnerModal({
   prefill,
   invoke,
   tradingEnabled,
+  manageEnabled,
   onChanged,
   onSuccess,
   onClose,
@@ -555,6 +564,7 @@ export function ToolRunnerModal({
   prefill: Rec;
   invoke: Invoke;
   tradingEnabled: boolean;
+  manageEnabled: boolean;
   onChanged: (tool: string, args: Rec) => void;
   /** Called after a write succeeded; the dialog closes itself. */
   onSuccess: (tool: string, args: Rec, result: unknown) => void;
@@ -570,6 +580,7 @@ export function ToolRunnerModal({
           portfolios={portfolios}
           invoke={invoke}
           tradingEnabled={tradingEnabled}
+          manageEnabled={manageEnabled}
           onResult={(outcome, args) => {
             if (!outcome.ok || !isWriteTool(tool.name)) return;
             onChanged(tool.name, args);

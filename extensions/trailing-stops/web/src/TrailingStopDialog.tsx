@@ -22,7 +22,8 @@ type Props = {
   /** The securities that can be chosen: the ones held, with their shares. */
   held: HeldPosition[];
   invoke: Invoke;
-  tradingEnabled: boolean;
+  /** Restricted access or more: starting or changing a stop places no order, the watcher needs Full access to act. */
+  manageEnabled: boolean;
   onClose: () => void;
   onAdded?: () => void;
   /** A stop that is watching: the dialog changes its shares and distance instead of starting a new one. */
@@ -41,7 +42,7 @@ export function TrailingStopDialog({
   portfolios,
   held,
   invoke,
-  tradingEnabled,
+  manageEnabled,
   onClose,
   onAdded,
   editing,
@@ -121,7 +122,7 @@ export function TrailingStopDialog({
             : "Scalable has no trailing stop. The app follows the price instead: it remembers the highest price from now on and sells at market when the price falls by the distance you set below that high."}
       </p>
       {(error ?? pickerError) && <Alert>{error ?? pickerError}</Alert>}
-      {!tradingEnabled && <Alert>Turn on Trading to {editing ? "change" : "start"} a trailing stop.</Alert>}
+      {!manageEnabled && <Alert>Switch to Restricted or Full access to {editing ? "change" : "start"} a trailing stop.</Alert>}
 
       {!editing && portfolios.length > 1 && (
         <Field className={field.label}>
@@ -186,8 +187,8 @@ export function TrailingStopDialog({
 
       <div className={`mb-3 ${field.note}`}>
         {buying
-          ? "The purchase only happens while this app is running and signed in with Trading on, and the price is checked at the frequency set in Settings (every 30 seconds by default). It can miss a fast rise, a closed market or a price gap, and it buys at the market price, which can be higher than the trigger. It needs enough cash in the portfolio when it triggers. If Scalable asks for a warning to be accepted, the app does not buy: it tells you instead. Quit the app and nothing is watched."
-          : "The sale only happens while this app is running and signed in with Trading on, and the price is checked at the frequency set in Settings (every 30 seconds by default). It can miss a fast drop, a closed market or a price gap, and it sells at the market price, which can be lower than the trigger. If Scalable asks for a warning to be accepted, the app does not sell: it tells you instead. Quit the app and nothing is watched."}
+          ? "The purchase only happens while this app is running and signed in with Full access during exchange hours, and the price is checked at the frequency set in Settings (every 30 seconds by default). It can miss a fast rise, a closed market or a price gap, and it buys at the market price, which can be higher than the trigger. It needs enough cash in the portfolio when it triggers. If Scalable asks for a warning to be accepted, the app does not buy: it tells you instead. Quit the app and nothing is watched."
+          : "The sale only happens while this app is running and signed in with Full access during exchange hours, and the price is checked at the frequency set in Settings (every 30 seconds by default). It can miss a fast drop, a closed market or a price gap, and it sells at the market price, which can be lower than the trigger. If Scalable asks for a warning to be accepted, the app does not sell: it tells you instead. Quit the app and nothing is watched."}
       </div>
       <CheckboxField checked={understood} onChange={setUnderstood}>
         {buying ? "I understand that the app will buy this security at market without asking again." : "I understand that the app will sell these shares at market without asking again."}
@@ -197,7 +198,7 @@ export function TrailingStopDialog({
         <button className={btn.secondary} type="button" onClick={onClose} disabled={busy}>
           Cancel
         </button>
-        <button className={btn.danger} type="button" onClick={() => void start()} disabled={busy || !tradingEnabled || !understood || issue !== null}>
+        <button className={btn.danger} type="button" onClick={() => void start()} disabled={busy || !manageEnabled || !understood || issue !== null}>
           {busy
             ? editing
               ? "Saving…"

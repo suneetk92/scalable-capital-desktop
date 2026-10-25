@@ -6,7 +6,7 @@ use super::{
 };
 use crate::mcp::{
     args::is_isin,
-    trading::{TradingGate, TRADING_OFF},
+    trading::{TradingGate, MANAGE_OFF},
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -126,7 +126,7 @@ fn is_duplicate(
     })
 }
 
-/// Everything `add_trailing_stop` checks before it asks Scalable for a price: the Trading switch,
+/// Everything `add_trailing_stop` checks before it asks Scalable for a price: the access level,
 /// the request itself, and that the stop is neither a duplicate nor one too many. Returns the
 /// portfolio id the stop belongs to.
 fn admit_new_stop(
@@ -134,8 +134,8 @@ fn admit_new_stop(
     state: &TrailingState,
     request: &NewTrailingStop,
 ) -> Result<Option<String>, String> {
-    if !gate.is_on() {
-        return Err(TRADING_OFF.to_owned());
+    if !gate.manage_on() {
+        return Err(MANAGE_OFF.to_owned());
     }
     if !is_isin(&request.isin) {
         return Err("A valid 12-character ISIN is required".to_owned());
@@ -204,14 +204,14 @@ pub async fn add_trailing_stop(
     };
     // Trading may have been switched off while the price loaded, and the same stop twice is refused again.
     let added = state.mutate(|stops| {
-        if !gate.is_on() || is_duplicate(stops, request.side, &request.isin, &portfolio_id) {
+        if !gate.manage_on() || is_duplicate(stops, request.side, &request.isin, &portfolio_id) {
             return false;
         }
         stops.push(stop.clone());
         true
     });
     if !added {
-        return Err(format!("{TRADING_OFF} No trailing stop was added."));
+        return Err(format!("{MANAGE_OFF} No trailing stop was added."));
     }
     if let Err(error) = state.persist(&app) {
         state.mutate(|stops| stops.retain(|item| item.id != stop.id));
@@ -232,7 +232,7 @@ pub struct TrailingStopChange {
 
 /// Changes the size (shares or money) and the distance of a stop that is watching, or one that needs the user, which then
 /// watches again. A watching stop keeps its high; one that needs the user starts over from the last price,
-/// because the old high is what triggered it. It changes what the app sells, so it needs the Trading switch.
+/// because the old high is what triggered it. Changing a stop places no order (the watcher still needs Full access to act), so Restricted access is enough.
 #[tauri::command]
 pub fn update_trailing_stop(
     app: AppHandle,
@@ -240,8 +240,8 @@ pub fn update_trailing_stop(
     state: State<'_, TrailingState>,
     request: TrailingStopChange,
 ) -> Result<TrailingStop, String> {
-    if !gate.is_on() {
-        return Err(TRADING_OFF.to_owned());
+    if !gate.manage_on() {
+        return Err(MANAGE_OFF.to_owned());
     }
     let (previous, updated) = state.mutate(|stops| {
         let stop = stops
@@ -332,7 +332,7 @@ mod tests {
         let request = new_stop("US0378331005");
         assert_eq!(
             admit_new_stop(&gate, &state, &request).unwrap_err(),
-            TRADING_OFF
+            MANAGE_OFF
         );
         gate.set_for_test(true);
         assert_eq!(
@@ -351,7 +351,7 @@ mod tests {
         gate.set_for_test(false);
         assert_eq!(
             admit_new_stop(&gate, &state, &request).unwrap_err(),
-            TRADING_OFF
+            MANAGE_OFF
         );
     }
 

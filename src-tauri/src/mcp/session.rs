@@ -1,7 +1,7 @@
 use super::{
     args::validate_arguments,
     client::{require_tool, McpClient},
-    trading::{is_read_tool, TradingGate, TRADING_OFF},
+    trading::{call_block, is_read_tool, TradingGate},
 };
 use crate::{auth, logging};
 use serde_json::Value;
@@ -162,10 +162,6 @@ fn validate_retry_policy(name: &str, retry: Retry) -> Result<(), String> {
     Ok(())
 }
 
-fn requires_trading(name: &str) -> bool {
-    !is_read_tool(name) || name.trim().to_ascii_lowercase().starts_with("preview_")
-}
-
 /// Calls one MCP tool with an explicit retry policy. Read-only calls may be repeated once after a
 /// rejected session; all other calls use a fresh session and are never repeated.
 pub async fn call_tool(
@@ -182,8 +178,8 @@ pub async fn call_tool(
     };
     let tool = require_tool(&tools, name).map_err(|_| unavailable_msg.to_owned())?;
     validate_arguments(tool, &arguments)?;
-    if requires_trading(name) && !app.state::<TradingGate>().is_on() {
-        return Err(TRADING_OFF.to_owned());
+    if let Some(reason) = call_block(&app.state::<TradingGate>(), name) {
+        return Err(reason.to_owned());
     }
     let result = match client.call_tool(name, arguments.clone()).await {
         Err(error) if retry == Retry::ReadOnly && is_stale_session_error(&error) => {
@@ -191,8 +187,8 @@ pub async fn call_tool(
             let (mut client, tools) = connect(app).await?;
             let tool = require_tool(&tools, name).map_err(|_| unavailable_msg.to_owned())?;
             validate_arguments(tool, &arguments)?;
-            if requires_trading(name) && !app.state::<TradingGate>().is_on() {
-                return Err(TRADING_OFF.to_owned());
+            if let Some(reason) = call_block(&app.state::<TradingGate>(), name) {
+                return Err(reason.to_owned());
             }
             client.call_tool(name, arguments).await
         }
@@ -262,9 +258,10 @@ mod tests {
         assert!(validate_retry_policy("submit_buy_order", Retry::ReadOnly).is_err());
         assert!(validate_retry_policy("unknown_tool", Retry::ReadOnly).is_err());
         assert!(validate_retry_policy("submit_buy_order", Retry::Never).is_ok());
-        assert!(requires_trading("preview_sell_order"));
-        assert!(requires_trading("unknown_tool"));
-        assert!(!requires_trading("get_security_quote"));
+        let gate = TradingGate::default();
+        assert!(call_block(&gate, "preview_sell_order").is_some());
+        assert!(call_block(&gate, "unknown_tool").is_some());
+        assert!(call_block(&gate, "get_security_quote").is_none());
     }
 
     #[tokio::test]

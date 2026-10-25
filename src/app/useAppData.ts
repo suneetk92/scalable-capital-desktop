@@ -32,7 +32,7 @@ import { useToolActions, useToolQuery } from "../toolActions";
 import { callTools, type ToolDef } from "../tools";
 import { pickString, type Rec } from "../response";
 import { dedupeRows } from "../transactions";
-import type { Common, Connection, Dashboard } from "../types";
+import type { AccessMode, Common, Connection, Dashboard } from "../types";
 import { getErrorMessage, hasTauriRuntime, invoke } from "./invoke";
 
 const CONNECTION_CHECK_MS = 60_000;
@@ -60,15 +60,17 @@ export function useAppData() {
   if (view === "transactions" && !transactionsOpened) setTransactionsOpened(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
-  // The switch of this session; it starts from the "Trading at start" setting and no other switch changes that setting.
-  const [tradingSwitch, setTradingEnabled] = useState(false);
-  // The exchange hours override the switch: outside them the app is read-only whatever the switch says.
+  // The access level of this session; it starts read-only (or Full, from the "Trading at start" setting) and no other change touches that setting.
+  const [accessSwitch, setAccessSwitch] = useState<AccessMode>("readonly");
+  // The exchange hours cap Full access: outside them it works as Restricted access, which needs no market hours.
   const [marketOpen, setMarketOpen] = useState(() => exchangeOpen());
   useEffect(() => {
     const timer = window.setInterval(() => setMarketOpen(exchangeOpen()), 15_000);
     return () => window.clearInterval(timer);
   }, []);
-  const tradingEnabled = tradingSwitch && marketOpen;
+  const access: AccessMode = accessSwitch === "full" && !marketOpen ? "restricted" : accessSwitch;
+  const tradingEnabled = access === "full";
+  const manageEnabled = access !== "readonly";
   const [confirmingTrading, setConfirmingTrading] = useState(false);
   const [confirmingStartupTrading, setConfirmingStartupTrading] = useState(false);
   const [orderTarget, setOrderTarget] = useState<OrderTarget | null>(null);
@@ -101,19 +103,24 @@ export function useAppData() {
   dashboardRef.current = dashboard;
   const { statuses: providerStatuses, succeeded, failed } = useProviderStatus(extension.providers?.map((provider) => provider.id));
 
-  // The backend refuses every data-changing tool unless it has been told Trading is on. It
-  // starts off, so this runs on every load and on every switch; if it cannot be sent, stay off.
+  // The backend refuses every data-changing tool unless it has been told the access level. It
+  // starts read-only, so this runs on every load and on every switch; if it cannot be sent, fall back to read-only.
   useEffect(() => {
     if (!hasTauriRuntime()) return;
-    invokeCommand(invoke, "set_trading_enabled", { enabled: tradingEnabled }).catch(() => {
-      if (tradingEnabled) setTradingEnabled(false);
+    invokeCommand(invoke, "set_access_mode", { mode: access }).catch(() => {
+      if (access !== "readonly") setAccessSwitch("readonly");
     });
-  }, [tradingEnabled]);
-  // Closing time also drops the switch. At launch and at the next opening it follows the "Trading at start" setting.
-  const tradingAtStartRef = useRef(settings.tradingAtStart);
-  tradingAtStartRef.current = settings.tradingAtStart;
+  }, [access]);
+  // At launch the level is the "Start with" setting, with Full dropping to Restricted while the exchange is closed.
+  // Closing time drops Full to Restricted; the next opening returns to the setting.
+  const startAccessRef = useRef(settings.startAccess);
+  startAccessRef.current = settings.startAccess;
+  const startedRef = useRef(false);
   useEffect(() => {
-    setTradingEnabled(marketOpen && tradingAtStartRef.current);
+    const start = startAccessRef.current;
+    const launching = !startedRef.current;
+    startedRef.current = true;
+    setAccessSwitch((current) => (marketOpen ? start : launching ? (start === "full" ? "restricted" : start) : current === "full" ? "restricted" : current));
   }, [marketOpen]);
 
   const shortcuts = useShortcuts();
@@ -281,7 +288,7 @@ export function useAppData() {
     actions: toolActions,
     ui: toolUi,
     notifications,
-  } = useToolActions({ invoke, defs: toolDefs, portfolios: pagePortfolioList, tradingEnabled, inApp: settings.alertToasts, onChanged: applyChange });
+  } = useToolActions({ invoke, defs: toolDefs, portfolios: pagePortfolioList, tradingEnabled, manageEnabled, inApp: settings.alertToasts, onChanged: applyChange });
 
   const signedIn = dashboard !== null;
   useAlertWatch({
@@ -426,6 +433,7 @@ export function useAppData() {
     held: heldPositions,
     actions: toolActions,
     tradingEnabled,
+    manageEnabled,
     pageSize: settings.pageSize,
     reloadKey,
   };
@@ -507,8 +515,10 @@ export function useAppData() {
     confirmingSignOut,
     setConfirmingSignOut,
     tradingEnabled,
+    manageEnabled,
     marketOpen,
-    setTradingEnabled,
+    setAccessSwitch,
+    access,
     confirmingTrading,
     setConfirmingTrading,
     confirmingStartupTrading,

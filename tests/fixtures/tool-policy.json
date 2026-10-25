@@ -1,5 +1,5 @@
 {
-  "_comment": "Tool names the Trading gate must and must not hold back. Read by the Rust tests (trading.rs) and the TypeScript tests (tools.test.ts); keep is_read_tool and isReadTool in sync with it.",
+  "_comment": "Tool names the access gate must and must not hold back: `trading` needs Full access, `manage` needs Restricted access, `notTrading` always runs. Read by the Rust tests (trading.rs) and the TypeScript tests (tools.test.ts); keep is_read_tool and isReadTool in sync with it.",
   "trading": [
     "submit_buy_order",
     "submit_sell_order",
@@ -23,9 +23,18 @@
     "edit_order",
     "modify_limit_order",
     "update_orders",
-    "create_price_alert",
-    "add_watchlist_item",
     "unknown_future_tool"
+  ],
+  "manage": [
+    "add_watchlist_item",
+    "remove_watchlist_item",
+    "create_price_alert",
+    "remove_price_alert",
+    "create_portfolio_group",
+    "upsert_portfolio_group",
+    "remove_portfolio_group",
+    "add_portfolio_group_holdings",
+    "remove_portfolio_group_holdings"
   ],
   "notTrading": [
     "preview_buy_order",

@@ -7,7 +7,7 @@ import { btn } from "../ui";
 import { TOOL } from "../commands";
 import { RefreshButton } from "../controls";
 import { extension } from "../extensions";
-import { EXCHANGE_HOURS_NOTE } from "../marketHours";
+import { ACCESS_MODES } from "../access";
 import type { AppCommands } from "./useAppCommands";
 import { useApp } from "./AppContext";
 import type { AppData } from "./useAppData";
@@ -32,12 +32,15 @@ const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "
 
 /** The buttons next to the page title: the Trading switch, New order and Refresh. Each only appears where it does something. */
 export function pageActions(data: AppData, commands: AppCommands) {
-  const { view, tradingEnabled, marketOpen, autoRefresh, refreshLabel, syncing, marketTableOpen, market, extensionRuntime } = data;
-  const { toggleTrading, openOrder, refreshAccount } = commands;
+  const { view, access, tradingEnabled, marketOpen, autoRefresh, refreshLabel, syncing, marketTableOpen, market, extensionRuntime } = data;
+  const { cycleAccess, openOrder, refreshAccount } = commands;
   const ownView = extension.views?.find((item) => item.id === view);
   const extensionView = ownView !== undefined;
   const ownRefresh = ownView?.refresh?.({ data, commands });
   const refreshExtension = extensionView && !ownRefresh && extensionRuntime.refresh !== undefined;
+  const current = ACCESS_MODES.find((item) => item.mode === access) ?? ACCESS_MODES[0];
+  const cycle = ACCESS_MODES.filter((item) => item.mode !== "full" || marketOpen);
+  const next = cycle[(cycle.indexOf(current) + 1) % cycle.length] ?? ACCESS_MODES[0];
   const showTrading = view !== "settings" && (!extensionView || ownView.trading === true);
   // New order belongs to the pages about securities and orders; Groups and Savings have their own "New …" action in the panel; New alert and New plan sit here.
   const showNewOrder = showTrading && tradingEnabled && ORDER_VIEWS.has(view);
@@ -53,21 +56,12 @@ export function pageActions(data: AppData, commands: AppCommands) {
     <>
       {showTrading && (
         <button
-          className={btn.mode(tradingEnabled, "warn")}
+          className={btn.mode(access !== "readonly", access === "full" ? "warn" : "accent")}
           type="button"
-          role="switch"
-          aria-checked={tradingEnabled}
-          onClick={toggleTrading}
-          disabled={!marketOpen}
-          title={
-            !marketOpen
-              ? EXCHANGE_HOURS_NOTE
-              : tradingEnabled
-                ? "Trading is on. Every order still needs a preview and your confirmation."
-                : "Read-only. Turn on to place orders, change watchlists, price alerts, groups and savings plans, or run other data-changing tools."
-          }
+          onClick={cycleAccess}
+          title={`${current.title} Click for ${next.label}${next.mode === "full" ? " (asks first)" : ""}.`}
         >
-          <ShieldCheckIcon aria-hidden="true" /> {tradingEnabled ? "Trading on" : "Read-only"}
+          <ShieldCheckIcon aria-hidden="true" /> {current.label}
         </button>
       )}
       {showNewOrder && (

@@ -30,7 +30,7 @@ type CommandMap = {
   reload_watchlist: { args: { known: string[] }; result: WatchlistReload };
   load_tool_schemas: { args: undefined; result: unknown };
   call_tools: { args: { calls: ToolCall[] }; result: ToolOutcome[] };
-  set_trading_enabled: { args: { enabled: boolean }; result: void };
+  set_access_mode: { args: { mode: "readonly" | "restricted" | "full" }; result: void };
   search_securities: { args: { query: string }; result: unknown };
   preview_order: { args: { request: object }; result: PreviewResponse };
   submit_order: { args: { previewId: string; request: object; acknowledgeWarning: boolean }; result: unknown };
@@ -61,7 +61,7 @@ const REGISTRY: Record<Command, true> = {
   reload_watchlist: true,
   load_tool_schemas: true,
   call_tools: true,
-  set_trading_enabled: true,
+  set_access_mode: true,
   search_securities: true,
   preview_order: true,
   submit_order: true,

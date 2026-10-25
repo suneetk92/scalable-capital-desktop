@@ -4,7 +4,7 @@ import { withLastGood } from "./lastGood";
 import { toolSuccessNotice, type Notice } from "./notifications";
 import { ConfirmModal, ToolRunnerModal } from "./ToolViews";
 import { Toast, ToastStack } from "./ui";
-import { acceptsIsinList, buildArgs, callTools, errorText, humanize, isTradingTool, isWriteTool, type Invoke, type ToolDef, type ToolOutcome, withoutRecords } from "./tools";
+import { acceptsIsinList, buildArgs, callTools, errorText, humanize, isManageTool, isTradingTool, isWriteTool, type Invoke, type ToolDef, type ToolOutcome, withoutRecords } from "./tools";
 import { pickString, type Rec } from "./response";
 import { planOf } from "./savingsPlan";
 import type { PagePortfolio } from "./types";
@@ -29,10 +29,10 @@ export type ToolActions = {
 };
 
 /** Called after a write succeeded; `semantic` names what changed (isin, groupId, ...). */
-type Args = { invoke: Invoke; defs: ToolDef[]; portfolios: PagePortfolio[]; tradingEnabled: boolean; inApp: boolean; onChanged: (tool: string, semantic: Rec) => void };
+type Args = { invoke: Invoke; defs: ToolDef[]; portfolios: PagePortfolio[]; tradingEnabled: boolean; manageEnabled: boolean; inApp: boolean; onChanged: (tool: string, semantic: Rec) => void };
 
 /** Runs write tools safely (trading gate, confirmation, schema mapping) and owns the dialogs for it. */
-export function useToolActions({ invoke, defs, portfolios, tradingEnabled, inApp, onChanged }: Args): { actions: ToolActions; ui: ReactNode; notifications: Notifications } {
+export function useToolActions({ invoke, defs, portfolios, tradingEnabled, manageEnabled, inApp, onChanged }: Args): { actions: ToolActions; ui: ReactNode; notifications: Notifications } {
   const notifications = useNotifications(invoke, inApp);
   const { notify } = notifications;
   const [runner, setRunner] = useState<{ tool: string; prefill: Rec } | null>(null);
@@ -54,7 +54,11 @@ export function useToolActions({ invoke, defs, portfolios, tradingEnabled, inApp
         return null;
       }
       if (isTradingTool(name) && !tradingEnabled) {
-        notify({ kind: "error", text: `${humanize(name)} changes money or orders. Turn on Trading (top right) first.` });
+        notify({ kind: "error", text: `${humanize(name)} changes money or orders. Switch to Full access (top right) while the exchange is open first.` });
+        return null;
+      }
+      if (isManageTool(name) && !manageEnabled) {
+        notify({ kind: "error", text: `${humanize(name)} changes your account. Switch to Restricted or Full access (top right) first.` });
         return null;
       }
       if (options.confirm) {
@@ -89,7 +93,7 @@ export function useToolActions({ invoke, defs, portfolios, tradingEnabled, inApp
         return null;
       }
     },
-    [defs, invoke, notify, changed, tradingEnabled],
+    [defs, invoke, notify, changed, tradingEnabled, manageEnabled],
   );
 
   const openRunner = useCallback(
@@ -101,8 +105,11 @@ export function useToolActions({ invoke, defs, portfolios, tradingEnabled, inApp
     [defs],
   );
 
-  // Read-only mode offers no tool that changes data, so the buttons for them are not shown.
-  const has = useCallback((name: string) => (tradingEnabled || !isWriteTool(name)) && defs.some((item) => item.name === name), [defs, tradingEnabled]);
+  // Each access level offers only the tools it allows, so the buttons for the others are not shown.
+  const has = useCallback(
+    (name: string) => (isTradingTool(name) ? tradingEnabled : isManageTool(name) ? manageEnabled : !isWriteTool(name)) && defs.some((item) => item.name === name),
+    [defs, tradingEnabled, manageEnabled],
+  );
   const actions = useMemo<ToolActions>(() => ({ run, openRunner, notify, has }), [run, openRunner, notify, has]);
 
   const ui = (
@@ -115,6 +122,7 @@ export function useToolActions({ invoke, defs, portfolios, tradingEnabled, inApp
           prefill={runner.prefill}
           invoke={invoke}
           tradingEnabled={tradingEnabled}
+          manageEnabled={manageEnabled}
           onChanged={changed}
           onSuccess={(tool, args, result) => notify(toolSuccessNotice(tool, args, result))}
           onClose={() => setRunner(null)}

@@ -74,7 +74,7 @@ describe("sanitizeSettings", () => {
       checkUpdates: false,
       updateChannel: "rc",
       orderVenue: "xetra",
-      tradingAtStart: true,
+      startAccess: "restricted",
     } as const;
     expect(sanitizeSettings(valid)).toEqual(valid);
   });
@@ -142,5 +142,14 @@ describe("settings storage", () => {
 
   it("starts the Watchlist with the saved Portfolio columns when it has none of its own", () => {
     expect(sanitizeSettings({ tableColumns: ["price", "quantity"] }).watchlistColumns).toEqual(["price", "quantity"]);
+  });
+});
+
+describe("startAccess", () => {
+  it("defaults to read-only, keeps a valid choice and migrates the old trading-at-start switch", () => {
+    expect(sanitizeSettings({}).startAccess).toBe("readonly");
+    expect(sanitizeSettings({ startAccess: "restricted" }).startAccess).toBe("restricted");
+    expect(sanitizeSettings({ startAccess: "bogus" }).startAccess).toBe("readonly");
+    expect(sanitizeSettings({ tradingAtStart: true } as never).startAccess).toBe("full");
   });
 });

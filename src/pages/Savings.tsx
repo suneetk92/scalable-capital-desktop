@@ -47,7 +47,7 @@ export function SavingsPage({
       <Section
         title="Savings plans"
         flush
-        footer={<PanelFooter tradingEnabled={common.tradingEnabled} />}
+        footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}
         hint={filtering ? `${pluralize(visible.length, "plan")} match${records.length !== visible.length ? ` (of ${records.length})` : ""}` : pluralize(records.length, "plan")}
         toolbar={
           <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">

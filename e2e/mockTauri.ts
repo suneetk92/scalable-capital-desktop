@@ -26,7 +26,7 @@ export async function mockTauri(page: Page) {
           const requested = (args?.calls ?? []) as { name: string }[];
           return requested.map((call) => ({ name: call.name, ok: true, result: data.generate[call.name] }));
         }
-        case "set_trading_enabled":
+        case "set_access_mode":
         case "set_trailing_interval":
           return null;
         case "list_trailing_stops":

@@ -123,6 +123,7 @@ export function DiscoverPage({
           runLabel="Search"
           invoke={common.invoke}
           tradingEnabled={common.tradingEnabled}
+          manageEnabled={common.manageEnabled}
           renderResult={(result) => <Hits result={result} common={common} watched={watched} held={held} onOpen={onOpen} onTrade={onTrade} />}
         />
       ) : (

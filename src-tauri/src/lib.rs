@@ -27,7 +27,7 @@ fn core_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
         mcp::dashboard::reload_watchlist,
         mcp::dashboard::load_tool_schemas,
         mcp::trading::call_tools,
-        mcp::trading::set_trading_enabled,
+        mcp::trading::set_access_mode,
         mcp::trading::search_securities,
         mcp::trading::preview_order,
         mcp::trading::submit_order,

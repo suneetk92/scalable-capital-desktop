@@ -10,6 +10,7 @@ import {
   exampleJson,
   extractSeries,
   formatPointTime,
+  isManageTool,
   isReadTool,
   isTradingTool,
   isWriteTool,
@@ -19,11 +20,20 @@ import {
   type ToolDef,
 } from "./tools";
 
-const { trading: TRADING, notTrading: NOT_TRADING } = toolPolicy as { trading: string[]; notTrading: string[] };
+const { trading: TRADING, manage: MANAGE, notTrading: NOT_TRADING } = toolPolicy as { trading: string[]; manage: string[]; notTrading: string[] };
 
 describe("isTradingTool", () => {
   it.each(TRADING)("gates %s", (name) => expect(isTradingTool(name)).toBe(true));
   it.each(NOT_TRADING)("allows %s", (name) => expect(isTradingTool(name)).toBe(false));
+});
+
+describe("isManageTool", () => {
+  it.each(MANAGE)("lets Restricted access run %s", (name) => {
+    expect(isManageTool(name)).toBe(true);
+    expect(isTradingTool(name)).toBe(false);
+    expect(isWriteTool(name)).toBe(true);
+  });
+  it.each([...TRADING, ...NOT_TRADING])("does not count %s as a manage tool", (name) => expect(isManageTool(name)).toBe(false));
 });
 
 describe("read and write classification", () => {

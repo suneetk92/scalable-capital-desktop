@@ -176,9 +176,14 @@ export function exampleJson(key: string, prop: SchemaProp | undefined) {
   return JSON.stringify(sampleValue(prop));
 }
 
-/** All tools except the explicitly read-only set need Trading to be switched on. */
+/** Scalable's "Limited access" tools: watchlists, price alerts and portfolio groups. Restricted access is enough for them. Keep in sync with `is_manage_tool` in trading.rs. */
+export function isManageTool(name: string) {
+  return isWriteTool(name) && /watchlist|price_alert|portfolio_group/.test(name.trim().toLowerCase());
+}
+
+/** All other tools that change data (orders, savings plans, unknown ones) need Full access. */
 export function isTradingTool(name: string) {
-  return isWriteTool(name);
+  return isWriteTool(name) && !isManageTool(name);
 }
 
 /**

@@ -7,6 +7,8 @@ import { ALERT_MINUTE_OPTIONS } from "./alerts";
 import { invoke } from "./app/invoke";
 import { invokeCommand } from "./commands";
 import { Select } from "./controls";
+import { ACCESS_MODES } from "./access";
+import type { AccessMode } from "./types";
 import { REFRESH_OPTIONS } from "./refreshOptions";
 import { extension, installedExtensions } from "./extensions";
 import type { useBackground } from "./hooks/useBackground";
@@ -38,7 +40,7 @@ type Props = {
   settings: Settings;
   marketOpen: boolean;
   onChange: (patch: Partial<Settings>) => void;
-  onToggleTrading: () => void;
+  onChangeStartAccess: (mode: AccessMode) => void;
   onReset: () => void;
   session: SessionState;
   common: Common;
@@ -265,7 +267,7 @@ export function SettingsPage({
   settings,
   marketOpen,
   onChange,
-  onToggleTrading,
+  onChangeStartAccess,
   onReset,
   session,
   common,
@@ -488,10 +490,10 @@ export function SettingsPage({
               <Select size="compact" value={settings.orderVenue} onChange={(orderVenue: VenueSetting) => onChange({ orderVenue })} options={VENUE_OPTIONS} />
             </Row>
             <Row
-              label="Enable trading at start"
-              hint={`Off keeps the app read-only at every start: only ping and get, list, search or preview tools can run; every other tool is blocked, including unknown tools. On is saved and starts every launch with Trading on. The Trading switch in the top bar and the command palette change only the current session and never this setting. Orders and savings plans also need the Full MCP access level. Trading also stays off outside the exchange hours (Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened)${marketOpen ? "" : ": the exchange is closed now"}.`}
+              label="Start with"
+              hint={`The access level every launch starts with. Read-only changes nothing; Restricted manages watchlists, price alerts, portfolio groups and trailing stops at any hour; Full also places orders and changes savings plans, and needs the Full MCP access level in Scalable and the exchange hours (Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened). Outside those hours Full starts as Restricted${marketOpen ? "" : " (the exchange is closed now)"}. The top bar and the command palette change only the current session and never this setting.`}
             >
-              <Switch label="Enable trading at start" checked={settings.tradingAtStart} onToggle={onToggleTrading} />
+              <Select size="compact" value={settings.startAccess} onChange={onChangeStartAccess} options={ACCESS_MODES.map((item) => ({ value: item.mode, label: item.label }))} />
             </Row>
           </SectionCard>
         </TabPanel>

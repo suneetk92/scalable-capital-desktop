@@ -512,13 +512,13 @@ export function PanelHeader({ title, children, className }: { title: ReactNode; 
 /** Padding for text, alerts and loading rows inside a panel; a table sits flush against the panel edges instead. */
 export const PANEL_BODY = "px-4 py-3.5";
 
-/** Last line of a data panel: where the data comes from and whether Trading is on. */
-export function PanelFooter({ tradingEnabled }: { tradingEnabled: boolean }) {
+/** Last line of a data panel: where the data comes from and the access level. */
+export function PanelFooter({ tradingEnabled, manageEnabled }: { tradingEnabled: boolean; manageEnabled: boolean }) {
   return (
     <footer className="flex min-h-[2.3333rem] items-center justify-between border-t border-line px-4 text-ink-muted [&>span:last-child]:flex [&>span:last-child]:items-center [&>span:last-child]:gap-[0.3333rem] [&_svg]:size-3 [&_svg]:text-ink-accent-dim">
       <span>Data provided by Scalable Capital</span>
       <span>
-        <ShieldCheckIcon aria-hidden="true" /> Secure connection · {tradingEnabled ? "Trading enabled" : "Read only"}
+        <ShieldCheckIcon aria-hidden="true" /> Secure connection · {tradingEnabled ? "Trading enabled" : manageEnabled ? "Restricted access" : "Read only"}
       </span>
     </footer>
   );

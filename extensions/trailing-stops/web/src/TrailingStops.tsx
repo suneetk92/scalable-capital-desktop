@@ -46,6 +46,7 @@ function Row({
   stop,
   logo,
   tradingEnabled,
+  manageEnabled,
   onOpen,
   onEdit,
   onRemove,
@@ -54,6 +55,7 @@ function Row({
   stop: TrailingStop;
   logo?: string;
   tradingEnabled: boolean;
+  manageEnabled: boolean;
   onOpen: () => void;
   onEdit: () => void;
   onRemove: () => void;
@@ -72,7 +74,7 @@ function Row({
     attention: `The app did not ${verb} automatically. Check Scalable before doing anything else.`,
   };
   const statusTitle = paused
-    ? `${stop.message ?? ""}${stop.message ? "\n" : ""}Trading is off, so the app will not move the ${buying ? "low" : "high"} or ${verb} until you turn Trading on.`
+    ? `${stop.message ?? ""}${stop.message ? "\n" : ""}Full access is off or the exchange is closed, so the app will not move the ${buying ? "low" : "high"} or ${verb} until Full access is on.`
     : (soldNote ?? stop.message ?? defaultTitle[stop.status]);
   return (
     <>
@@ -96,7 +98,7 @@ function Row({
             <td>
               {paused ? (
                 <Badge tone="yellow" title={statusTitle}>
-                  Paused, Trading is off
+                  Paused, Full access is off
                 </Badge>
               ) : (
                 <Badge tone={TONE[stop.status]} title={statusTitle}>
@@ -131,19 +133,13 @@ function Row({
                     className={btn.trade}
                     type="button"
                     onClick={onEdit}
-                    disabled={!tradingEnabled}
-                    title={tradingEnabled ? (watching ? "Change the shares and the distance" : "Change it and watch again") : "Read-only mode: turn on Trading to edit"}
+                    disabled={!manageEnabled}
+                    title={manageEnabled ? (watching ? "Change the shares and the distance" : "Change it and watch again") : "Read-only mode: switch to Restricted or Full access to edit"}
                   >
                     Edit
                   </button>
                 )}
-                <button
-                  className={btn.sell}
-                  type="button"
-                  onClick={onRemove}
-                  disabled={stop.status === "selling" || paused}
-                  title={paused ? "Read-only mode: turn on Trading to stop watching" : undefined}
-                >
+                <button className={btn.sell} type="button" onClick={onRemove} disabled={stop.status === "selling" || paused} title={paused ? "Full access is needed to stop watching" : undefined}>
                   {watching ? "Stop watching" : "Remove"}
                 </button>
               </div>
@@ -159,7 +155,7 @@ const PANELS = {
   sell: {
     title: "Trailing stop losses",
     add: "New trailing stop",
-    addTitle: "Turn on Trading to start a trailing stop",
+    addTitle: "Switch to Restricted or Full access to start a trailing stop",
     icon: ArrowTrendingDownIcon,
     layout: "trailing-stops",
     intro:
@@ -170,7 +166,7 @@ const PANELS = {
   buy: {
     title: "Trailing buy stops",
     add: "New trailing buy stop",
-    addTitle: "Turn on Trading to start a trailing buy stop",
+    addTitle: "Switch to Restricted or Full access to start a trailing buy stop",
     icon: ArrowTrendingUpIcon,
     layout: "trailing-buy-stops",
     intro:
@@ -191,7 +187,7 @@ type PanelProps = {
 };
 
 function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSecurity }: PanelProps) {
-  const { invoke, tradingEnabled } = common;
+  const { invoke, tradingEnabled, manageEnabled } = common;
   const copy = PANELS[side];
   const heads = HEADS[side];
   const { order, layout } = useTableLayout(copy.layout, COLUMN_IDS);
@@ -205,11 +201,11 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
       title={copy.title}
       toolbar={stops.length > 0 && <SearchToolbar value={search} onChange={setSearch} placeholder="Search name or ISIN" label={`Search ${copy.title.toLowerCase()}`} />}
       flush
-      footer={<PanelFooter tradingEnabled={tradingEnabled} />}
+      footer={<PanelFooter tradingEnabled={tradingEnabled} manageEnabled={manageEnabled} />}
       hint={`${active} watching`}
       actions={
         <>
-          <button className={btn.primary} type="button" onClick={onAdd} disabled={!tradingEnabled} title={tradingEnabled ? undefined : copy.addTitle}>
+          <button className={btn.primary} type="button" onClick={onAdd} disabled={!manageEnabled} title={manageEnabled ? undefined : copy.addTitle}>
             {copy.add}
           </button>
         </>
@@ -240,6 +236,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
                   stop={stop}
                   logo={logos.get(stop.isin.toUpperCase())}
                   tradingEnabled={tradingEnabled}
+                  manageEnabled={manageEnabled}
                   onOpen={() => onOpenSecurity({ isin: stop.isin, name: stop.name })}
                   onEdit={() => onEdit(stop)}
                   onRemove={() => onRemove(stop.id)}
@@ -264,7 +261,7 @@ export function TrailingStops({
   trailing: ReturnType<typeof useTrailingStops>;
   onOpenSecurity: (security: { isin: string; name: string }) => void;
 }) {
-  const { invoke, portfolios, held, tradingEnabled } = common;
+  const { invoke, portfolios, held, manageEnabled } = common;
   const { stops, problem, reload, checkError, setCheckError } = trailing;
   const [adding, setAdding] = useState<TrailSide | null>(null);
   const [editing, setEditing] = useState<TrailingStop | null>(null);
@@ -288,7 +285,7 @@ export function TrailingStops({
       portfolios={portfolios}
       held={held}
       invoke={invoke}
-      tradingEnabled={tradingEnabled}
+      manageEnabled={manageEnabled}
       editing={stop ?? undefined}
       onClose={onClose}
       onAdded={() => void reload()}

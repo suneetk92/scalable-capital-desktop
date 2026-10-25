@@ -21,7 +21,7 @@ export function GlobalDialogs() {
     setConfirmingTrading,
     confirmingStartupTrading,
     setConfirmingStartupTrading,
-    setTradingEnabled,
+    setAccessSwitch,
     confirmingSignOut,
     setConfirmingSignOut,
   } = data;
@@ -44,25 +44,24 @@ export function GlobalDialogs() {
       {paletteOpen && <CommandPalette items={paletteItems()} onClose={() => setPaletteOpen(false)} />}
       {confirmingTrading && (
         <ConfirmDialog
-          title="Enable trading?"
-          text="Trading turns off read-only mode. You will be able to place buy and sell orders, change watchlists, price alerts, portfolio groups and savings plans, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation. Trading switches back to read-only the next time the app starts, unless you turn on Trading at start in Settings."
-          confirmLabel="Enable trading"
+          title="Enable full access?"
+          text="Full access lets you place buy and sell orders and change savings plans, besides changing watchlists, price alerts and portfolio groups, and run other tools that change data on your real Scalable Capital account. It only works while the exchange is open; after closing, the app drops to Restricted access. Every order still needs a preview and your confirmation. The app starts read-only again, unless you turn on Trading at start in Settings."
+          confirmLabel="Enable full access"
           onConfirm={() => {
             setConfirmingTrading(false);
-            setTradingEnabled(true);
+            setAccessSwitch("full");
           }}
           onCancel={() => setConfirmingTrading(false)}
         />
       )}
       {confirmingStartupTrading && (
         <ConfirmDialog
-          title="Enable trading at start?"
-          text="Trading will be on now and every time the app starts, while the exchange is open. You will be able to place buy and sell orders, change watchlists, price alerts, portfolio groups and savings plans, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation."
-          confirmLabel="Enable trading at start"
+          title="Start with full access?"
+          text="Every launch will start with Full access while the exchange is open (Restricted otherwise). You will be able to place buy and sell orders, change savings plans, watchlists, price alerts and portfolio groups, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation."
+          confirmLabel="Start with full access"
           onConfirm={() => {
             setConfirmingStartupTrading(false);
-            data.updateSettings({ tradingAtStart: true });
-            if (data.marketOpen) setTradingEnabled(true);
+            data.updateSettings({ startAccess: "full" });
           }}
           onCancel={() => setConfirmingStartupTrading(false)}
         />

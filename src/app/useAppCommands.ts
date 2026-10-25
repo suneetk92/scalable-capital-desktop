@@ -1,3 +1,5 @@
+import { ACCESS_MODES } from "../access";
+import type { AccessMode } from "../types";
 import {
   ArrowPathIcon,
   ArrowRightStartOnRectangleIcon,
@@ -37,9 +39,9 @@ export function useAppCommands(data: AppData) {
     setConfirmingSignOut,
     setConfirmingTrading,
     setConfirmingStartupTrading,
-    tradingEnabled,
     marketOpen,
-    setTradingEnabled,
+    setAccessSwitch,
+    access,
     setOrderTarget,
     setSecurityTarget,
     settings,
@@ -132,18 +134,22 @@ export function useAppCommands(data: AppData) {
     await copyText([header.join(","), ...lines].join("\n"), `Copied ${pluralize(rows.length, "row")} as CSV.`);
   }
 
-  // Turning Trading off needs no question; turning it on asks first, from every switch.
-  function toggleTrading() {
-    if (tradingEnabled) setTradingEnabled(false);
-    else if (marketOpen) setConfirmingTrading(true);
+  // Lowering the access level needs no question; Full access asks first (and needs the exchange to be open), from every switch.
+  function chooseAccess(mode: AccessMode) {
+    if (mode === "full") {
+      if (marketOpen && access !== "full") setConfirmingTrading(true);
+    } else setAccessSwitch(mode);
   }
 
-  // The Settings switch is the only one that is saved: it also changes the current session, and turning it on asks first.
-  function toggleTradingAtStart() {
-    if (settings.tradingAtStart) {
-      updateSettings({ tradingAtStart: false });
-      setTradingEnabled(false);
-    } else setConfirmingStartupTrading(true);
+  // The account menu cycles Read-only, Restricted, Full (while the exchange is open).
+  function cycleAccess() {
+    chooseAccess(access === "readonly" ? "restricted" : access === "restricted" && marketOpen ? "full" : "readonly");
+  }
+
+  // The Settings choice is the only saved one; it applies from the next launch, and Full asks first.
+  function chooseStartAccess(mode: AccessMode) {
+    if (mode === "full" && settings.startAccess !== "full") setConfirmingStartupTrading(true);
+    else updateSettings({ startAccess: mode });
   }
 
   function openOrder(side: OrderSide, row: ScreenerRow | null) {
@@ -181,7 +187,7 @@ export function useAppCommands(data: AppData) {
     try {
       await invokeCommand(invoke, "logout");
       // The backend switched Trading off with the sign-out; the UI follows so the next sign-in starts read-only.
-      setTradingEnabled(false);
+      setAccessSwitch("readonly");
       clearHistories();
       clearToolQueryCache();
       setDashboard(null);
@@ -304,7 +310,13 @@ export function useAppCommands(data: AppData) {
     const actions: PaletteItem[] = [
       { id: "act-refresh", group: "Actions", label: "Refresh data", icon: ArrowPathIcon, run: refreshAccount },
       { id: "act-auto", group: "Actions", label: autoRefresh ? "Turn Scalable auto-refresh off" : "Turn Scalable auto-refresh on", icon: ClockIcon, run: toggleAutoRefresh },
-      { id: "act-trading", group: "Actions", label: tradingEnabled ? "Switch to read-only mode" : "Enable trading", icon: ShieldCheckIcon, run: toggleTrading },
+      ...ACCESS_MODES.filter((item) => item.mode !== access && (item.mode !== "full" || marketOpen)).map((item) => ({
+        id: `act-access-${item.mode}`,
+        group: "Actions",
+        label: item.command,
+        icon: ShieldCheckIcon,
+        run: () => chooseAccess(item.mode),
+      })),
       {
         id: "act-search",
         group: "Actions",
@@ -327,7 +339,7 @@ export function useAppCommands(data: AppData) {
   const accountItems: (MenuEntry | "divider")[] = [
     { id: "refresh", label: "Refresh data", icon: ArrowPathIcon, disabled: syncing, onSelect: refreshAccount },
     { id: "auto", label: "Scalable auto-refresh", icon: ClockIcon, hint: autoRefresh ? "On" : "Off", onSelect: toggleAutoRefresh },
-    { id: "trading", label: "Trading", icon: ShieldCheckIcon, hint: tradingEnabled ? "On" : "Read-only", onSelect: toggleTrading },
+    { id: "trading", label: "Access", icon: ShieldCheckIcon, hint: ACCESS_MODES.find((item) => item.mode === access)?.label, onSelect: cycleAccess },
     { id: "settings", label: "Settings", icon: Cog6ToothIcon, onSelect: () => setView("settings") },
     {
       id: "scalable",
@@ -346,8 +358,9 @@ export function useAppCommands(data: AppData) {
     copyText,
     copyToken,
     copyCsv,
-    toggleTrading,
-    toggleTradingAtStart,
+    chooseAccess,
+    chooseStartAccess,
+    cycleAccess,
     openOrder,
     orderPortfolios,
     signIn,

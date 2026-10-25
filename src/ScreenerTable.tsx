@@ -35,6 +35,7 @@ export function ScreenerTable({
   groups,
   watchlistUnknown,
   tradingEnabled,
+  manageEnabled,
   toolActions,
   lastUpdated,
   showDiagnostics,
@@ -73,6 +74,7 @@ export function ScreenerTable({
   groups: SecurityGroup[];
   watchlistUnknown: boolean;
   tradingEnabled: boolean;
+  manageEnabled: boolean;
   toolActions: ToolActions;
   lastUpdated: Date | null;
   showDiagnostics: boolean;
@@ -559,7 +561,7 @@ export function ScreenerTable({
           tableScroll.current?.scrollTo({ top: 0 });
         }}
       />
-      <PanelFooter tradingEnabled={tradingEnabled} />
+      <PanelFooter tradingEnabled={tradingEnabled} manageEnabled={manageEnabled} />
       {drag &&
         pointer &&
         createPortal(
