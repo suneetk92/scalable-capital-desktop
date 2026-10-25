@@ -292,7 +292,7 @@ command palette and the account menu change the level too:
 
 Full access asks for confirmation first; Restricted and Read-only do not. The level is not saved; **Start with** in
 Settings, Trading is the one saved choice: every launch starts with that level (Read-only by default), and Full starts as
-Restricted while the exchange is closed, then becomes Full at the next opening. The top bar changes only the current session.
+Restricted while the exchange is closed. Nothing switches the level for you: Full you chose works as Restricted while the exchange is closed and as Full again at the next opening. The top bar changes only the current session.
 Full access shows the **Buy** and **Sell** buttons per row and a
 **New order** button with security search (on Overview, Portfolio, Watchlist, Discover and Transactions; Groups,
 Alerts and Savings have their own "New …" button instead). Restricted access shows the buttons that create, change or

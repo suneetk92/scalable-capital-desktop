@@ -60,7 +60,7 @@ export function useAppData() {
   if (view === "transactions" && !transactionsOpened) setTransactionsOpened(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
-  // The access level of this session; it starts read-only (or Full, from the "Trading at start" setting) and no other change touches that setting.
+  // The access level of this session; it starts read-only (or the "Start with" setting) and no other change touches that setting.
   const [accessSwitch, setAccessSwitch] = useState<AccessMode>("readonly");
   // The exchange hours cap Full access: outside them it works as Restricted access, which needs no market hours.
   const [marketOpen, setMarketOpen] = useState(() => exchangeOpen());
@@ -111,17 +111,10 @@ export function useAppData() {
       if (access !== "readonly") setAccessSwitch("readonly");
     });
   }, [access]);
-  // At launch the level is the "Start with" setting, with Full dropping to Restricted while the exchange is closed.
-  // Closing time drops Full to Restricted; the next opening returns to the setting.
-  const startAccessRef = useRef(settings.startAccess);
-  startAccessRef.current = settings.startAccess;
-  const startedRef = useRef(false);
-  useEffect(() => {
-    const start = startAccessRef.current;
-    const launching = !startedRef.current;
-    startedRef.current = true;
-    setAccessSwitch((current) => (marketOpen ? start : launching ? (start === "full" ? "restricted" : start) : current === "full" ? "restricted" : current));
-  }, [marketOpen]);
+  // At launch the level is the "Start with" setting. After that only the user changes it; the exchange hours
+  // cap Full to Restricted (see `access`) and lift the cap again at the next opening.
+  const startAccess = useRef(settings.startAccess);
+  useEffect(() => setAccessSwitch(startAccess.current), []);
 
   const shortcuts = useShortcuts();
   const shortcutsRef = useRef(shortcuts);
