@@ -84,5 +84,3 @@ export function exchangeOpen(now: Date = new Date()) {
   const closes = month === 12 && day === 30 ? SHORT_CLOSES : CLOSES;
   return minute >= opensAt(year, month, day) && minute < closes;
 }
-
-export const EXCHANGE_HOURS_NOTE = "The exchange is closed: it trades Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened. Trading stays off until it opens.";
