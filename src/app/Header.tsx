@@ -46,7 +46,7 @@ export function pageActions(data: AppData, commands: AppCommands) {
   const headerLabel = ownRefresh ? ownRefresh.label : refreshExtension ? (extensionRuntime.refreshLabel ?? "") : refreshLabel;
   const refreshBusy = ownRefresh ? ownRefresh.busy : refreshExtension ? (extensionRuntime.busy ?? extensionRuntime.loading ?? false) : syncing || (marketTableOpen && market.loading);
   const refreshNow = ownRefresh ? ownRefresh.refresh : refreshExtension ? extensionRuntime.refresh! : refreshAccount;
-  const lastLoadedAt = ownRefresh ? ownRefresh.lastLoadedAt : refreshExtension ? (view === "screener" ? (extensionRuntime.lastLoadedAt ?? null) : null) : (data.lastUpdated?.getTime() ?? null);
+  const lastLoadedAt = ownRefresh ? ownRefresh.lastLoadedAt : refreshExtension ? (extensionRuntime.lastLoadedAt ?? null) : (data.lastUpdated?.getTime() ?? null);
   const intervalMs = ownRefresh ? ownRefresh.intervalMs : refreshExtension ? (extensionRuntime.intervalMs ?? 0) : data.settings.refreshSeconds * 1000;
   if (!showTrading && !showRefresh) return undefined;
   return (
