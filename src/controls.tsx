@@ -644,7 +644,11 @@ export function RefreshButton({
       type="button"
       onClick={onRefresh}
       disabled={busy}
-      title={auto ? `Reload now. Data refreshes by itself every ${label}.${lastLoadedAt !== null ? " The bar drains to empty when the next reload happens." : ""} Change this in Settings.` : "Reload the current data now."}
+      title={
+        auto
+          ? `Reload now. Data refreshes by itself every ${label}.${lastLoadedAt !== null ? " The bar drains to empty when the next reload happens." : ""} Change this in Settings.`
+          : "Reload the current data now."
+      }
     >
       <ArrowPathIcon aria-hidden="true" className={busy ? SPIN : ""} /> Refresh
       {showBar && (
