@@ -351,7 +351,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
             </Field>
           )}
 
-          <div className={cx("grid gap-3", protect ? "grid-cols-1" : "grid-cols-2")}>
+          <div className={cx("grid items-start gap-3", protect ? "grid-cols-1" : "grid-cols-2")}>
             <Field className={field.label}>
               <Label>Order size</Label>
               {/* minmax(0, …) lets the input shrink below its intrinsic width, so the unit select stays inside this half of the row. */}
