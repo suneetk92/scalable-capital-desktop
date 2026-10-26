@@ -193,6 +193,13 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
   const fieldIssue = (field: FormIssue["field"]) => (shownIssue?.field === field ? shownIssue.message : null);
   const limitHint = !protect && orderType === "limit" && request?.limitPrice != null ? limitPriceHint(side, request.limitPrice, lastPrice, priceOf) : null;
 
+  // A failed preview describes the order as it was sent; once the form changes, the message no longer applies.
+  useEffect(() => {
+    if (failedPreview === null) return;
+    setFailedPreview(null);
+    setError(null);
+  }, [security, size, sizing, side, orderType, limitPrice, stopPrice, venue, portfolioId]);
+
   async function runPreview() {
     setFailedPreview(null);
     if (request === null) {

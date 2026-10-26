@@ -245,6 +245,12 @@ fn tool_failure(name: &str, payload: &Value) -> String {
         .as_str()
         .map(str::trim)
         .filter(|text| !text.is_empty());
+    if let (Some(text), Some("input_invalid")) = (
+        message,
+        payload.pointer("/error/code").and_then(Value::as_str),
+    ) {
+        return text.to_owned();
+    }
     let details = tool_error_details(payload)
         .map(|details| format!(" Details: {details}"))
         .unwrap_or_default();
@@ -383,6 +389,13 @@ mod tests {
         assert!(failure.contains("error.details.reason=venue_unavailable"));
         assert!(failure.contains("error.requestId=req-123"));
         assert!(!failure.contains("do-not-show"));
+        assert_eq!(
+            tool_failure(
+                "preview_buy_order",
+                &json!({ "error": { "code": "input_invalid", "message": "This ISIN is not tradable on the selected venue" } })
+            ),
+            "This ISIN is not tradable on the selected venue"
+        );
         assert_eq!(
             tool_failure("x", &json!("not found")),
             "Scalable MCP tool x failed. not found."
