@@ -365,7 +365,7 @@ Rust backend also refuses every tool above the current level, including unknown 
   - It works only while the app runs (the tray keeps it running), is signed in and **Full access is on** (starting or editing a stop needs only Restricted access). It is
     not a Scalable order: nothing protects the position while the app is closed, offline or in Read-only mode,
     and a fast drop, a closed market or a price gap can fill well below the trigger.
-  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens), but the access level is not
+  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens; a stop that fired also keeps the time and Scalable's answer, shown by **Details** on its Sold or Bought row), but the access level is not
     saved, so after a restart they wait until Full access is on again (automatically when Start with is Full).
   - It never accepts a warning for you: when the sell preview asks for an acknowledgement or a questionnaire,
     the stop is marked "Needs you" and a notification is shown. An outdated quote or an untradable security

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { invokeCommand } from "./commands";
 import { formatMoney } from "../../../../src/screener";
 import { TrailingStopDialog } from "./TrailingStopDialog";
+import { TrailingTransactionDialog } from "./TrailingTransactionDialog";
 import { errorText } from "../../../../src/tools";
 import type { useTrailingStops } from "./useTrailingStops";
 import { statusLabel, trailLabel, triggerBarShare, triggerPrice, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
@@ -50,6 +51,7 @@ function Row({
   onOpen,
   onEdit,
   onRemove,
+  onDetails,
 }: {
   order: string[];
   stop: TrailingStop;
@@ -59,6 +61,7 @@ function Row({
   onOpen: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  onDetails: () => void;
 }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
@@ -128,6 +131,11 @@ function Row({
           actions: (
             <td className={TD_NUM}>
               <div className="flex justify-end gap-1.5">
+                {stop.status === "sold" && (
+                  <button className={btn.trade} type="button" onClick={onDetails} title={buying ? "Show the buy transaction" : "Show the sell transaction"}>
+                    Details
+                  </button>
+                )}
                 {(watching || stop.status === "attention") && (
                   <button
                     className={btn.trade}
@@ -184,9 +192,10 @@ type PanelProps = {
   onEdit: (stop: TrailingStop) => void;
   onRemove: (id: string) => void;
   onOpenSecurity: (security: { isin: string; name: string }) => void;
+  onDetails: (stop: TrailingStop) => void;
 };
 
-function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSecurity }: PanelProps) {
+function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSecurity, onDetails }: PanelProps) {
   const { invoke, tradingEnabled, manageEnabled } = common;
   const copy = PANELS[side];
   const heads = HEADS[side];
@@ -240,6 +249,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
                   onOpen={() => onOpenSecurity({ isin: stop.isin, name: stop.name })}
                   onEdit={() => onEdit(stop)}
                   onRemove={() => onRemove(stop.id)}
+                  onDetails={() => onDetails(stop)}
                 />
               ))}
             </tbody>
@@ -265,6 +275,8 @@ export function TrailingStops({
   const { stops, problem, reload, checkError, setCheckError } = trailing;
   const [adding, setAdding] = useState<TrailSide | null>(null);
   const [editing, setEditing] = useState<TrailingStop | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const viewed = stops.find((stop) => stop.id === viewing);
 
   async function remove(id: string) {
     setCheckError(null);
@@ -310,8 +322,10 @@ export function TrailingStops({
           onEdit={setEditing}
           onRemove={(id) => void remove(id)}
           onOpenSecurity={onOpenSecurity}
+          onDetails={(stop) => setViewing(stop.id)}
         />
       ))}
+      {viewed && <TrailingTransactionDialog stop={viewed} onClose={() => setViewing(null)} />}
       {editing && dialog(editing.side, editing, () => setEditing(null))}
       {adding && dialog(adding, null, () => setAdding(null))}
     </>

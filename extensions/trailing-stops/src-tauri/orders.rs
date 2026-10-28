@@ -73,7 +73,7 @@ fn assess(preview: &Value, submission: &Value, trigger: f64, side: Side) -> Verd
 }
 
 enum Outcome {
-    Done(f64),
+    Done(f64, serde_json::Value),
     /// Nothing was placed; the stop stays active.
     Retry(String),
     /// Not repeated, because it needs the user or may or may not have gone through.
@@ -145,12 +145,12 @@ async fn try_trade(app: &AppHandle, stop: &TrailingStop) -> Outcome {
     )
     .await
     {
-        Ok(_) => {
+        Ok(receipt) => {
             let price = preview
                 .get("marketQuote")
                 .and_then(|q| quote_price(q, stop.side))
                 .unwrap_or(stop.last_price.unwrap_or(trigger_price(stop.side, stop.high, stop.trail)));
-            Outcome::Done(price)
+            Outcome::Done(price, receipt)
         }
         Err(error) => Outcome::Attention(format!(
             "{error}. The order may or may not have gone through: check your transactions in Scalable before doing anything else."
@@ -158,20 +158,28 @@ async fn try_trade(app: &AppHandle, stop: &TrailingStop) -> Outcome {
     }
 }
 
+fn now_seconds() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs())
+        .unwrap_or_default()
+}
+
 /// Sells or buys for a stop that was hit and records how it went. `stop` is already marked as selling.
 pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
     let outcome = try_trade(app, &stop).await;
-    let (status, message, sold_price) = match &outcome {
-        Outcome::Done(price) => (
+    let (status, message, sold_price, receipt) = match &outcome {
+        Outcome::Done(price, receipt) => (
             Status::Sold,
             Some(match stop.side {
                 Side::Sell => format!("Sold at {:.2}", price),
                 Side::Buy => format!("Bought at {:.2}", price),
             }),
             Some(*price),
+            Some(receipt.clone()),
         ),
-        Outcome::Retry(message) => (Status::Active, Some(message.clone()), None),
-        Outcome::Attention(message) => (Status::Attention, Some(message.clone()), None),
+        Outcome::Retry(message) => (Status::Active, Some(message.clone()), None, None),
+        Outcome::Attention(message) => (Status::Attention, Some(message.clone()), None, None),
     };
     let state = app.state::<TrailingState>();
     let earlier = state.mutate(|stops| {
@@ -183,6 +191,8 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
                 item.status = status;
                 item.message = message.clone();
                 item.sold_price = sold_price;
+                item.executed_at = receipt.as_ref().map(|_| now_seconds());
+                item.receipt = receipt.clone();
                 earlier
             })
     });
@@ -212,7 +222,7 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
         ),
     };
     match outcome {
-        Outcome::Done(_) => notify::send(app, done_title, &done_text),
+        Outcome::Done(..) => notify::send(app, done_title, &done_text),
         Outcome::Attention(message) => {
             notify::send(app, needs_title, &format!("{name}: {message}"))
         }

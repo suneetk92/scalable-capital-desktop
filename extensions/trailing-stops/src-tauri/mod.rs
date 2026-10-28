@@ -105,6 +105,12 @@ pub struct TrailingStop {
     pub message: Option<String>,
     #[serde(default)]
     pub sold_price: Option<f64>,
+    /// When the order was placed, in seconds since the epoch.
+    #[serde(default)]
+    pub executed_at: Option<u64>,
+    /// What Scalable answered when the order was submitted.
+    #[serde(default)]
+    pub receipt: Option<serde_json::Value>,
     pub created_at: u64,
 }
 
@@ -247,6 +253,8 @@ pub(super) fn sample_stop(trail: Trail, high: f64) -> TrailingStop {
         status: Status::Active,
         message: None,
         sold_price: None,
+        executed_at: None,
+        receipt: None,
         created_at: 0,
     }
 }

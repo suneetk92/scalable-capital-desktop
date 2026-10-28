@@ -25,6 +25,10 @@ export type TrailingStop = {
   message: string | null;
   /** The price at which the stop was executed (only when status is 'sold'). */
   soldPrice: number | null;
+  /** When the order was placed, in seconds since the epoch (only when status is 'sold'). */
+  executedAt: number | null;
+  /** What Scalable answered when the order was submitted. */
+  receipt: unknown;
   createdAt: number;
 };
 
@@ -90,6 +94,8 @@ function toStop(value: unknown): TrailingStop | null {
     status,
     message: typeof value.message === "string" ? value.message : null,
     soldPrice: typeof value.soldPrice === "number" ? value.soldPrice : null,
+    executedAt: typeof value.executedAt === "number" ? value.executedAt : null,
+    receipt: value.receipt ?? null,
     createdAt: typeof value.createdAt === "number" ? value.createdAt : 0,
   };
 }
