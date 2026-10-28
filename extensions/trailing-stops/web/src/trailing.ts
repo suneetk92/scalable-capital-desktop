@@ -39,13 +39,13 @@ export function statusLabel(side: TrailSide, status: TrailingStatus): string {
   return STATUS_LABEL[side][status];
 }
 
-/** How much of the distance between the extreme price and the trigger is left: 1 at the extreme, 0 at the trigger. */
-export function triggerMargin(price: number, extreme: number, trail: TrailingStop["trail"], side: TrailSide = "sell"): number {
+/** Bar fill: remaining margin for a sale, progress from the low toward the trigger for a purchase. */
+export function triggerBarShare(price: number, extreme: number, trail: TrailingStop["trail"], side: TrailSide = "sell"): number {
   const trigger = triggerPrice(extreme, trail, side);
   const span = Math.abs(extreme - trigger);
   if (span === 0) return 0;
-  const left = side === "sell" ? price - trigger : trigger - price;
-  return Math.max(0, Math.min(1, left / span));
+  const distance = side === "sell" ? price - trigger : price - extreme;
+  return Math.max(0, Math.min(1, distance / span));
 }
 
 /** The price at or below which a stop loss sells, or at or above which a buy stop buys. */

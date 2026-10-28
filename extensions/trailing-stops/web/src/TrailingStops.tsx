@@ -8,7 +8,7 @@ import { formatMoney } from "../../../../src/screener";
 import { TrailingStopDialog } from "./TrailingStopDialog";
 import { errorText } from "../../../../src/tools";
 import type { useTrailingStops } from "./useTrailingStops";
-import { statusLabel, trailLabel, triggerMargin, triggerPrice, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
+import { statusLabel, trailLabel, triggerBarShare, triggerPrice, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
 import { type Common } from "../../../../src/types";
 import { EmptyState, ShareBar } from "../../../../src/controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
@@ -117,7 +117,7 @@ function Row({
                 <div className="grid justify-items-end gap-1">
                   {money(stop.lastPrice)}
                   <div className="w-16">
-                    <ShareBar share={triggerMargin(stop.lastPrice, stop.high, stop.trail, stop.side)} label={`Distance left to the ${stop.side} price`} />
+                    <ShareBar share={triggerBarShare(stop.lastPrice, stop.high, stop.trail, stop.side)} label={buying ? "Progress from the low to the buy price" : "Distance left to the sell price"} />
                   </div>
                 </div>
               ) : (

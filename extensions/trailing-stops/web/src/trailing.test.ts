@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseTrailingList, statusLabel, trailIssue, trailLabel, triggerMargin, triggerPrice } from "./trailing";
+import { parseTrailingList, statusLabel, trailIssue, trailLabel, triggerBarShare, triggerPrice } from "./trailing";
 
 const stop = {
   id: "a",
@@ -24,14 +24,17 @@ describe("triggerPrice", () => {
 });
 
 describe("buy stops", () => {
-  it("trigger above the low and use up the margin as the price rises", () => {
-    const trail = { kind: "percent", value: 10 } as const;
+  it.each(["percent", "amount"] as const)("trigger above the low and fill the %s bar as the price rises", (kind) => {
+    const trail = { kind, value: 10 };
     expect(triggerPrice(100, trail, "buy")).toBeCloseTo(110);
     expect(triggerPrice(100, { kind: "amount", value: 5 }, "buy")).toBe(105);
-    expect(triggerMargin(100, 100, trail, "buy")).toBe(1);
-    expect(triggerMargin(105, 100, trail, "buy")).toBeCloseTo(0.5);
-    expect(triggerMargin(112, 100, trail, "buy")).toBe(0);
-    expect(triggerMargin(95, 100, trail, "buy")).toBe(1);
+    expect(triggerBarShare(100, 100, trail, "buy")).toBe(0);
+    expect(triggerBarShare(101, 100, trail, "buy")).toBeCloseTo(0.1);
+    expect(triggerBarShare(105, 100, trail, "buy")).toBeCloseTo(0.5);
+    expect(triggerBarShare(109, 100, trail, "buy")).toBeCloseTo(0.9);
+    expect(triggerBarShare(triggerPrice(100, trail, "buy"), 100, trail, "buy")).toBe(1);
+    expect(triggerBarShare(112, 100, trail, "buy")).toBe(1);
+    expect(triggerBarShare(95, 100, trail, "buy")).toBe(0);
   });
 
   it("read as bought, not sold", () => {
@@ -42,14 +45,13 @@ describe("buy stops", () => {
   });
 });
 
-describe("triggerMargin", () => {
-  it("is 1 at the high, 0 at the trigger and stays within that range", () => {
-    const trail = { kind: "percent", value: 10 } as const;
-    expect(triggerMargin(200, 200, trail)).toBe(1);
-    expect(triggerMargin(190, 200, trail)).toBeCloseTo(0.5);
-    expect(triggerMargin(180, 200, trail)).toBe(0);
-    expect(triggerMargin(170, 200, trail)).toBe(0);
-    expect(triggerMargin(210, 200, trail)).toBe(1);
+describe("triggerBarShare", () => {
+  it.each([{ kind: "percent", value: 10 }, { kind: "amount", value: 20 }] as const)("keeps sell bars full at the high and empty at the trigger with $kind trails", (trail) => {
+    expect(triggerBarShare(200, 200, trail)).toBe(1);
+    expect(triggerBarShare(190, 200, trail)).toBeCloseTo(0.5);
+    expect(triggerBarShare(180, 200, trail)).toBe(0);
+    expect(triggerBarShare(170, 200, trail)).toBe(0);
+    expect(triggerBarShare(210, 200, trail)).toBe(1);
   });
 });
 
