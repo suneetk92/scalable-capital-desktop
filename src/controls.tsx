@@ -499,7 +499,7 @@ export function Pagination({ page, pageCount, total, pageSize, onPage }: { page:
 
 /* ---------- Feed ---------- */
 
-export type FeedItem = {
+type FeedItem = {
   id: string;
   icon: IconType;
   tone?: "up" | "down" | "neutral";

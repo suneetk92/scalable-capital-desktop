@@ -1,8 +1,7 @@
-import { Tab, TabGroup, TabList } from "@headlessui/react";
-import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, ArrowsRightLeftIcon, BanknotesIcon, ClockIcon, ListBulletIcon, MagnifyingGlassIcon, TableCellsIcon } from "@heroicons/react/24/outline";
+import { ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, type Ref } from "react";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
-import { EmptyState, FILTER_TITLE, FiltersPopover, Feed, Pagination, RadioList, SearchBox, SortHeader, type FeedItem } from "../controls";
+import { EmptyState, FILTER_TITLE, FiltersPopover, Pagination, RadioList, SearchBox, SortHeader } from "../controls";
 import { useTableLayout } from "../hooks/useTableLayout";
 import { useChunkedMap } from "../hooks/useChunkedMap";
 import { useExtensionIsinLogos } from "../extensions";
@@ -10,7 +9,7 @@ import { useTransactionHistory } from "../hooks/useTransactionHistory";
 import { nextSort, sortItems, type SortState } from "../sorting";
 import { dedupeRows, distinctValues, isFiltering, isOpenOrder, matchesFilter, newestFirst, NO_FILTER, type TransactionFilter, type TransactionRow } from "../transactions";
 import { type Common } from "../types";
-import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL, PANEL_BODY, PanelFooter, PanelHeader, RECORD_TABLE, SCROLL_X, SecurityCell, SignGlyph, signClass, TABS, tabClass, TD_NUM } from "../ui";
+import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL, PANEL_BODY, PanelFooter, PanelHeader, RECORD_TABLE, SCROLL_X, SecurityCell, SignGlyph, signClass, TD_NUM } from "../ui";
 import { csvCell } from "../screener";
 import { formatCell, humanize } from "../tools";
 import { pick, pickString, type Rec } from "../response";
@@ -63,35 +62,6 @@ function kindFlags(kind: string) {
   };
 }
 
-/** Turns one transaction record into a timeline entry. */
-function transactionEntry(fields: TransactionFields, name: string | undefined, onOpen: (() => void) | undefined, index: number, id: string | undefined): Omit<FeedItem, "actions"> {
-  const { isBuy, isSell, isCash } = kindFlags(fields.kind);
-  const detailText = [fields.quantity ? `${fields.quantity} shares` : "", fields.limit ? `limit ${fields.limit}` : ""].filter(Boolean).join(", ");
-  const label = name ?? fields.isin ?? "Transaction";
-  return {
-    id: String(id ?? index),
-    icon: isBuy ? ArrowTrendingUpIcon : isSell ? ArrowTrendingDownIcon : isCash ? BanknotesIcon : ArrowsRightLeftIcon,
-    tone: isBuy ? "up" : isSell ? "down" : "neutral",
-    title: (
-      <>
-        {fields.kind && <span className="mr-1.5 text-ink-muted">{humanize(fields.kind)}</span>}
-        {onOpen ? (
-          <button className={`${btn.link} text-left hover:underline`} type="button" onClick={onOpen} title="Open security details">
-            {label}
-          </button>
-        ) : (
-          label
-        )}
-      </>
-    ),
-    meta: [fields.isin ?? "", fields.status ? humanize(fields.status) : "", detailText, fields.when !== "—" ? fields.when : ""].filter(Boolean).join(" · ") || undefined,
-    amount: fields.amount !== null ? formatCell(fields.amount) : undefined,
-    amountTone: fields.amount !== null && fields.amount !== 0 ? (fields.amount > 0 ? "up" : "down") : undefined,
-  };
-}
-
-const TAB_FOCUS = "outline-none data-focus:outline-2 data-focus:outline-accent";
-
 const WHEN_FIELDS = ["lastEventAt", "date", "timestamp", "timestampUtc", "createdAt", "executedAt", "valueDate", "time"];
 
 /** What a table column is sorted by. Dates are compared as times, not as the text shown. */
@@ -118,7 +88,10 @@ function sortValue(row: { record: Rec; fields: TransactionFields }, key: string,
   }
 }
 
-const withFields = (row: TransactionRow) => ({ ...row, fields: transactionFields(row.record) });
+const withFields = (row: TransactionRow) => ({
+  ...row,
+  fields: transactionFields(row.record),
+});
 
 const optionsOf = (values: (string | undefined)[], current: string, all: string): [string, string][] => [
   ["", all],
@@ -163,11 +136,19 @@ export function TransactionsPage({
   const nameOf = useCallback((fields: TransactionFields) => fields.name ?? (fields.isin ? knownNames.get(fields.isin) : undefined), [knownNames]);
   const symbolOf = useCallback((fields: TransactionFields) => (fields.isin ? knownSymbols.get(fields.isin) : undefined), [knownSymbols]);
   const openSecurity = (fields: TransactionFields) => {
-    if (fields.isin) onOpenSecurity({ isin: fields.isin, name: nameOf(fields) ?? fields.isin, type: "", record: {} });
+    if (fields.isin)
+      onOpenSecurity({
+        isin: fields.isin,
+        name: nameOf(fields) ?? fields.isin,
+        type: "",
+        record: {},
+      });
   };
 
-  const [detail, setDetail] = useState<{ portfolioId: string; id: string } | null>(null);
-  const [mode, setMode] = useState<"feed" | "table">("table");
+  const [detail, setDetail] = useState<{
+    portfolioId: string;
+    id: string;
+  } | null>(null);
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [pageSize]);
 
@@ -216,8 +197,16 @@ export function TransactionsPage({
             onClick={() =>
               void actions.run(
                 TOOL.cancelOrder,
-                { portfolioId, orderId: pickString(record, ["orderId", "id"]), transactionId: id },
-                { confirm: "Cancel this open order?", confirmLabel: "Cancel order", done: "Order cancelled" },
+                {
+                  portfolioId,
+                  orderId: pickString(record, ["orderId", "id"]),
+                  transactionId: id,
+                },
+                {
+                  confirm: "Cancel this open order?",
+                  confirmLabel: "Cancel order",
+                  done: "Order cancelled",
+                },
               )
             }
           >
@@ -228,7 +217,7 @@ export function TransactionsPage({
     );
   };
 
-  // Sorting covers every page and only applies to the table; the timeline stays newest first.
+  // Sorting covers every page and
   const [sort, setSort] = useState<SortState>(null);
   const { order, layout } = useTableLayout("transactions", COLUMNS);
   const resized = resizedTable(layout.widths);
@@ -237,10 +226,7 @@ export function TransactionsPage({
     setPage(1);
   };
   const shownSort = useDeferredValue(sort);
-  const ordered = useMemo(
-    () => (mode === "table" ? sortItems(visible, shownSort, (row, key) => sortValue(row, key, nameOf(row.fields), symbolOf(row.fields))) : visible),
-    [visible, shownSort, mode, nameOf, symbolOf],
-  );
+  const ordered = useMemo(() => sortItems(visible, shownSort, (row, key) => sortValue(row, key, nameOf(row.fields), symbolOf(row.fields))), [visible, shownSort, nameOf, symbolOf]);
 
   const rowsPerPage = pageSize > 0 ? pageSize : Math.max(ordered.length, 1);
   const pageCount = Math.max(1, Math.ceil(ordered.length / rowsPerPage));
@@ -248,13 +234,11 @@ export function TransactionsPage({
   const pageRows = ordered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   // Company logos, for the rows of the shown page only.
-  const logos = useExtensionIsinLogos({ invoke: common.invoke, isins: pageRows.map((row) => row.fields.isin ?? ""), enabled: logosEnabled });
-
-  const items: FeedItem[] = pageRows.map((row, index) => ({
-    ...transactionEntry(row.fields, nameOf(row.fields), row.fields.isin ? () => openSecurity(row.fields) : undefined, index, pickString(row.record, ["transactionId", "id", "orderId"])),
-    id: `${currentPage}-${index}-${pickString(row.record, ["transactionId", "id", "orderId"]) ?? index}`,
-    actions: rowActions(row.record, row.portfolioId),
-  }));
+  const logos = useExtensionIsinLogos({
+    invoke: common.invoke,
+    isins: pageRows.map((row) => row.fields.isin ?? ""),
+    enabled: logosEnabled,
+  });
 
   const copyCsv = async () => {
     const lines = [
@@ -275,9 +259,15 @@ export function TransactionsPage({
     ].map((line) => line.map((cell) => csvCell(cell === "" ? null : cell)).join(","));
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
-      actions.notify({ kind: "ok", text: `${pluralize(visible.length, "transaction")} copied as CSV` });
+      actions.notify({
+        kind: "ok",
+        text: `${pluralize(visible.length, "transaction")} copied as CSV`,
+      });
     } catch {
-      actions.notify({ kind: "error", text: "Could not copy to the clipboard." });
+      actions.notify({
+        kind: "error",
+        text: "Could not copy to the clipboard.",
+      });
     }
   };
 
@@ -287,16 +277,6 @@ export function TransactionsPage({
     <>
       <section className={cx(PANEL, "mb-4")} aria-label="Transactions">
         <div className="flex min-h-[3.6667rem] items-center justify-between gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start max-[900px]:pt-0">
-          <TabGroup selectedIndex={mode === "table" ? 0 : 1} onChange={(index) => setMode(index === 1 ? "feed" : "table")} className="self-stretch">
-            <TabList className={`${TABS} h-full max-[900px]:h-[3.2667rem]`} aria-label="Transactions view">
-              <Tab className={({ selected }) => cx(tabClass(selected), TAB_FOCUS)}>
-                <TableCellsIcon /> Table
-              </Tab>
-              <Tab className={({ selected }) => cx(tabClass(selected), TAB_FOCUS)}>
-                <ListBulletIcon /> Timeline
-              </Tab>
-            </TabList>
-          </TabGroup>
           <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter transactions">
             <SearchBox
               inputRef={searchInput}
@@ -361,13 +341,6 @@ export function TransactionsPage({
                     }
                   />
                 </div>
-              ) : mode === "feed" ? (
-                <>
-                  <div className={PANEL_BODY}>
-                    <Feed label="Transactions" items={items} />
-                  </div>
-                  <Pagination page={currentPage} pageCount={pageCount} total={visible.length} pageSize={rowsPerPage} onPage={setPage} />
-                </>
               ) : (
                 <>
                   <div className={SCROLL_X}>
@@ -455,7 +428,10 @@ export function TransactionsPage({
         <DetailsModal
           title="Transaction details"
           tool={TOOL.getTransactionDetails}
-          semantic={{ portfolioId: detail.portfolioId, transactionId: detail.id }}
+          semantic={{
+            portfolioId: detail.portfolioId,
+            transactionId: detail.id,
+          }}
           common={common}
           onClose={() => setDetail(null)}
         />
