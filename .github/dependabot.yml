@@ -4,6 +4,11 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # TypeScript 7 has no JavaScript API, which scripts/check-exports.mjs needs
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     groups:
       minor-and-patch:
         patterns:
@@ -26,6 +31,9 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # The tag is the Rust version; it must match what rustup serves and rust-version in Cargo.toml
+      - dependency-name: dtolnay/rust-toolchain
     groups:
       minor-and-patch:
         patterns:
