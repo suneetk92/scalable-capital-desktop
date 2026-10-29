@@ -44,7 +44,7 @@ export function OverviewPage({
   }, 0);
 
   return (
-    <CardGrid label="Overview">
+    <CardGrid label="Overview" wide>
       <Card title="Returns" hint="Scalable figures">
         {data.performance.size > 0 ? (
           <DescriptionList>

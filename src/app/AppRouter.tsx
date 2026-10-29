@@ -84,7 +84,7 @@ export function AppRouter() {
           onOpenGroups={() => setView("groups")}
         />
       )}
-      {view === "overview" && <OverviewExtras common={common} currency={totalCurrency} logosEnabled={Boolean(extension.logos?.useIsinLogos)} />}
+      {view === "overview" && <OverviewExtras common={common} currency={totalCurrency} logosEnabled={Boolean(extension.logos?.useIsinLogos)} onOpenSecurity={openFound} />}
       {view === "groups" && <GroupsPage common={common} data={groupData} defaultGroup={defaultGroup} errors={groupErrors} offered={groupsOffered} formatMoney={formatMoney} onShowGroup={openGroup} />}
       {view === "discover" && (
         <DiscoverPage

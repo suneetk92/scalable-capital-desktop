@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { summarizeActivity } from "./activity";
+import { matchesSecurityFilter, summarizeActivity } from "./activity";
 import type { Rec } from "./response";
 
 const rows = (...records: Rec[]) => records.map((record) => ({ record, portfolioId: "p" }));
@@ -151,5 +151,18 @@ describe("summarizeActivity", () => {
 
   it("returns zeros for no transactions", () => {
     expect(summarizeActivity([], "USD")).toMatchObject({ counted: 0, bought: 0, fees: 0, currency: "USD", securities: [] });
+  });
+});
+
+describe("matchesSecurityFilter", () => {
+  const security = { soldQuantity: 2, realised: -5, dividends: 0 };
+  it("filters by what happened to the security", () => {
+    expect(matchesSecurityFilter(security, "all")).toBe(true);
+    expect(matchesSecurityFilter(security, "sold")).toBe(true);
+    expect(matchesSecurityFilter(security, "loss")).toBe(true);
+    expect(matchesSecurityFilter(security, "gain")).toBe(false);
+    expect(matchesSecurityFilter(security, "dividends")).toBe(false);
+    expect(matchesSecurityFilter({ soldQuantity: 0, realised: null, dividends: 1 }, "dividends")).toBe(true);
+    expect(matchesSecurityFilter({ soldQuantity: 0, realised: null, dividends: 1 }, "sold")).toBe(false);
   });
 });

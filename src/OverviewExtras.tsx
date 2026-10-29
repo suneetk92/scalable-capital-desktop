@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { summarizeActivity } from "./activity";
+import { matchesSecurityFilter, SECURITY_FILTERS, summarizeActivity, type SecurityFilter } from "./activity";
+import type { FoundSecurity } from "./pages/Discover";
+import { matchesText } from "./textSearch";
 import { useExtensionIsinLogos } from "./extensions";
 import { ColumnHead, inOrder, resizedTable } from "./ColumnHead";
 import { useTableLayout } from "./hooks/useTableLayout";
@@ -54,22 +56,54 @@ function ToolCard({ title, entries, loading, children }: { title: string; entrie
   );
 }
 
-function ActivityCards({ common, currency, logosEnabled }: { common: Common; currency: string; logosEnabled: boolean }) {
+function ActivityCards({
+  common,
+  currency,
+  logosEnabled,
+  onOpenSecurity,
+  accountCards,
+}: {
+  common: Common;
+  currency: string;
+  logosEnabled: boolean;
+  onOpenSecurity: (security: FoundSecurity) => void;
+  /** Cards that share the row of the activity cards. */
+  accountCards: ReactNode;
+}) {
   const history = useTransactionHistory(common);
   const summary = useMemo(() => summarizeActivity(history.rows, currency), [history.rows, currency]);
   const { pageSize } = common;
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortState>(null);
+  const [search, setSearch] = useState("");
+  const [securityFilter, setSecurityFilter] = useState<SecurityFilter>("all");
   useEffect(() => setPage(1), [pageSize]);
+  const filteredSecurities = useMemo(
+    () => summary.securities.filter((security) => matchesSecurityFilter(security, securityFilter) && matchesText(search, [security.isin, security.name])),
+    [summary.securities, securityFilter, search],
+  );
   const sortedSecurities = useMemo(
-    () => sortItems(summary.securities, sort, (security, key) => (key === "name" ? security.name || security.isin : security[key as keyof typeof security])),
-    [summary.securities, sort],
+    () => sortItems(filteredSecurities, sort, (security, key) => (key === "name" ? security.name || security.isin : security[key as keyof typeof security])),
+    [filteredSecurities, sort],
   );
   const securities = paginate(sortedSecurities, page, pageSize);
   const securityLogos = useExtensionIsinLogos({ invoke: common.invoke, isins: securities.rows.map((security) => security.isin), enabled: logosEnabled });
   const { order, layout } = useTableLayout("activity-securities", SECURITY_COLUMNS);
   const resized = resizedTable(layout.widths);
-  if (!common.actions.has(TOOL.listPortfolioTransactions)) return null;
+  if (!common.actions.has(TOOL.listPortfolioTransactions))
+    return (
+      <CardGrid label="Account" wide>
+        {accountCards}
+      </CardGrid>
+    );
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+  const changeSecurityFilter = (value: SecurityFilter) => {
+    setSecurityFilter(value);
+    setPage(1);
+  };
   const sortSecurities = (column: string) => {
     setSort((current) => nextSort(current, column));
     setPage(1);
@@ -111,7 +145,7 @@ function ActivityCards({ common, currency, logosEnabled }: { common: Common; cur
           {summary.ignored.map((entry) => `${entry.label} ${formatNumber(entry.count, 0)}`).join(", ")}.
         </p>
       )}
-      <CardGrid label="Activity">
+      <CardGrid label="Activity" wide>
         <Card title="Trading" hint={hint}>
           {empty ? (
             note
@@ -142,9 +176,25 @@ function ActivityCards({ common, currency, logosEnabled }: { common: Common; cur
             </DescriptionList>
           )}
         </Card>
+        {accountCards}
         {summary.securities.length > 0 && (
           <Card title="By security" hint={hint} wide>
-            <div className={SCROLL_X}>
+            <div className="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Search securities">
+              <SearchBox className="min-w-48 flex-1" value={search} onChange={changeSearch} placeholder="Search securities" label="Search securities" />
+              <FiltersPopover count={Number(securityFilter !== "all")} onClear={() => changeSecurityFilter("all")}>
+                <div>
+                  <p className={FILTER_TITLE}>Show</p>
+                  <RadioList
+                    label="Securities to show"
+                    value={securityFilter}
+                    options={SECURITY_FILTERS.map(({ value, label }) => [value, label] as [SecurityFilter, string])}
+                    onChange={changeSecurityFilter}
+                  />
+                </div>
+              </FiltersPopover>
+            </div>
+            {securities.rows.length === 0 && <p className={EMPTY}>No securities match.</p>}
+            <div className={SCROLL_X} hidden={securities.rows.length === 0}>
               <table className={cx(RECORD_TABLE, resized.className)} style={resized.style}>
                 <thead>
                   <tr>
@@ -162,7 +212,20 @@ function ActivityCards({ common, currency, logosEnabled }: { common: Common; cur
                             <SecurityCell
                               initials={(security.name || security.isin).slice(0, 2).toUpperCase()}
                               logo={securityLogos.get(security.isin.toUpperCase())}
-                              title={security.isin || security.name}
+                              title={
+                                security.isin ? (
+                                  <button
+                                    className="cursor-pointer text-right hover:text-ink-accent-bright hover:underline"
+                                    type="button"
+                                    onClick={() => onOpenSecurity({ isin: security.isin, name: security.name || security.isin, type: "", record: {} })}
+                                    title="Open details, chart and news"
+                                  >
+                                    {security.isin}
+                                  </button>
+                                ) : (
+                                  security.name
+                                )
+                              }
                               subtitle={security.isin && security.name ? security.name : undefined}
                             />
                           </td>
@@ -185,7 +248,7 @@ function ActivityCards({ common, currency, logosEnabled }: { common: Common; cur
               </table>
             </div>
             <div className="-mx-[1.2rem] -mb-4 mt-3">
-              <Pagination page={securities.page} pageCount={securities.pageCount} total={summary.securities.length} pageSize={securities.size} onPage={setPage} />
+              <Pagination page={securities.page} pageCount={securities.pageCount} total={filteredSecurities.length} pageSize={securities.size} onPage={setPage} />
             </div>
           </Card>
         )}
@@ -310,7 +373,7 @@ function OvernightTransactionsCard({ common, currency }: { common: Common; curre
   );
 }
 
-export function OverviewExtras({ common, currency, logosEnabled }: { common: Common; currency: string; logosEnabled: boolean }) {
+export function OverviewExtras({ common, currency, logosEnabled, onOpenSecurity }: { common: Common; currency: string; logosEnabled: boolean; onOpenSecurity: (security: FoundSecurity) => void }) {
   const { invoke, defs, portfolios, reloadKey } = common;
   const has = (name: string) => defs.some((tool) => tool.name === name);
   const profile = useToolQuery(invoke, defs, TOOL.getAccountProfile, has(TOOL.getAccountProfile) ? [{}] : null, reloadKey);
@@ -320,10 +383,19 @@ export function OverviewExtras({ common, currency, logosEnabled }: { common: Com
   const accounts = collect(fixed.entries).records;
   return (
     <>
-      <ActivityCards common={common} currency={currency} logosEnabled={logosEnabled} />
+      <ActivityCards
+        common={common}
+        currency={currency}
+        logosEnabled={logosEnabled}
+        onOpenSecurity={onOpenSecurity}
+        accountCards={
+          <>
+            {has(TOOL.getAccountProfile) && <ToolCard title="Account profile" entries={profile.entries} loading={profile.loading} />}
+            {has("get_overnight_summary") && <ToolCard title="Overnight summary" entries={overnight.entries} loading={overnight.loading} />}
+          </>
+        }
+      />
       <CardGrid label="Account details">
-        {has(TOOL.getAccountProfile) && <ToolCard title="Account profile" entries={profile.entries} loading={profile.loading} />}
-        {has("get_overnight_summary") && <ToolCard title="Overnight summary" entries={overnight.entries} loading={overnight.loading} />}
         <OvernightTransactionsCard common={common} currency={currency} />
         {has("list_fixed_term_accounts") && (
           <Card title="Fixed-term accounts" wide>

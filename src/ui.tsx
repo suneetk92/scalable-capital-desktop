@@ -118,9 +118,9 @@ export function Stat({ label, value, foot, icon: Icon, tone }: { label: string; 
 
 /* ---------- Cards and description lists ---------- */
 
-export function CardGrid({ label, children }: { label: string; children: ReactNode }) {
+export function CardGrid({ label, wide = false, children }: { label: string; /** Four columns instead of three on a wide window. */ wide?: boolean; children: ReactNode }) {
   return (
-    <section aria-label={label} className="mb-5 grid grid-cols-1 gap-3 min-[901px]:grid-cols-2 min-[1700px]:grid-cols-3">
+    <section aria-label={label} className={cx("mb-5 grid grid-cols-1 gap-3 min-[901px]:grid-cols-2", wide ? "min-[1700px]:grid-cols-4" : "min-[1700px]:grid-cols-3")}>
       {children}
     </section>
   );

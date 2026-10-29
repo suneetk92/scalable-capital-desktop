@@ -191,3 +191,28 @@ export function summarizeActivity(rows: TransactionRow[], fallbackCurrency = "EU
     .sort((a, b) => b.boughtAmount + b.soldAmount - (a.boughtAmount + a.soldAmount));
   return summary;
 }
+
+export type SecurityFilter = "all" | "sold" | "gain" | "loss" | "dividends";
+
+export const SECURITY_FILTERS: { value: SecurityFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "sold", label: "Sold" },
+  { value: "gain", label: "Realised gain" },
+  { value: "loss", label: "Realised loss" },
+  { value: "dividends", label: "Paid dividends" },
+];
+
+export function matchesSecurityFilter(security: Pick<SecurityActivity, "soldQuantity" | "realised" | "dividends">, filter: SecurityFilter): boolean {
+  switch (filter) {
+    case "sold":
+      return security.soldQuantity > 0;
+    case "gain":
+      return security.realised !== null && security.realised > 0;
+    case "loss":
+      return security.realised !== null && security.realised < 0;
+    case "dividends":
+      return security.dividends > 0;
+    default:
+      return true;
+  }
+}
