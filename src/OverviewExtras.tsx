@@ -25,7 +25,7 @@ import { humanize } from "./tools";
 
 const SECURITY_COLUMNS = ["name", "boughtAmount", "soldAmount", "averageBuyPrice", "realised", "fees", "dividends"];
 const SECURITY_HEADS: Record<string, { label: string; numeric?: boolean; className?: string }> = {
-  name: { label: "ISIN / name", className: NAME_COLUMN },
+  name: { label: "Symbol / name", className: NAME_COLUMN },
   boughtAmount: { label: "Bought", numeric: true },
   soldAmount: { label: "Sold", numeric: true },
   averageBuyPrice: { label: "Avg buy price", numeric: true },
@@ -61,12 +61,16 @@ function ActivityCards({
   currency,
   logosEnabled,
   onOpenSecurity,
+  knownNames,
+  knownSymbols,
   accountCards,
 }: {
   common: Common;
   currency: string;
   logosEnabled: boolean;
   onOpenSecurity: (security: FoundSecurity) => void;
+  knownNames: Map<string, string>;
+  knownSymbols: Map<string, string>;
   /** Cards that share the row of the activity cards. */
   accountCards: ReactNode;
 }) {
@@ -79,11 +83,17 @@ function ActivityCards({
   const [securityFilter, setSecurityFilter] = useState<SecurityFilter>("all");
   useEffect(() => setPage(1), [pageSize]);
   const filteredSecurities = useMemo(
-    () => summary.securities.filter((security) => matchesSecurityFilter(security, securityFilter) && matchesText(search, [security.isin, security.name])),
-    [summary.securities, securityFilter, search],
+    () =>
+      summary.securities.filter(
+        (security) => matchesSecurityFilter(security, securityFilter) && matchesText(search, [security.isin, security.name, knownNames.get(security.isin), knownSymbols.get(security.isin)]),
+      ),
+    [summary.securities, securityFilter, search, knownNames, knownSymbols],
   );
   const sortedSecurities = useMemo(
-    () => sortItems(filteredSecurities, sort, (security, key) => (key === "name" ? security.name || security.isin : security[key as keyof typeof security])),
+    () =>
+      sortItems(filteredSecurities, sort, (security, key) =>
+        key === "name" ? knownSymbols.get(security.isin) || security.name || knownNames.get(security.isin) || security.isin : security[key as keyof typeof security],
+      ),
     [filteredSecurities, sort],
   );
   const securities = paginate(sortedSecurities, page, pageSize);
@@ -96,6 +106,10 @@ function ActivityCards({
         {accountCards}
       </CardGrid>
     );
+  const labels = (security: { isin: string; name: string }) => ({
+    symbol: knownSymbols.get(security.isin),
+    name: security.name || knownNames.get(security.isin),
+  });
   const changeSearch = (value: string) => {
     setSearch(value);
     setPage(1);
@@ -210,23 +224,23 @@ function ActivityCards({
                         name: (
                           <td>
                             <SecurityCell
-                              initials={(security.name || security.isin).slice(0, 2).toUpperCase()}
+                              initials={(labels(security).symbol ?? labels(security).name ?? security.isin).slice(0, 2).toUpperCase()}
                               logo={securityLogos.get(security.isin.toUpperCase())}
                               title={
                                 security.isin ? (
                                   <button
                                     className="cursor-pointer text-right hover:text-ink-accent-bright hover:underline"
                                     type="button"
-                                    onClick={() => onOpenSecurity({ isin: security.isin, name: security.name || security.isin, type: "", record: {} })}
-                                    title="Open details, chart and news"
+                                    onClick={() => onOpenSecurity({ isin: security.isin, name: labels(security).name ?? security.isin, type: "", record: {} })}
+                                    title={`${security.isin}. Open details, chart and news`}
                                   >
-                                    {security.isin}
+                                    {labels(security).symbol ?? labels(security).name ?? security.isin}
                                   </button>
                                 ) : (
                                   security.name
                                 )
                               }
-                              subtitle={security.isin && security.name ? security.name : undefined}
+                              subtitle={labels(security).symbol ? labels(security).name : labels(security).name ? security.isin : undefined}
                             />
                           </td>
                         ),
@@ -373,7 +387,21 @@ function OvernightTransactionsCard({ common, currency }: { common: Common; curre
   );
 }
 
-export function OverviewExtras({ common, currency, logosEnabled, onOpenSecurity }: { common: Common; currency: string; logosEnabled: boolean; onOpenSecurity: (security: FoundSecurity) => void }) {
+export function OverviewExtras({
+  common,
+  currency,
+  logosEnabled,
+  onOpenSecurity,
+  knownNames,
+  knownSymbols,
+}: {
+  common: Common;
+  currency: string;
+  logosEnabled: boolean;
+  onOpenSecurity: (security: FoundSecurity) => void;
+  knownNames: Map<string, string>;
+  knownSymbols: Map<string, string>;
+}) {
   const { invoke, defs, portfolios, reloadKey } = common;
   const has = (name: string) => defs.some((tool) => tool.name === name);
   const profile = useToolQuery(invoke, defs, TOOL.getAccountProfile, has(TOOL.getAccountProfile) ? [{}] : null, reloadKey);
@@ -388,6 +416,8 @@ export function OverviewExtras({ common, currency, logosEnabled, onOpenSecurity 
         currency={currency}
         logosEnabled={logosEnabled}
         onOpenSecurity={onOpenSecurity}
+        knownNames={knownNames}
+        knownSymbols={knownSymbols}
         accountCards={
           <>
             {has(TOOL.getAccountProfile) && <ToolCard title="Account profile" entries={profile.entries} loading={profile.loading} />}
