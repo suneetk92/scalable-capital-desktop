@@ -337,7 +337,7 @@ export function TrailingStops({
           orderStates={orderStates}
         />
       ))}
-      {viewed && <TrailingTransactionDialog stop={viewed} onClose={() => setViewing(null)} />}
+      {viewed && <TrailingTransactionDialog stop={viewed} orderState={orderStates.get(viewed.id)} onClose={() => setViewing(null)} />}
       {editing && dialog(editing.side, editing, () => setEditing(null))}
       {adding && dialog(adding, null, () => setAdding(null))}
     </>

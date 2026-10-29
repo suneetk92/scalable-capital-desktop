@@ -5,7 +5,7 @@ import type { Common } from "../../../../src/types";
 import { humanize } from "../../../../src/tools";
 import type { TrailingStop } from "./trailing";
 
-const FINAL_KEY = "scalable-capital-desktop.trailing-order-final";
+const FINAL_KEY = "scalable-capital-desktop.trailing-order-final-2";
 /** States Scalable does not move on from, so the order is not asked about again. */
 const FINAL_STATE = /settled|cancel|reject|expire|fail/i;
 
@@ -26,14 +26,21 @@ function transactionIn(value: unknown, depth = 0): Rec | undefined {
     .find((found) => found !== undefined);
 }
 
-/** The state of the order in a `get_transaction_details` answer: the trade status, else the latest history entry. */
-export function orderStateOf(result: unknown): string | null {
+/**
+ * The state of the order in a `get_transaction_details` answer: the finalisation reason (FILLED, ...) once Scalable
+ * has set one, else the trade status, else the latest history entry. It is final when there is a reason or the status cannot change.
+ */
+export function orderStateOf(result: unknown): { state: string; final: boolean } | null {
   const transaction = transactionIn(result);
   if (!transaction) return null;
-  const status = isRec(transaction.securityTrade) ? pickString(transaction.securityTrade, ["status"]) : undefined;
-  if (status) return status;
+  const trade = isRec(transaction.securityTrade) ? transaction.securityTrade : undefined;
+  const reason = trade ? pickString(trade, ["finalisationReason"]) : undefined;
+  const status = trade ? pickString(trade, ["status"]) : undefined;
+  if (reason) return { state: reason, final: true };
+  if (status) return { state: status, final: isFinalState(status) };
   const history = Array.isArray(transaction.history) ? transaction.history.filter(isRec) : [];
-  return history.length > 0 ? (pickString(history[history.length - 1], ["state"]) ?? null) : null;
+  const last = history.length > 0 ? pickString(history[history.length - 1], ["state"]) : undefined;
+  return last ? { state: last, final: isFinalState(last) } : null;
 }
 
 export const orderStateLabel = (state: string) => humanize(state.toLowerCase());
@@ -70,17 +77,20 @@ export function useOrderStates(common: Common, stops: TrailingStop[]): ReadonlyM
   );
   const query = useToolQuery(common.invoke, common.defs, "get_transaction_details", argsList, common.reloadKey);
   const latest = useMemo(() => {
-    const byOrder = new Map<string, string>();
+    const byOrder = new Map<string, { state: string; final: boolean }>();
     for (const entry of query.entries) {
       const id = pickString(entry.semantic, ["transactionId"]);
-      const state = entry.outcome.ok ? orderStateOf(entry.outcome.result) : null;
-      if (id && state) byOrder.set(id, state);
+      const found = entry.outcome.ok ? orderStateOf(entry.outcome.result) : null;
+      if (id && found) byOrder.set(id, found);
     }
-    return new Map(pending.flatMap((item) => (byOrder.has(item.orderId) ? [[item.stopId, byOrder.get(item.orderId) as string] as const] : [])));
+    return pending.flatMap((item) => {
+      const found = byOrder.get(item.orderId);
+      return found ? [{ stopId: item.stopId, ...found }] : [];
+    });
   }, [query.entries, pending]);
 
   useEffect(() => {
-    const done = [...latest].filter(([, state]) => isFinalState(state));
+    const done = latest.filter((item) => item.final).map((item) => [item.stopId, item.state] as const);
     if (done.length === 0) return;
     setFinals((current) => {
       const next = { ...current, ...Object.fromEntries(done) };
@@ -93,5 +103,5 @@ export function useOrderStates(common: Common, stops: TrailingStop[]): ReadonlyM
     });
   }, [latest]);
 
-  return useMemo(() => new Map([...Object.entries(finals), ...latest]), [finals, latest]);
+  return useMemo(() => new Map([...Object.entries(finals), ...latest.map((item) => [item.stopId, item.state] as const)]), [finals, latest]);
 }

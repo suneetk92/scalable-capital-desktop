@@ -7,9 +7,11 @@ describe("order state", () => {
     expect(orderIdOf(null)).toBeUndefined();
   });
 
-  it("prefers the trade status, else the latest history entry", () => {
-    expect(orderStateOf({ transaction: { id: "o-1", securityTrade: { status: "FILLED" }, history: [{ state: "SUBMITTED" }] } })).toBe("FILLED");
-    expect(orderStateOf({ transaction: { id: "o-1", securityTrade: null, history: [{ state: "SUBMITTED" }, { state: "SETTLED" }] } })).toBe("SETTLED");
+  it("prefers the finalisation reason, then the trade status, then the latest history entry", () => {
+    const trade = { status: "SETTLED", finalisationReason: "FILLED" };
+    expect(orderStateOf({ transaction: { securityTrade: trade, history: [{ state: "SUBMITTED" }] } })).toEqual({ state: "FILLED", final: true });
+    expect(orderStateOf({ transaction: { securityTrade: { status: "EXECUTED", finalisationReason: null } } })).toEqual({ state: "EXECUTED", final: false });
+    expect(orderStateOf({ transaction: { securityTrade: null, history: [{ state: "SUBMITTED" }, { state: "SETTLED" }] } })).toEqual({ state: "SETTLED", final: true });
     expect(orderStateOf({ nothing: true })).toBeNull();
   });
 

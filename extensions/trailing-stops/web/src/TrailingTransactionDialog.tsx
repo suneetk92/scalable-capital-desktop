@@ -2,10 +2,11 @@ import { DescriptionList, DescriptionRow, DialogFooter, ModalFrame, ModalHeader,
 import { KeyValues } from "../../../../src/ToolViews";
 import { formatDateTime, formatNumber } from "../../../../src/format";
 import { formatMoney } from "../../../../src/screener";
+import { orderStateLabel } from "./orderState";
 import { trailLabel, triggerPrice, type TrailingStop } from "./trailing";
 
 /** What the app did when a trailing stop fired: the rule, the price and what Scalable answered. */
-export function TrailingTransactionDialog({ stop, onClose }: { stop: TrailingStop; onClose: () => void }) {
+export function TrailingTransactionDialog({ stop, orderState, onClose }: { stop: TrailingStop; orderState?: string; onClose: () => void }) {
   const buying = stop.side === "buy";
   const verb = buying ? "Bought" : "Sold";
   return (
@@ -15,6 +16,7 @@ export function TrailingTransactionDialog({ stop, onClose }: { stop: TrailingSto
       <DescriptionList>
         <DescriptionRow label="When">{stop.executedAt === null ? "Not recorded" : formatDateTime(stop.executedAt * 1000)}</DescriptionRow>
         <DescriptionRow label={buying ? "Spent" : "Shares sold"}>{buying ? formatMoney(stop.amount ?? 0) : formatNumber(stop.quantity)}</DescriptionRow>
+        {orderState && <DescriptionRow label="Order status">{orderStateLabel(orderState)}</DescriptionRow>}
         <DescriptionRow label="Order type">Market</DescriptionRow>
         <DescriptionRow label={`${verb} at about`}>{stop.soldPrice === null ? "Not recorded" : formatMoney(stop.soldPrice)}</DescriptionRow>
         <DescriptionRow label="Distance">{trailLabel(stop.trail, formatMoney)}</DescriptionRow>
