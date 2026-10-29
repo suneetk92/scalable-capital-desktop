@@ -59,6 +59,12 @@ describe("holdingRows", () => {
     expect(rows.map((row) => row.symbol)).toEqual(["DE0003", "BTC"]);
     expect(rows[1].exchange).toBe("CRYPTO");
   });
+
+  it("gives crypto rows their own row id, apart from a security with the same symbol", () => {
+    const rows = holdingRows("pf-1", { securities: [{ isin: "DE0003", symbol: "BTC", quantity: 1, price: 5 }], cryptoHoldings: [{ symbol: "BTC", quantity: 1, price: 100 }] });
+    expect(rows.map((row) => row.rowId)).toEqual(["pf-1-BTC-0", "pf-1-crypto-BTC-0"]);
+    expect(rows[1]).not.toHaveProperty("id");
+  });
 });
 
 describe("splitHoldings", () => {
@@ -156,6 +162,14 @@ describe("groupHas and parseSearch", () => {
     expect(groupHas({ isins: ["DE0001"], portfolioIds: [] } as unknown as SecurityGroup, row)).toBe(true);
     expect(groupHas({ isins: [], portfolioIds: ["pf-1"] } as unknown as SecurityGroup, row)).toBe(true);
     expect(groupHas({ isins: ["OTHER"], portfolioIds: ["pf-2"] } as unknown as SecurityGroup, row)).toBe(false);
+  });
+
+  it("groupHas leaves out the same ISIN held in another portfolio", () => {
+    const group = { isins: ["DE0001"], portfolioIds: [], portfolioId: "pf-1" } as unknown as SecurityGroup;
+    expect(groupHas(group, row)).toBe(true);
+    expect(groupHas(group, { ...row, portfolioId: "pf-2" })).toBe(false);
+    expect(groupHas(group, { ...row, portfolioId: "" })).toBe(true);
+    expect(groupHas({ ...group, portfolioId: "" }, { ...row, portfolioId: "pf-2" })).toBe(true);
   });
 
   it("parseSearch returns each ISIN once", () => {

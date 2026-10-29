@@ -254,7 +254,7 @@ export function holdingRows(portfolioId: string, holdings: unknown, quotes?: Rec
   const securityRows = recordsFrom(securities).map((record, index) => rowFromRecord(record, index, portfolioId, quotes));
   const cryptoRows = crypto.filter(hasCryptoPosition).map((record, index) => {
     const row = rowFromRecord(record, index, portfolioId, quotes);
-    return { ...row, id: `${portfolioId}-crypto-${row.symbol}-${index}`, exchange: row.exchange === "—" ? "CRYPTO" : row.exchange };
+    return { ...row, rowId: `${portfolioId}-crypto-${row.symbol}-${index}`, exchange: row.exchange === "—" ? "CRYPTO" : row.exchange };
   });
   return [...securityRows, ...cryptoRows];
 }
@@ -434,8 +434,10 @@ function overviewSecurities(overview: unknown): number | null {
   return pickNumber(flatten(recordsFromOverview(overview)), ["valuation.securities", "securitiesValuation", "securities"]);
 }
 
+/** Whether a row belongs to a group. A group lives in one portfolio, so the same ISIN held in another portfolio is not in it. */
 export function groupHas(group: SecurityGroup, row: ScreenerRow) {
-  return (row.isin !== "" && group.isins.includes(row.isin)) || (row.portfolioId !== "" && group.portfolioIds.includes(row.portfolioId));
+  const samePortfolio = !group.portfolioId || !row.portfolioId || group.portfolioId === row.portfolioId;
+  return (row.isin !== "" && samePortfolio && group.isins.includes(row.isin)) || (row.portfolioId !== "" && group.portfolioIds.includes(row.portfolioId));
 }
 
 function recordsFromOverview(overview: unknown): Record<string, unknown> {

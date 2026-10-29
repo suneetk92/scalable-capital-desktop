@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { todayOf } from "../holdings";
 import { orderGroups, parseGroupData, ungroupedGroup, type SecurityGroup } from "../groups";
-import { dataIssueMessages, holdingRows, overviewTotal, recordsFrom, rowFromRecord, summarizeOverview, type ScreenerRow } from "../screener";
+import { dataIssueMessages, groupHas, holdingRows, overviewTotal, recordsFrom, rowFromRecord, summarizeOverview, type ScreenerRow } from "../screener";
 import type { Dashboard } from "../types";
 
 /** The value and the Since buy figures summed from holding rows; `reported` keeps what Scalable already gave. */
@@ -57,7 +57,7 @@ export function useDashboardData(dashboard: Dashboard | null, showDiagnostics: b
     () =>
       groupData.groups.map((group) => {
         if (group.valuation !== null && group.sinceBuyAbsolute !== null) return group;
-        const members = portfolioRows.filter((row) => row.isin !== "" && group.isins.includes(row.isin) && row.value !== null);
+        const members = portfolioRows.filter((row) => row.isin !== "" && groupHas(group, row) && row.value !== null);
         return members.length === 0 ? group : { ...group, ...figuresOf(members, group) };
       }),
     [groupData, portfolioRows],
@@ -66,7 +66,12 @@ export function useDashboardData(dashboard: Dashboard | null, showDiagnostics: b
   const defaultGroup = useMemo(() => {
     const group = ungroupedGroup(groupData);
     if (!group) return null;
-    const members = portfolioRows.filter((row) => row.isin !== "" && group.isins.includes(row.isin));
+    // Ungrouped holdings are listed per portfolio, so the same ISIN grouped in another portfolio is not counted here.
+    const members = portfolioRows.filter(
+      (row) =>
+        row.isin !== "" &&
+        groupData.ungrouped.some((entry) => (!entry.portfolioId || !row.portfolioId || entry.portfolioId === row.portfolioId) && entry.holdings.some((holding) => holding.isin === row.isin)),
+    );
     const known = members.filter((row) => row.value !== null);
     return known.length === 0 ? group : { ...group, ...figuresOf(known, null) };
   }, [groupData, portfolioRows]);

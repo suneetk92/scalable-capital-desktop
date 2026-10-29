@@ -12,6 +12,7 @@ import { isRec } from "../response";
 import type { PagePortfolio } from "../types";
 import { Alert, btn, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "../ui";
 import { useAsyncQuery } from "../hooks/useAsyncQuery";
+import { ambiguousThousands, ambiguousThousandsMessage } from "../format";
 import { usePreviewFlow } from "../hooks/usePreviewFlow";
 
 type Props = {
@@ -66,7 +67,10 @@ export function SavingsPlanDialog({ existing, portfolios, portfolioId: initialPo
     else if (configQuery.error) setForm({ ...EMPTY_FORM, amount: existing?.isin === isin ? existing.amount : "" });
   }, [config, configQuery.error, existing, isin]);
 
-  const request = useMemo(() => planRequest(isin, portfolioId, form, config), [isin, portfolioId, form, config]);
+  const request = useMemo(
+    () => (security && ambiguousThousands(form.amount) ? ambiguousThousandsMessage(form.amount) : planRequest(isin, portfolioId, form, config)),
+    [security, isin, portfolioId, form, config],
+  );
   // The amount is the only free-text field, so a request problem belongs to it once something is typed there.
   const amountProblem = typeof request === "string" && security && form.amount.trim() !== "" ? request : null;
   const months = config ? monthsFor(config, form.dayOfMonth) : [];

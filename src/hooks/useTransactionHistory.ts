@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { clearHistories, historyGeneration, historyRows, loadHistory, parsePage, saveHistory, syncHistory, type CachedHistory, type SyncProgress } from "../activityCache";
 import { buildArgs, callTools } from "../tools";
 import { pickString, type Rec } from "../response";
-import type { TransactionRow } from "../transactions";
+import { withCancelledOrders, type TransactionRow } from "../transactions";
 import type { Common } from "../types";
 import { TOOL } from "../commands";
 
@@ -25,6 +25,16 @@ function cancelledIn(rows: TransactionRow[], portfolioId: string, ids: string[])
   return rows.map((row) => (row.portfolioId === portfolioId && hasAnyId(row.record, ids) ? { ...row, record: { ...row.record, status: CANCELLED } } : row));
 }
 
+// Orders cancelled in this session, by portfolio. A sync that read a page before the cancellation still has the order as
+// open; these are applied again to what it stores and shows. A later status that is no longer open (filled, cancelled) wins.
+const cancelledIds = new Map<string, Set<string>>();
+
+function withCancellations(portfolioId: string, history: CachedHistory): CachedHistory {
+  const ids = [...(cancelledIds.get(portfolioId) ?? [])];
+  if (ids.length === 0) return history;
+  return { ...history, records: withCancelledOrders(history.records, ids) };
+}
+
 /**
  * Marks a transaction as cancelled in the stored history and in every view showing it, without reading the
  * history again. Used after Scalable confirmed the cancellation of an open order.
@@ -32,6 +42,9 @@ function cancelledIn(rows: TransactionRow[], portfolioId: string, ids: string[])
 export function markCancelled(portfolioId: string, ids: (string | undefined)[]) {
   const wanted = ids.filter((id): id is string => id !== undefined && id !== "");
   if (wanted.length === 0) return;
+  const known = cancelledIds.get(portfolioId) ?? new Set<string>();
+  wanted.forEach((id) => known.add(id));
+  cancelledIds.set(portfolioId, known);
   void loadHistory(portfolioId).then((stored) => {
     if (stored) void saveHistory(portfolioId, { ...stored, records: stored.records.map((record) => (hasAnyId(record, wanted) ? { ...record, status: CANCELLED } : record)) });
   });
@@ -132,10 +145,11 @@ export function useTransactionHistory(common: Pick<Common, "invoke" | "defs" | "
           entry.listeners.forEach((listener) => listener());
         },
         (partial) => {
-          if (entry.generation === historyGeneration()) void saveHistory(id, partial);
+          if (entry.generation === historyGeneration()) void saveHistory(id, withCancellations(id, partial));
         },
       )
-        .then((history) => {
+        .then((synced) => {
+          const history = withCancellations(id, synced);
           // A clear from Settings while this ran makes the result stale: show it, but do not store it.
           if (entry.generation === historyGeneration()) void saveHistory(id, history);
           return history;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { dedupeRows, distinctValues, isFiltering, matchesFilter, newestFirst, NO_FILTER, type TransactionRow } from "./transactions";
+import { dedupeRows, distinctValues, isFiltering, matchesFilter, newestFirst, NO_FILTER, withCancelledOrders, type TransactionRow } from "./transactions";
 
 const row = (id: string | undefined, portfolioId = "p1"): TransactionRow => ({ record: id === undefined ? { note: "x" } : { transactionId: id }, portfolioId });
 const ids = (rows: TransactionRow[] | null) => rows?.map((item) => (item.record as { transactionId?: string }).transactionId);
@@ -41,5 +41,17 @@ describe("transactions", () => {
     expect(isFiltering({ ...NO_FILTER, text: "  " })).toBe(false);
     expect(isFiltering({ ...NO_FILTER, status: "SETTLED" })).toBe(true);
     expect(distinctValues(["SELL", "BUY", undefined, "", "buy", "DEPOSIT"])).toEqual(["BUY", "DEPOSIT", "SELL"]);
+  });
+});
+
+describe("withCancelledOrders", () => {
+  it("marks the cancelled orders that a sync still read as open, and keeps a status that moved on", () => {
+    const records = [
+      { id: "o1", status: "PENDING" },
+      { id: "o2", status: "FILLED" },
+      { orderId: "o3", status: "OPEN" },
+      { id: "o4", status: "PENDING" },
+    ];
+    expect(withCancelledOrders(records, ["o1", "o2", "o3"]).map((record) => record.status)).toEqual(["CANCELLED", "FILLED", "CANCELLED", "PENDING"]);
   });
 });

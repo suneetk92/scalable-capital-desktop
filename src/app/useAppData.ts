@@ -14,6 +14,7 @@ import { useSessionInfo } from "../hooks/useSessionInfo";
 import { markCancelled, useTransactionHistory } from "../hooks/useTransactionHistory";
 import { useUpdater } from "../hooks/useUpdater";
 import { keepLastGoodParts } from "../lastGood";
+import { loadSequence } from "../loadSequence";
 import { dashboardEffect, withoutWatchlistItem } from "../localChanges";
 import { extension, type ExtensionData, type ExtensionRuntime } from "../extensions";
 import type { MarketRecord } from "../marketColumns";
@@ -109,6 +110,8 @@ export function useAppData() {
     if (!hasTauriRuntime()) return;
     invokeCommand(invoke, "set_access_mode", { mode: access }).catch(() => {
       if (access !== "readonly") setAccessSwitch("readonly");
+      // Lowering the level failed: send read-only once more, so the backend does not stay above what the UI shows.
+      else void invokeCommand(invoke, "set_access_mode", { mode: "readonly" }).catch(() => undefined);
     });
   }, [access]);
   // At launch the level is the "Start with" setting. After that only the user changes it; the exchange hours
@@ -159,15 +162,26 @@ export function useAppData() {
     return () => window.removeEventListener("resize", onResize);
   }, [mobileNavOpen]);
 
+  // Loads can overlap (a manual refresh during an automatic one, a write's reload): only the newest result is shown,
+  // and none that was under way when the user signed out or a change was already applied on screen.
+  const loadsRef = useRef<ReturnType<typeof loadSequence> | null>(null);
+  loadsRef.current ??= loadSequence();
+  const loads = loadsRef.current;
+  const invalidateLoads = useCallback(() => loads.invalidate(), [loads]);
+
   const loadDashboard = useCallback(
     async (showLoading = true) => {
       if (showLoading) setLoading(true);
       else setSyncing(true);
       syncingRef.current = true;
+      const id = loads.start();
       try {
         const result = await invokeCommand(invoke, "load_dashboard");
+        if (!loads.current(id)) return;
         // A part that failed this time keeps what the last reload brought, and the status line says so.
         const { dashboard: merged, failures } = keepLastGoodParts(dashboardRef.current, result);
+        // Signed out since the last load (also when Scalable ended the session itself): the next sign-in starts read-only, as after Sign out.
+        if (!result.authenticated && dashboardRef.current) setAccessSwitch("readonly");
         setDashboard(result.authenticated ? merged : null);
         failedReloadsRef.current = 0;
         if (result.authenticated) {
@@ -179,6 +193,7 @@ export function useAppData() {
         }
         setError(null);
       } catch (loadError) {
+        if (!loads.current(id)) return;
         const message = getErrorMessage(loadError);
         failedReloadsRef.current += 1;
         // With a dashboard on screen the old data stays and the status line shows the failure; the alert is for the sign-in screen.
@@ -186,19 +201,25 @@ export function useAppData() {
         failed("scalable", message);
         setConnection({ state: "error", detail: message });
       } finally {
-        syncingRef.current = false;
-        setLoading(false);
-        setSyncing(false);
+        // The loading state belongs to the last load that is still running.
+        if (loads.finish()) {
+          syncingRef.current = false;
+          setLoading(false);
+          setSyncing(false);
+        }
       }
     },
-    [succeeded, failed],
+    [loads, succeeded, failed],
   );
 
+  // An open order dialog keeps the data it previewed: no reload on focus or reconnect then, as for the timer.
+  const orderOpenRef = useRef(false);
+  orderOpenRef.current = orderTarget !== null;
   useEffect(() => {
     let wasHidden = document.visibilityState === "hidden";
     let lastTick = Date.now();
     const reload = () => {
-      if (!syncingRef.current) void loadDashboard(false);
+      if (!syncingRef.current && !orderOpenRef.current) void loadDashboard(false);
     };
     const resumeAfterSleep = () => {
       if (syncingRef.current) return;
@@ -207,7 +228,7 @@ export function useAppData() {
         .catch(() => {})
         .finally(() => {
           syncingRef.current = false;
-          if (!document.hidden) void loadDashboard(false);
+          if (!document.hidden && !orderOpenRef.current) void loadDashboard(false);
         });
     };
     const checkWake = () => {
@@ -261,6 +282,8 @@ export function useAppData() {
       const isin = pickString(semantic, ["isin"]);
       if (tool === TOOL.cancelOrder) markCancelled(pickString(semantic, ["portfolioId"]) ?? "", [pickString(semantic, ["transactionId"]), pickString(semantic, ["orderId"])]);
       if (effect === "none") return;
+      // A reload that began before this change would bring the old list back.
+      if (effect !== "all") loads.invalidate();
       if (effect === "watchlist-remove" && isin) {
         setDashboard((previous) => previous && withoutWatchlistItem(previous, isin));
       } else if (effect === "watchlist-add" || effect === "watchlist-remove") {
@@ -275,7 +298,7 @@ export function useAppData() {
         fallback();
       }
     },
-    [loadDashboard],
+    [loads, loadDashboard],
   );
   const {
     actions: toolActions,
@@ -293,12 +316,13 @@ export function useAppData() {
     toast: settings.alertToasts,
     onTriggered: toolActions.notify,
   });
-  const updater = useUpdater({ invoke, launchCheck: settings.checkUpdates, channel: settings.updateChannel, onError: (text) => toolActions.notify({ kind: "error", text }) });
+  const updater = useUpdater({ invoke, launchCheck: settings.checkUpdates, onError: (text) => toolActions.notify({ kind: "error", text }) });
   const background = useBackground({ invoke, onError: (text) => toolActions.notify({ kind: "error", text }) });
-  const profile = useToolQuery(invoke, toolDefs, TOOL.getAccountProfile, signedIn && toolActions.has(TOOL.getAccountProfile) ? [{}] : null);
+  const reloadKey = lastUpdated?.getTime() ?? 0;
+  // The same question as the Overview's profile card, so both share one answer per reload.
+  const profile = useToolQuery(invoke, toolDefs, TOOL.getAccountProfile, signedIn && toolActions.has(TOOL.getAccountProfile) ? [{}] : null, reloadKey);
   const accountName = profileName(profile.entries[0]?.outcome.result);
   // The sidebar counts use the same data as the Price alerts and Transactions pages.
-  const reloadKey = lastUpdated?.getTime() ?? 0;
   const alertsQuery = useToolQuery(invoke, toolDefs, TOOL.listPriceAlerts, signedIn && toolActions.has(TOOL.listPriceAlerts) ? perPortfolio(pagePortfolioList) : null, reloadKey);
   const alertCount = alertsQuery.entries.some((entry) => entry.outcome.ok) ? collect(alertsQuery.entries).records.length : undefined;
   const transactionHistory = useTransactionHistory({ invoke, defs: toolDefs, portfolios: pagePortfolioList, reloadKey, actions: toolActions });
@@ -401,12 +425,15 @@ export function useAppData() {
       ),
     [baseGroups, moveGroupIn],
   );
+  // The open orders of the groups come from the transaction history above, so the transactions are read once per reload.
+  const historyKnown = transactionHistory.rows.length > 0 || (!transactionHistory.loading && !transactionHistory.error && toolActions.has(TOOL.listPortfolioTransactions));
   const { defaultGroup, allGroups } = useGroupFigures({
     invoke,
     defs: toolDefs,
     actions: toolActions,
     portfolios: pagePortfolioList,
     reloadKey,
+    transactions: historyKnown ? transactionHistory.rows : null,
     groups: baseGroups,
     defaultGroup: baseDefaultGroup,
   });
@@ -537,6 +564,7 @@ export function useAppData() {
     setPlanDialog,
     searchInput,
     loadDashboard,
+    invalidateLoads,
     checkConnection,
     setDashboard,
     toolActions,

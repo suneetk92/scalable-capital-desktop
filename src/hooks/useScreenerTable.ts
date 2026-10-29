@@ -105,7 +105,9 @@ export function useScreenerTable({
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
   });
-  const visibleRows = table.getRowModel().rows.map((row) => row.original);
+  // The row model is memoized by the table, so the rows (and everything derived from them) change only when it does.
+  const rowModel = table.getRowModel();
+  const visibleRows = useMemo(() => rowModel.rows.map((row) => row.original), [rowModel]);
   const selected = useMemo(() => new Set(Object.keys(rowSelection).filter((id) => rowSelection[id])), [rowSelection]);
   const setSelected = useCallback((ids: Set<string>) => setRowSelection(Object.fromEntries([...ids].map((id) => [id, true]))), []);
 

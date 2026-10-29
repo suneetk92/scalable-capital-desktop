@@ -8,6 +8,13 @@ export function isOpenOrder(record: Rec): boolean {
   return /pending|open|active|queued|working|accepted|placed|new/i.test(status) && !/cancel|reject|exec|fill|settled|complete|expired/i.test(status);
 }
 
+/** The records with every order among `ids` that is still open marked as cancelled; an order whose status moved on keeps it. */
+export function withCancelledOrders(records: Rec[], ids: string[]): Rec[] {
+  return records.map((record) =>
+    isOpenOrder(record) && ids.some((id) => ["id", "transactionId", "orderId"].some((key) => pickString(record, [key]) === id)) ? { ...record, status: "CANCELLED" } : record,
+  );
+}
+
 /** The ISIN a transaction is about, or null for cash movements and crypto. */
 export function transactionIsin(record: Rec): string | null {
   return pickString(pick(record, ["security"]), ["isin"]) ?? pickString(record, ["isin"]) ?? null;

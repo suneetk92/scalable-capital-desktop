@@ -72,6 +72,16 @@ function normalizeGroupedInteger(value: string, separator: string): string | nul
   return groups.join("");
 }
 
+/** True for typed input like "1,000" or "12.500": one separator followed by exactly three digits, which `parseDecimal` reads as a decimal but may be meant as thousands. */
+export function ambiguousThousands(input: string): boolean {
+  return /^[+\-−]?\d{1,3}[.,]\d{3}$/.test(input.replace(/\s/g, ""));
+}
+
+/** The message for input that `ambiguousThousands` flags. */
+export function ambiguousThousandsMessage(input: string): string {
+  return `Write 1000 or 1000.00 — “${input.trim()}” could mean 1 or 1000.`;
+}
+
 /** Parses decimal input with either comma or dot decimals and optional correctly grouped thousands. */
 export function parseDecimal(input: string): number | null {
   let text = input

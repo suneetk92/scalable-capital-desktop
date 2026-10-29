@@ -47,6 +47,7 @@ export function useAppCommands(data: AppData) {
     settings,
     updateSettings,
     loadDashboard,
+    invalidateLoads,
     marketTableOpen,
     toolActions,
     table,
@@ -186,6 +187,8 @@ export function useAppCommands(data: AppData) {
     setConfirmingSignOut(false);
     try {
       await invokeCommand(invoke, "logout");
+      // A reload still under way would put the signed-out account back on screen.
+      invalidateLoads();
       // The backend switched Trading off with the sign-out; the UI follows so the next sign-in starts read-only.
       setAccessSwitch("readonly");
       clearHistories();

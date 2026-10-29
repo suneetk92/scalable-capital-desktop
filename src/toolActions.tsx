@@ -150,14 +150,16 @@ const MAX_CACHED_QUERIES = 200;
 const answers = new Map<string, QueryEntry[]>();
 
 const answerListeners = new Set<(name: string) => void>();
+// Calls under way by cache key, so pages asking the same question at the same time share one call.
+const pending = new Map<string, Promise<ToolOutcome[]>>();
 
 /** Removes matching records from the cached answers of a tool and updates the pages showing them, without asking Scalable again. */
-function dropFromAnswers(name: string, match: (record: Rec) => boolean) {
+function dropFromAnswers(name: string, match: (record: Rec) => boolean, inEntry: (entry: QueryEntry) => boolean = () => true) {
   for (const [key, entries] of answers) {
     if (!key.startsWith(`${name}|`)) continue;
     answers.set(
       key,
-      entries.map((entry) => (entry.outcome.ok ? { ...entry, outcome: { ...entry.outcome, result: withoutRecords(entry.outcome.result, match) } } : entry)),
+      entries.map((entry) => (entry.outcome.ok && inEntry(entry) ? { ...entry, outcome: { ...entry.outcome, result: withoutRecords(entry.outcome.result, match) } } : entry)),
     );
   }
   answerListeners.forEach((listener) => listener(name));
@@ -170,6 +172,20 @@ function staleAnswers(name: string) {
 }
 
 const ALERT_ID_KEYS = ["alertId", "priceAlertId", "id"];
+const PLAN_ID_KEYS = ["savingsPlanId", "planId"];
+
+/**
+ * Which cached plan records a `remove_savings_plan` call removed: the plan with its id, else the plan for its ISIN in the
+ * portfolio of that call (the same ISIN can have a plan in another portfolio). Null when the call does not say which.
+ */
+export function removedPlan(semantic: Rec): { match: (record: Rec) => boolean; inEntry: (entry: { semantic: Rec }) => boolean } | null {
+  const planId = pickString(semantic, PLAN_ID_KEYS);
+  if (planId) return { match: (record) => pickString(record, PLAN_ID_KEYS) === planId, inEntry: () => true };
+  const isin = pickString(semantic, ["isin"]);
+  const portfolioId = pickString(semantic, ["portfolioId"]);
+  if (!isin || !portfolioId) return null;
+  return { match: (record) => planOf(record).isin === isin, inEntry: (entry) => pickString(entry.semantic, ["portfolioId"]) === portfolioId };
+}
 
 /**
  * Brings the cached lists in line with a write that succeeded. A removal is taken out of the list
@@ -181,8 +197,8 @@ function applyToAnswers(tool: string, semantic: Rec) {
     if (alertId) dropFromAnswers(TOOL.listPriceAlerts, (record) => pickString(record, ALERT_ID_KEYS) === alertId);
     else staleAnswers(TOOL.listPriceAlerts);
   } else if (tool === "remove_savings_plan") {
-    const isin = pickString(semantic, ["isin"]);
-    if (isin) dropFromAnswers(TOOL.listSavingsPlans, (record) => planOf(record).isin === isin);
+    const removed = removedPlan(semantic);
+    if (removed) dropFromAnswers(TOOL.listSavingsPlans, removed.match, removed.inEntry);
     else staleAnswers(TOOL.listSavingsPlans);
   } else if (tool.includes("price_alert")) {
     staleAnswers(TOOL.listPriceAlerts);
@@ -194,6 +210,7 @@ function applyToAnswers(tool: string, semantic: Rec) {
 /** Forgets every cached answer, for a sign-out. */
 export function clearToolQueryCache() {
   answers.clear();
+  pending.clear();
 }
 
 /**
@@ -226,6 +243,8 @@ export function useToolQuery(invoke: Invoke, defs: ToolDef[], name: string, args
       setState({ loading: false, entries: cached, staleError: null });
       return;
     }
+    // A reload that was asked for (a new tick) does not join a call that is already under way.
+    const forced = tick !== handledTick.current;
     handledTick.current = tick;
     const def = defsRef.current.find((item) => item.name === name);
     const fail = (error: string) => setState({ loading: false, entries: [{ semantic: {}, outcome: { name, ok: false, error } }], staleError: null });
@@ -253,10 +272,22 @@ export function useToolQuery(invoke: Invoke, defs: ToolDef[], name: string, args
     }
     let active = true;
     setState((current) => ({ ...current, loading: true }));
-    callTools(
-      invoke,
-      calls.map((call) => ({ name, arguments: call.args })),
-    )
+    const shared = forced ? undefined : pending.get(cacheKey);
+    const request =
+      shared ??
+      callTools(
+        invoke,
+        calls.map((call) => ({ name, arguments: call.args })),
+      );
+    if (!shared) {
+      pending.set(cacheKey, request);
+      void request
+        .finally(() => {
+          if (pending.get(cacheKey) === request) pending.delete(cacheKey);
+        })
+        .catch(() => undefined);
+    }
+    request
       .then((outcomes) => {
         if (!active) return;
         const entries = outcomes.map((outcome, index) => ({ semantic: calls[index]?.semantic ?? {}, outcome }));

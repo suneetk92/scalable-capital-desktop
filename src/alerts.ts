@@ -16,7 +16,7 @@ type PriceAlert = {
 
 export const ALERT_MINUTE_OPTIONS = [1, 2, 5, 10, 15, 30] as const;
 
-const NOTIFIED_LIMIT = 1000;
+const NOTIFIED_LIMIT = 5000;
 
 function directionOf(value: unknown): PriceAlert["direction"] {
   const text = typeof value === "string" ? value.toLowerCase() : "";
@@ -98,15 +98,37 @@ export function alertNotices(alerts: PriceAlert[]): Notice[] {
   });
 }
 
-/** Ids already announced, or null when this app never checked before. */
-export function loadNotified(): Set<string> | null {
-  const parsed = readStoredJson("alerts-notified");
+/** The storage name of the announced ids of one portfolio; one list per portfolio keeps accounts and portfolios apart. */
+function notifiedName(portfolioId: string | undefined) {
+  return portfolioId ? `alerts-notified.${portfolioId}` : "alerts-notified";
+}
+
+/**
+ * Ids already announced for a portfolio, or null when this app never checked it before. A portfolio without its own
+ * list yet takes the shared list of older versions, so updating does not announce old alerts again.
+ */
+export function loadNotified(portfolioId?: string): Set<string> | null {
+  const parsed = readStoredJson(notifiedName(portfolioId)) ?? (portfolioId ? readStoredJson(notifiedName(undefined)) : null);
   if (parsed === null) return null;
   return new Set(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : []);
 }
 
-export function saveNotified(ids: ReadonlySet<string>) {
-  writeStoredJson("alerts-notified", [...ids].slice(-NOTIFIED_LIMIT));
+/**
+ * Stores the announced ids of a portfolio. Beyond the limit the ids of alerts Scalable still lists are kept first, as only
+ * those could be announced again; the others are dropped oldest first.
+ */
+export function saveNotified(ids: ReadonlySet<string>, portfolioId?: string, listed: readonly PriceAlert[] = []) {
+  writeStoredJson(notifiedName(portfolioId), trimNotified(ids, listed));
+}
+
+export function trimNotified(ids: ReadonlySet<string>, listed: readonly PriceAlert[], limit = NOTIFIED_LIMIT): string[] {
+  const all = [...ids];
+  if (all.length <= limit) return all;
+  const current = new Set(listed.filter((alert) => ids.has(alert.id)).map((alert) => alert.id));
+  const others = all.filter((id) => !current.has(id));
+  const keptOthers = others.slice(Math.max(0, others.length - Math.max(0, limit - current.size)));
+  const kept = new Set([...current, ...keptOthers]);
+  return all.filter((id) => kept.has(id));
 }
 
 /**

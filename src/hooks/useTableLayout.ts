@@ -46,26 +46,38 @@ function readLayout(name: string): Stored {
   return { order, widths };
 }
 
+/**
+ * A value read from the stored layout of the table `name`. When the same component shows another table (the name
+ * changes), the value is read again for that name before anything is written, so one table's layout is never saved
+ * under another's name.
+ */
+function useStoredPart<T>(name: string, read: (layout: Stored) => T) {
+  const [state, setState] = useState(() => ({ name, value: read(readLayout(name)) }));
+  if (state.name !== name) setState({ name, value: read(readLayout(name)) });
+  const set = useCallback((value: T) => setState((current) => ({ ...current, value })), []);
+  return [state.value, set, state.name === name] as const;
+}
+
 /** Column widths of a table, remembered per table name. */
 export function useColumnWidths(name: string) {
-  const [widths, setWidths] = useState<ColumnWidths | null>(() => readLayout(name).widths);
+  const [widths, setWidths, loaded] = useStoredPart(name, (layout) => layout.widths);
   useEffect(() => {
-    writeStoredJson(`table.${name}`, { ...readLayout(name), widths });
-  }, [name, widths]);
+    if (loaded) writeStoredJson(`table.${name}`, { ...readLayout(name), widths });
+  }, [name, widths, loaded]);
   return [widths, setWidths] as const;
 }
 
 /** Column order and widths of a table, remembered per table name; `ids` are the columns in their default order. */
 export function useTableLayout(name: string, ids: readonly string[]) {
-  const [order, setOrder] = useState<string[]>(() => readLayout(name).order);
+  const [order, setOrder, loaded] = useStoredPart(name, (layout) => layout.order);
   const [widths, setWidths] = useColumnWidths(name);
   useEffect(() => {
-    writeStoredJson(`table.${name}`, { order, widths });
-  }, [name, order, widths]);
+    if (loaded) writeStoredJson(`table.${name}`, { ...readLayout(name), order });
+  }, [name, order, loaded]);
   const key = ids.join("\n");
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` stands for the contents of `ids`
   const columns = useMemo(() => mergeOrder(order, ids), [order, key]);
-  const move = useCallback((from: string, to: string, after: boolean) => setOrder(moveColumn(columns, from, to, after)), [columns]);
+  const move = useCallback((from: string, to: string, after: boolean) => setOrder(moveColumn(columns, from, to, after)), [columns, setOrder]);
   const layout: ColumnLayout = useMemo(() => ({ widths, setWidths, move }), [widths, setWidths, move]);
   return { order: columns, layout };
 }

@@ -9,6 +9,7 @@ import {
   coerce,
   exampleJson,
   extractSeries,
+  formatCell,
   formatPointTime,
   isManageTool,
   isReadTool,
@@ -34,6 +35,17 @@ describe("isManageTool", () => {
     expect(isWriteTool(name)).toBe(true);
   });
   it.each([...TRADING, ...NOT_TRADING])("does not count %s as a manage tool", (name) => expect(isManageTool(name)).toBe(false));
+  it("uses the same exact list as MANAGE_TOOLS in trading.rs", () => {
+    const list = /const MANAGE_TOOLS: \[&str; \d+\] =\s*\[([^\]]*)\]/.exec(trading)?.[1] ?? "";
+    const names = [...list.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]);
+    expect(names.length).toBeGreaterThan(0);
+    expect([...names].sort()).toEqual([...MANAGE].sort());
+    names.forEach((name) => expect(isManageTool(name)).toBe(true));
+  });
+  it.each(["sell_portfolio_group_holdings", "submit_order_from_watchlist", "update_price_alert_order"])("needs Full access for the unknown %s", (name) => {
+    expect(isManageTool(name)).toBe(false);
+    expect(isTradingTool(name)).toBe(true);
+  });
 });
 
 describe("read and write classification", () => {
@@ -172,6 +184,12 @@ describe("chart series", () => {
     expect(formatPointTime("1767391140")).toMatch(/2026/);
     expect(formatPointTime("1767391140000")).toMatch(/2026/);
     expect(formatPointTime("7")).toBe("7");
+  });
+
+  it("shows a date without a time as that calendar day in every time zone", () => {
+    const day = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(Date.UTC(2026, 2, 15));
+    expect(formatCell("2026-03-15")).toBe(day);
+    expect(formatPointTime("2026-03-15")).toBe(day);
   });
 
   it("turns rising dates and epoch times into seconds", () => {

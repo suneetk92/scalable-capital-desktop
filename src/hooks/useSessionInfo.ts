@@ -1,7 +1,7 @@
-import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useState } from "react";
 import type { SessionInfo } from "../session";
 import { invokeCommand } from "../commands";
+import { hasTauriRuntime, invoke } from "../app/invoke";
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
@@ -24,7 +24,7 @@ export function useSessionInfo(active: boolean, reloadKey: number) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!active || !isTauri()) {
+    if (!active || !hasTauriRuntime()) {
       setInfo(null);
       return;
     }

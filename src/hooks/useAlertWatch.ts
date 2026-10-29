@@ -45,20 +45,26 @@ export function useAlertWatch({ invoke, defs, portfolios, enabled, minutes, toas
         const ids = latest.current.portfolios.length > 0 ? latest.current.portfolios.map((portfolio) => portfolio.portfolioId) : [undefined];
         const calls = ids.map((portfolioId) => ({ name: TOOL.listPriceAlerts, arguments: buildArgs(def, { portfolioId, activeOnly: false }, true).args }));
         const outcomes = await callTools(invoke, calls);
-        const succeeded = outcomes.filter((outcome) => outcome.ok);
-        if (!active || succeeded.length === 0) return;
-        const alerts = parseAlerts(succeeded.flatMap((outcome) => findRecords(outcome.result)));
-        const result = checkAlerts(alerts, loadNotified());
-        saveNotified(result.notified);
-        if (result.announce.length === 0) return;
-        const { title, body } = alertMessage(result.announce);
+        if (!active) return;
+        // Each portfolio keeps its own list of announced alerts, and only one that answered is checked and saved: a
+        // portfolio that failed is not recorded as checked, so its old alerts are not announced as new later.
+        const announce = outcomes.flatMap((outcome, index) => {
+          if (!outcome.ok) return [];
+          const portfolioId = ids[index];
+          const alerts = parseAlerts(findRecords(outcome.result));
+          const result = checkAlerts(alerts, loadNotified(portfolioId));
+          saveNotified(result.notified, portfolioId, alerts);
+          return result.announce;
+        });
+        if (announce.length === 0) return;
+        const { title, body } = alertMessage(announce);
         // A desktop notification that could not be shown falls back to the in-app toast.
         const shown = await invokeCommand(invoke, "show_notification", { title, body }).then(
           () => true,
           () => false,
         );
         if (!active) return;
-        alertNotices(result.announce).forEach((notice) => latest.current.onTriggered(notice, { toast: latest.current.toast || !shown, desktop: false }));
+        alertNotices(announce).forEach((notice) => latest.current.onTriggered(notice, { toast: latest.current.toast || !shown, desktop: false }));
       } catch {
         // A failed check is retried at the next interval; the Alerts page shows connection errors.
       } finally {

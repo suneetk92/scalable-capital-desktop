@@ -176,9 +176,21 @@ export function exampleJson(key: string, prop: SchemaProp | undefined) {
   return JSON.stringify(sampleValue(prop));
 }
 
-/** Scalable's "Limited access" tools: watchlists, price alerts and portfolio groups. Restricted access is enough for them. Keep in sync with `is_manage_tool` in trading.rs. */
+/** Scalable's "Limited access" tools: watchlists, price alerts and portfolio groups. Restricted access is enough for them; any other name needs Full access. Keep in sync with `MANAGE_TOOLS` in trading.rs. */
+const MANAGE_TOOLS = new Set([
+  "add_watchlist_item",
+  "remove_watchlist_item",
+  "create_price_alert",
+  "remove_price_alert",
+  "create_portfolio_group",
+  "upsert_portfolio_group",
+  "remove_portfolio_group",
+  "add_portfolio_group_holdings",
+  "remove_portfolio_group_holdings",
+]);
+
 export function isManageTool(name: string) {
-  return isWriteTool(name) && /watchlist|price_alert|portfolio_group/.test(name.trim().toLowerCase());
+  return isWriteTool(name) && MANAGE_TOOLS.has(name.trim().toLowerCase());
 }
 
 /** All other tools that change data (orders, savings plans, unknown ones) need Full access. */
@@ -250,7 +262,8 @@ export function formatCell(value: unknown): string {
   if (typeof value === "string") {
     if (DATE_PATTERN.test(value)) {
       const date = new Date(value);
-      if (!Number.isNaN(date.getTime())) return value.length > 10 ? formatDateTime(date) : formatDate(date, { dateStyle: "medium" });
+      // A date without a time is a calendar day: formatDate shows it in UTC when it gets the text.
+      if (!Number.isNaN(date.getTime())) return value.length > 10 ? formatDateTime(date) : formatDate(value, { dateStyle: "medium" });
     }
     return value;
   }
@@ -275,7 +288,7 @@ export function formatPointTime(label: string) {
   }
   if (DATE_PATTERN.test(text)) {
     const date = new Date(text);
-    return Number.isNaN(date.getTime()) ? label : formatDate(date, { dateStyle: "medium" });
+    return Number.isNaN(date.getTime()) ? label : formatDate(text, { dateStyle: "medium" });
   }
   return label;
 }
