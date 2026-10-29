@@ -49,11 +49,12 @@ function TrailingSettings() {
         createElement(
           "p",
           { className: "text-ink-muted" },
-          "How often the app reads the price of each security with a trailing stop loss or buy stop. Shorter reacts faster to a price move but makes more requests to Scalable, which may throttle them. Checks run only while the app runs, you are signed in and Trading is on",
+          "How often the app reads the price of each security with a trailing stop loss or buy stop. Shorter reacts faster to a price move but makes more requests to Scalable, which may throttle them. Checks run only while the app runs, you are signed in and Trading is on.",
         ),
       ),
       createElement(Select, {
         size: "compact",
+        label: "Trailing stops check frequency",
         value: checkSeconds,
         onChange: (seconds) => updateTrailingSettings({ checkSeconds: Number(seconds) }),
         options: REFRESH_OPTIONS.map(([value, label]) => ({ value, label })),

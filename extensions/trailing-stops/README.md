@@ -2,7 +2,8 @@
 
 A public extension that is bundled in every build of Scalable Capital Desktop (listed in
 `bundled-extensions.json` at the repository root). Scalable's MCP has no trailing stop, so the app follows
-the price itself.
+the price itself: the high (or low) follows the price at every access level, and an order is only placed
+with Full access while the exchange is open (before that, one notification says the trigger was reached).
 
 - `extension.json`: id, name and version of this extension. The version is separate from the app version;
   change it with `node scripts/set-extension-version.mjs trailing-stops X.Y.Z`.

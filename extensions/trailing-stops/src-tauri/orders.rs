@@ -1,7 +1,7 @@
 //! The sale or purchase of a stop that was hit: preview, checks, submit and the notice to the user.
 
 use super::{
-    announce_change, quotes::quote_price, watcher::trigger_price, Side, Status, TrailingState,
+    announce_change, quotes::any_quote_price, watcher::trigger_price, Side, Status, TrailingState,
     TrailingStop,
 };
 use crate::mcp::{
@@ -32,7 +32,14 @@ fn done(side: Side) -> &'static str {
     }
 }
 
-fn assess(preview: &Value, submission: &Value, trigger: f64, side: Side) -> Verdict {
+/// `last_price` is the watched price that hit the stop, for a preview that has no price of its own.
+fn assess(
+    preview: &Value,
+    submission: &Value,
+    trigger: f64,
+    side: Side,
+    last_price: Option<f64>,
+) -> Verdict {
     if preview.pointer("/suitability/questionnaireRequired") == Some(&Value::Bool(true)) {
         return Verdict::Attention(
             format!("Scalable asks you to complete a suitability questionnaire before this can be {}. Do it yourself in Scalable.", done(side)),
@@ -54,13 +61,21 @@ fn assess(preview: &Value, submission: &Value, trigger: f64, side: Side) -> Verd
             "The price Scalable would use is outdated, so the market may be closed. The app will try again.".to_owned(),
         );
     }
-    let off = preview
+    // Never sold or bought blind: without any price to check against the trigger, the user decides.
+    let Some(price) = preview
         .get("marketQuote")
-        .and_then(|quote| quote_price(quote, side))
-        .is_some_and(|price| match side {
-            Side::Sell => price < trigger * 0.75,
-            Side::Buy => price > trigger * 1.25,
-        });
+        .and_then(|quote| any_quote_price(quote, side))
+        .or(last_price)
+    else {
+        return Verdict::Attention(format!(
+            "Scalable gave no price to check against the price that triggered the stop. Review and {} manually in Scalable.",
+            side.word()
+        ));
+    };
+    let off = match side {
+        Side::Sell => price < trigger * 0.75,
+        Side::Buy => price > trigger * 1.25,
+    };
     if off {
         return Verdict::Attention(format!(
             "The {} quote is more than 25% {} the price that triggered the stop. Review and {} manually in Scalable.",
@@ -71,6 +86,9 @@ fn assess(preview: &Value, submission: &Value, trigger: f64, side: Side) -> Verd
     }
     Verdict::Go
 }
+
+/// Failed attempts after which a stop is no longer retried and needs the user.
+const MAX_ATTEMPTS: u32 = 3;
 
 enum Outcome {
     Done(f64, serde_json::Value),
@@ -127,6 +145,7 @@ async fn try_trade(app: &AppHandle, stop: &TrailingStop) -> Outcome {
         submission,
         trigger_price(stop.side, stop.high, stop.trail),
         stop.side,
+        stop.last_price,
     ) {
         Verdict::Go => {}
         Verdict::Wait(message) => return Outcome::Retry(message),
@@ -148,7 +167,7 @@ async fn try_trade(app: &AppHandle, stop: &TrailingStop) -> Outcome {
         Ok(receipt) => {
             let price = preview
                 .get("marketQuote")
-                .and_then(|q| quote_price(q, stop.side))
+                .and_then(|q| any_quote_price(q, stop.side))
                 .unwrap_or(stop.last_price.unwrap_or(trigger_price(stop.side, stop.high, stop.trail)));
             Outcome::Done(price, receipt)
         }
@@ -168,6 +187,29 @@ fn now_seconds() -> u64 {
 /// Sells or buys for a stop that was hit and records how it went. `stop` is already marked as selling.
 pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
     let outcome = try_trade(app, &stop).await;
+    let state = app.state::<TrailingState>();
+    let outcome = match outcome {
+        // Trading being off is not a failure of the order, so it is not counted.
+        Outcome::Retry(message) if message != TRADING_OFF => {
+            let attempts = state.mutate(|stops| {
+                stops
+                    .iter_mut()
+                    .find(|item| item.id == stop.id)
+                    .map_or(0, |item| {
+                        item.attempts += 1;
+                        item.attempts
+                    })
+            });
+            if attempts >= MAX_ATTEMPTS {
+                Outcome::Attention(format!(
+                    "Gave up after {MAX_ATTEMPTS} failed attempts. Last reason: {message}"
+                ))
+            } else {
+                Outcome::Retry(message)
+            }
+        }
+        other => other,
+    };
     let (status, message, sold_price, receipt) = match &outcome {
         Outcome::Done(price, receipt) => (
             Status::Sold,
@@ -181,7 +223,6 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
         Outcome::Retry(message) => (Status::Active, Some(message.clone()), None, None),
         Outcome::Attention(message) => (Status::Attention, Some(message.clone()), None, None),
     };
-    let state = app.state::<TrailingState>();
     let earlier = state.mutate(|stops| {
         stops
             .iter_mut()
@@ -216,7 +257,7 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
             "Trailing buy stop could not buy yet",
             "its trailing buy stop",
             format!(
-                "{name}: the price rose to your trailing buy stop, so {} was spent at market.",
+                "{name}: the price rose to your trailing buy stop, so {:.2} EUR was spent at market.",
                 stop.amount.unwrap_or_default()
             ),
         ),
@@ -237,8 +278,8 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mcp::fixtures::{assert_matches, input_schemas};
     use crate::ext_trailing_stops::Trail;
+    use crate::mcp::fixtures::{assert_matches, input_schemas};
     use serde_json::json;
 
     #[test]
@@ -265,7 +306,13 @@ mod tests {
     fn a_clean_preview_goes_ahead() {
         let preview = json!({ "submission": { "confirmationContext": { "requiredAcknowledgementIds": [] } }, "tradability": { "tradable": true }, "marketQuote": { "isOutdated": false } });
         assert_eq!(
-            assess(&preview, &preview["submission"], 100.0, Side::Sell),
+            assess(
+                &preview,
+                &preview["submission"],
+                100.0,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Go
         );
     }
@@ -274,7 +321,13 @@ mod tests {
     fn a_warning_to_accept_is_never_accepted_for_the_user() {
         let preview = json!({ "submission": { "confirmationContext": { "requiredAcknowledgementIds": ["warn"] } } });
         assert!(matches!(
-            assess(&preview, &preview["submission"], 100.0, Side::Sell),
+            assess(
+                &preview,
+                &preview["submission"],
+                100.0,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Attention(_)
         ));
     }
@@ -283,7 +336,13 @@ mod tests {
     fn a_questionnaire_needs_the_user() {
         let preview = json!({ "submission": {}, "suitability": { "questionnaireRequired": true } });
         assert!(matches!(
-            assess(&preview, &preview["submission"], 100.0, Side::Sell),
+            assess(
+                &preview,
+                &preview["submission"],
+                100.0,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Attention(_)
         ));
     }
@@ -292,12 +351,24 @@ mod tests {
     fn a_closed_market_or_outdated_quote_waits() {
         let closed = json!({ "submission": {}, "tradability": { "tradable": false } });
         assert!(matches!(
-            assess(&closed, &closed["submission"], 100.0, Side::Sell),
+            assess(
+                &closed,
+                &closed["submission"],
+                100.0,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Wait(_)
         ));
         let outdated = json!({ "submission": {}, "marketQuote": { "isOutdated": true } });
         assert!(matches!(
-            assess(&outdated, &outdated["submission"], 100.0, Side::Sell),
+            assess(
+                &outdated,
+                &outdated["submission"],
+                100.0,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Wait(_)
         ));
     }
@@ -309,7 +380,13 @@ mod tests {
             "marketQuote": { "bidPrice": 74.99, "isOutdated": false }
         });
         assert!(matches!(
-            assess(&steep_drop, &steep_drop["submission"], 100.0, Side::Sell),
+            assess(
+                &steep_drop,
+                &steep_drop["submission"],
+                100.0,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Attention(_)
         ));
 
@@ -318,7 +395,13 @@ mod tests {
             "marketQuote": { "bidPrice": 75.0, "isOutdated": false }
         });
         assert_eq!(
-            assess(&boundary, &boundary["submission"], 100.0, Side::Sell),
+            assess(
+                &boundary,
+                &boundary["submission"],
+                100.0,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Go
         );
     }
@@ -331,9 +414,51 @@ mod tests {
             "marketQuote": { "bidPrice": 69.0, "isOutdated": false }
         });
         assert_eq!(
-            assess(&quote, &quote["submission"], trigger, Side::Sell),
+            assess(
+                &quote,
+                &quote["submission"],
+                trigger,
+                Side::Sell,
+                Some(100.0)
+            ),
             Verdict::Go
         );
+    }
+
+    #[test]
+    fn a_preview_without_a_price_is_checked_against_the_watched_price_or_needs_the_user() {
+        let bare = json!({ "submission": {}, "marketQuote": { "isOutdated": false } });
+        assert_eq!(
+            assess(&bare, &bare["submission"], 100.0, Side::Sell, Some(95.0)),
+            Verdict::Go
+        );
+        assert!(matches!(
+            assess(&bare, &bare["submission"], 100.0, Side::Sell, Some(70.0)),
+            Verdict::Attention(_)
+        ));
+        assert!(matches!(
+            assess(&bare, &bare["submission"], 100.0, Side::Sell, None),
+            Verdict::Attention(_)
+        ));
+        let none = json!({ "submission": {} });
+        assert!(matches!(
+            assess(&none, &none["submission"], 100.0, Side::Buy, None),
+            Verdict::Attention(_)
+        ));
+    }
+
+    #[test]
+    fn a_preview_with_only_the_other_side_is_still_checked() {
+        let sell = json!({ "submission": {}, "marketQuote": { "askPrice": 70.0 } });
+        assert!(matches!(
+            assess(&sell, &sell["submission"], 100.0, Side::Sell, Some(100.0)),
+            Verdict::Attention(_)
+        ));
+        let buy = json!({ "submission": {}, "marketQuote": { "bidPrice": 130.0 } });
+        assert!(matches!(
+            assess(&buy, &buy["submission"], 100.0, Side::Buy, Some(100.0)),
+            Verdict::Attention(_)
+        ));
     }
 
     #[test]
@@ -363,7 +488,13 @@ mod tests {
             "marketQuote": { "askPrice": 125.01, "isOutdated": false }
         });
         assert!(matches!(
-            assess(&steep_rise, &steep_rise["submission"], 100.0, Side::Buy),
+            assess(
+                &steep_rise,
+                &steep_rise["submission"],
+                100.0,
+                Side::Buy,
+                Some(100.0)
+            ),
             Verdict::Attention(_)
         ));
         let boundary = json!({
@@ -371,7 +502,13 @@ mod tests {
             "marketQuote": { "askPrice": 125.0, "isOutdated": false }
         });
         assert_eq!(
-            assess(&boundary, &boundary["submission"], 100.0, Side::Buy),
+            assess(
+                &boundary,
+                &boundary["submission"],
+                100.0,
+                Side::Buy,
+                Some(100.0)
+            ),
             Verdict::Go
         );
     }

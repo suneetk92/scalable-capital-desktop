@@ -23,6 +23,8 @@ export type TrailingStop = {
   lastPrice: number | null;
   status: TrailingStatus;
   message: string | null;
+  /** The price reached the trigger while no order could be placed (no Full access, or the exchange closed); the user was told once. */
+  triggerReached: boolean;
   /** The price at which the stop was executed (only when status is 'sold'). */
   soldPrice: number | null;
   /** When the order was placed, in seconds since the epoch (only when status is 'sold'). */
@@ -41,6 +43,13 @@ const STATUS_LABEL: Record<TrailSide, Record<TrailingStatus, string>> = {
 
 export function statusLabel(side: TrailSide, status: TrailingStatus): string {
   return STATUS_LABEL[side][status];
+}
+
+/** The note on a watching row that cannot trade yet: the trigger was reached, or Full access is off. Null when it can trade. */
+export function waitingNote(stop: Pick<TrailingStop, "status" | "triggerReached">, tradingEnabled: boolean): string | null {
+  if (stop.status !== "active") return null;
+  if (stop.triggerReached) return "Trigger reached, needs Full access";
+  return tradingEnabled ? null : "Watching, Full access is off";
 }
 
 /** Bar fill: remaining margin for a sale, progress from the low toward the trigger for a purchase. */
@@ -93,6 +102,7 @@ function toStop(value: unknown): TrailingStop | null {
     lastPrice: typeof value.lastPrice === "number" ? value.lastPrice : null,
     status,
     message: typeof value.message === "string" ? value.message : null,
+    triggerReached: value.triggerReached === true,
     soldPrice: typeof value.soldPrice === "number" ? value.soldPrice : null,
     executedAt: typeof value.executedAt === "number" ? value.executedAt : null,
     receipt: value.receipt ?? null,

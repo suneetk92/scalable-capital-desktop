@@ -6,10 +6,11 @@
 //! market. A trailing buy stop is the mirror image: it remembers the lowest price, and when the
 //! price rises by the distance above that low, it buys for the chosen amount of money at market.
 //!
-//! This only works while the app runs (the tray keeps it running with the window closed), is
-//! signed in and has Trading switched on. The stops are saved in `trailing_stops.json` in the app
-//! config folder (no tokens), but a launch always starts with Trading off, so nothing is sold until
-//! the user switches it on again. The sale goes through the same preview and submit tools as an
+//! This only works while the app runs (the tray keeps it running with the window closed) and is
+//! signed in. The high (or low) follows the price at any access level, but an order is only placed
+//! with Full access while the exchange is open; before that, the user is told once that the trigger
+//! was reached. The stops are saved in `trailing_stops.json` in the app config folder (no tokens),
+//! but a launch always starts with Trading off, so nothing is sold until the user switches it on again. The sale goes through the same preview and submit tools as an
 //! order from the dialog and never accepts a warning on the user's behalf.
 //!
 //! One submodule per responsibility: `store` (the saved file), `quotes` (prices), `orders` (the
@@ -103,6 +104,13 @@ pub struct TrailingStop {
     pub status: Status,
     #[serde(default)]
     pub message: Option<String>,
+    /// Failed trade attempts since the stop was hit; the stop needs the user after `MAX_ATTEMPTS`.
+    #[serde(default)]
+    pub attempts: u32,
+    /// The price reached the trigger while the stop could not trade (no Full access, or the exchange
+    /// closed) and the user was told once. Cleared when the price moves back or the stop is edited.
+    #[serde(default)]
+    pub trigger_reached: bool,
     #[serde(default)]
     pub sold_price: Option<f64>,
     /// When the order was placed, in seconds since the epoch.
@@ -174,10 +182,12 @@ impl TrailingState {
     }
 
     fn problem(&self) -> Option<String> {
-        self.problem
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .clone()
+        store::notice().or_else(|| {
+            self.problem
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .clone()
+        })
     }
 
     fn persist(&self, app: &AppHandle) -> Result<(), String> {
@@ -252,6 +262,8 @@ pub(super) fn sample_stop(trail: Trail, high: f64) -> TrailingStop {
         last_price: None,
         status: Status::Active,
         message: None,
+        attempts: 0,
+        trigger_reached: false,
         sold_price: None,
         executed_at: None,
         receipt: None,

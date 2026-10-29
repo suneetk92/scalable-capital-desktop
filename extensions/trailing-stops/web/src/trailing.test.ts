@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseTrailingList, statusLabel, trailIssue, trailLabel, triggerBarShare, triggerPrice } from "./trailing";
+import { parseTrailingList, statusLabel, trailIssue, trailLabel, triggerBarShare, triggerPrice, waitingNote } from "./trailing";
 
 const stop = {
   id: "a",
@@ -42,6 +42,21 @@ describe("buy stops", () => {
     expect(statusLabel("sell", "sold")).toBe("Sold");
     expect(parseTrailingList({ stops: [{ ...stop, side: "buy", shares: 0, amount: 250 }] }).stops[0]).toMatchObject({ side: "buy", amount: 250 });
     expect(parseTrailingList({ stops: [stop] }).stops[0].side).toBe("sell");
+  });
+});
+
+describe("waitingNote", () => {
+  it("says when a watching stop reached its trigger or cannot trade yet", () => {
+    expect(waitingNote({ status: "active", triggerReached: true }, false)).toBe("Trigger reached, needs Full access");
+    expect(waitingNote({ status: "active", triggerReached: true }, true)).toBe("Trigger reached, needs Full access");
+    expect(waitingNote({ status: "active", triggerReached: false }, false)).toBe("Watching, Full access is off");
+    expect(waitingNote({ status: "active", triggerReached: false }, true)).toBeNull();
+    expect(waitingNote({ status: "sold", triggerReached: true }, false)).toBeNull();
+  });
+
+  it("reads the reached flag from the backend and defaults it to false", () => {
+    expect(parseTrailingList({ stops: [{ ...stop, triggerReached: true }] }).stops[0].triggerReached).toBe(true);
+    expect(parseTrailingList({ stops: [stop] }).stops[0].triggerReached).toBe(false);
   });
 });
 

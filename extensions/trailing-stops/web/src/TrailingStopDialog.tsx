@@ -5,6 +5,7 @@ import { HeldSecurityPicker } from "../../../../src/HeldSecurityPicker";
 import type { SecurityHit } from "../../../../src/OrderDialog";
 import { SecurityPicker } from "../../../../src/SecurityPicker";
 import { formatNumber, parseSearch } from "../../../../src/screener";
+import { ambiguousThousands, ambiguousThousandsMessage } from "../../../../src/format";
 import { invokeCommand } from "./commands";
 import { type Invoke } from "../../../../src/tools";
 import { decimal, trailIssue, type TrailingStop, type TrailKind, type TrailSide } from "./trailing";
@@ -73,15 +74,16 @@ export function TrailingStopDialog({
   const currency = security?.currency ?? "EUR";
   const quantityNumber = decimal(quantity);
   const distanceNumber = decimal(distance);
-  const quantityProblem =
-    quantityNumber === null || quantityNumber <= 0
+  const quantityProblem = ambiguousThousands(quantity)
+    ? ambiguousThousandsMessage(quantity)
+    : quantityNumber === null || quantityNumber <= 0
       ? buying
         ? "Enter an amount greater than zero."
         : "Enter a number of shares greater than zero."
       : !buying && heldQuantity !== null && quantityNumber > heldQuantity
         ? `You hold only ${formatNumber(heldQuantity)} shares.`
         : null;
-  const distanceProblem = trailIssue(kind, distanceNumber);
+  const distanceProblem = ambiguousThousands(distance) ? ambiguousThousandsMessage(distance) : trailIssue(kind, distanceNumber);
   const missingSecurity = buying ? !security : !security || !holding;
   const issue = missingSecurity ? (buying ? "Choose a security." : "Choose a security you hold.") : (quantityProblem ?? distanceProblem);
   // Shown under the field once something is typed there; an empty field only keeps the button disabled.
@@ -134,6 +136,11 @@ export function TrailingStopDialog({
       {editing ? (
         <p className={`mb-3 ${MODAL_TEXT}`}>
           <strong className="font-semibold text-ink-strong">{editing.isin}</strong> · {editing.name}
+          {missingSecurity && (
+            <span className={`mt-1 block ${field.error}`} role="alert">
+              This portfolio does not list these shares as held, so the stop cannot be saved. Check your holdings, or remove the stop.
+            </span>
+          )}
         </p>
       ) : buying ? (
         <SecurityPicker security={security} onChange={setSecurity} invoke={invoke} parseSearch={parseSearch} onError={setPickerError} />

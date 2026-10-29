@@ -9,7 +9,7 @@ import { TrailingStopDialog } from "./TrailingStopDialog";
 import { TrailingTransactionDialog } from "./TrailingTransactionDialog";
 import { errorText } from "../../../../src/tools";
 import type { useTrailingStops } from "./useTrailingStops";
-import { statusLabel, trailLabel, triggerBarShare, triggerPrice, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
+import { statusLabel, trailLabel, triggerBarShare, triggerPrice, waitingNote, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
 import { type Common } from "../../../../src/types";
 import { EmptyState, ShareBar } from "../../../../src/controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
@@ -69,7 +69,7 @@ function Row({
 }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
-  const paused = watching && !tradingEnabled;
+  const waiting = waitingNote(stop, tradingEnabled);
   const buying = stop.side === "buy";
   const verb = buying ? "buy" : "sell";
   const soldNote =
@@ -83,8 +83,11 @@ function Row({
     sold: buying ? "The buy order was placed." : "The sell order was placed.",
     attention: `The app did not ${verb} automatically. Check Scalable before doing anything else.`,
   };
-  const statusTitle = paused
-    ? `${stop.message ?? ""}${stop.message ? "\n" : ""}Full access is off or the exchange is closed, so the app will not move the ${buying ? "low" : "high"} or ${verb} until Full access is on.`
+  const waitingTitle = stop.triggerReached
+    ? `The price reached the trigger, but Full access is off or the exchange is closed. The app will ${verb} at the next check once Full access is on, if the price is still past the trigger.`
+    : `Full access is off or the exchange is closed. The app still follows the price and moves the ${buying ? "low" : "high"}, but will not ${verb} until Full access is on.`;
+  const statusTitle = waiting
+    ? `${stop.message ?? ""}${stop.message ? "\n" : ""}${waitingTitle}`
     : (soldNote ?? stop.message ?? defaultTitle[stop.status]);
   return (
     <>
@@ -106,9 +109,13 @@ function Row({
           ),
           status: (
             <td>
-              {paused ? (
+              {waiting ? (
                 <Badge tone="yellow" title={statusTitle}>
-                  Paused, Full access is off
+                  {waiting}
+                </Badge>
+              ) : watching && stop.message ? (
+                <Badge tone="yellow" title={statusTitle}>
+                  {`Could not ${verb}, retrying`}
                 </Badge>
               ) : (
                 <Badge tone={TONE[stop.status]} title={statusTitle}>
@@ -155,7 +162,7 @@ function Row({
                     Edit
                   </button>
                 )}
-                <button className={btn.sell} type="button" onClick={onRemove} disabled={stop.status === "selling" || paused} title={paused ? "Full access is needed to stop watching" : undefined}>
+                <button className={btn.sell} type="button" onClick={onRemove} disabled={stop.status === "selling"}>
                   {watching ? "Stop watching" : "Remove"}
                 </button>
               </div>
@@ -175,7 +182,7 @@ const PANELS = {
     icon: ArrowTrendingDownIcon,
     layout: "trailing-stops",
     intro:
-      "Scalable has no trailing stop, so the app watches the price itself and sells at market when it falls by your distance below its high. It only works while the app runs, signed in, with Trading on.",
+      "Scalable has no trailing stop, so the app watches the price itself and sells at market when it falls by your distance below its high. It only works while the app runs and is signed in. The high follows the price at any access level; the sale needs Full access while the exchange is open.",
     emptyTitle: "No trailing stops",
     empty: "Start one here or right after a buy, and the app sells at market if the price falls by your distance.",
   },
@@ -186,7 +193,7 @@ const PANELS = {
     icon: ArrowTrendingUpIcon,
     layout: "trailing-buy-stops",
     intro:
-      "Scalable has no trailing buy stop, so the app watches the price itself and buys at market, for the amount you set, when it rises by your distance above its low. It only works while the app runs, signed in, with Trading on and enough cash.",
+      "Scalable has no trailing buy stop, so the app watches the price itself and buys at market, for the amount you set, when it rises by your distance above its low. It only works while the app runs and is signed in. The low follows the price at any access level; the purchase needs Full access while the exchange is open, and enough cash.",
     emptyTitle: "No trailing buy stops",
     empty: "Start one here to buy into a recovery without picking the bottom: the app follows the price down and buys when it turns up by your distance.",
   },

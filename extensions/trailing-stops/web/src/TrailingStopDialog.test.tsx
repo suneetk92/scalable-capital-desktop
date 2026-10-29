@@ -51,4 +51,16 @@ describe("trailing stop dialog", () => {
 
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("add_trailing_stop", expect.objectContaining({ request: expect.objectContaining({ side: "buy", amount: 250 }) })));
   });
+
+  it("refuses an amount that could mean thousands", () => {
+    const invoke = mockInvoke(() => undefined);
+    render(<TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} manageEnabled onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: /amount to spend/i }), { target: { value: "1,000" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /distance above the low/i }), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /i understand/i }));
+
+    expect(screen.getByRole("alert").textContent).toContain("could mean 1 or 1000");
+    expect((screen.getByRole("button", { name: "Start trailing buy stop" }) as HTMLButtonElement).disabled).toBe(true);
+  });
 });

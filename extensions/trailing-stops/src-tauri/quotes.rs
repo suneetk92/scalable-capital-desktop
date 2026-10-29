@@ -9,12 +9,13 @@ use crate::mcp::{
 use serde_json::{json, Map, Value};
 use tauri::AppHandle;
 
-/// What the order would get: a sale the bid, a purchase the ask, then the mid price and the other side as a last
-/// resort (while the market is closed one side can be missing). Scalable sends them as numbers or strings.
+/// What the order would get: a sale the bid, a purchase the ask, then the mid price. Never the other side: a
+/// stop that followed the ask and then the bid would see the spread as a price move. Scalable sends them as
+/// numbers or strings.
 pub(super) fn quote_price(quote: &Value, side: Side) -> Option<f64> {
     let keys = match side {
-        Side::Sell => ["bidPrice", "midPrice", "askPrice"],
-        Side::Buy => ["askPrice", "midPrice", "bidPrice"],
+        Side::Sell => ["bidPrice", "midPrice"],
+        Side::Buy => ["askPrice", "midPrice"],
     };
     keys.iter().find_map(|key| {
         quote
@@ -22,6 +23,16 @@ pub(super) fn quote_price(quote: &Value, side: Side) -> Option<f64> {
             .and_then(finite_number)
             .filter(|price| *price > 0.0)
     })
+}
+
+/// Any price in an order preview's quote, the other side as a last resort: the check against the trigger is better
+/// with some price than with none.
+pub(super) fn any_quote_price(quote: &Value, side: Side) -> Option<f64> {
+    let other = match side {
+        Side::Sell => Side::Buy,
+        Side::Buy => Side::Sell,
+    };
+    quote_price(quote, side).or_else(|| quote_price(quote, other))
 }
 
 /// The price in a `get_security_quote` answer, whose quote sits under `security.quote`.
@@ -110,9 +121,15 @@ mod tests {
         assert_eq!(quote_price(&quote, Side::Buy), Some(10.5));
         assert_eq!(quote_price(&quote, Side::Sell), Some(9.5));
         assert_eq!(
-            quote_price(&json!({ "bidPrice": 9.5 }), Side::Buy),
-            Some(9.5)
+            quote_price(&json!({ "midPrice": 10 }), Side::Buy),
+            Some(10.0)
         );
+    }
+
+    #[test]
+    fn a_stop_never_reads_the_other_side_of_the_quote() {
+        assert_eq!(quote_price(&json!({ "bidPrice": 9.5 }), Side::Buy), None);
+        assert_eq!(quote_price(&json!({ "askPrice": 10.5 }), Side::Sell), None);
     }
 
     #[test]

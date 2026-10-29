@@ -196,6 +196,8 @@ pub async fn add_trailing_stop(
         last_price: Some(price),
         status: Status::Active,
         message: None,
+        attempts: 0,
+        trigger_reached: false,
         sold_price: None,
         executed_at: None,
         receipt: None,
@@ -271,6 +273,8 @@ pub fn update_trailing_stop(
         }
         stop.trail = request.trail;
         stop.message = None;
+        stop.attempts = 0;
+        stop.trigger_reached = false;
         Ok((previous, stop.clone()))
     })?;
     if let Err(error) = state.persist(&app) {
