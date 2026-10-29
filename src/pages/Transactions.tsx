@@ -276,7 +276,7 @@ export function TransactionsPage({
   return (
     <>
       <section className={cx(PANEL, "mb-4")} aria-label="Transactions">
-        <div className="flex min-h-[3.6667rem] items-center justify-between gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start max-[900px]:pt-0">
+        <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
           <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter transactions">
             <SearchBox
               inputRef={searchInput}
