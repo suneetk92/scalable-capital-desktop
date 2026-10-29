@@ -15,6 +15,7 @@ import { EmptyState, ShareBar } from "../../../../src/controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
 import { SearchToolbar, Section } from "../../../../src/pages/shared";
 import { matchesText } from "../../../../src/textSearch";
+import { orderStateLabel, useOrderStates } from "./orderState";
 
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
@@ -52,6 +53,7 @@ function Row({
   onEdit,
   onRemove,
   onDetails,
+  orderState,
 }: {
   order: string[];
   stop: TrailingStop;
@@ -62,13 +64,18 @@ function Row({
   onEdit: () => void;
   onRemove: () => void;
   onDetails: () => void;
+  /** Where the placed order stands at Scalable (filled, settled, ...), once known. */
+  orderState?: string;
 }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
   const paused = watching && !tradingEnabled;
   const buying = stop.side === "buy";
   const verb = buying ? "buy" : "sell";
-  const soldNote = stop.status === "sold" && stop.soldPrice !== null ? `${buying ? "Bought" : "Sold"} at ${money(stop.soldPrice)}` : null;
+  const soldNote =
+    stop.status === "sold" && stop.soldPrice !== null
+      ? `${buying ? "Bought" : "Sold"} at ${money(stop.soldPrice)}${orderState ? `. Order ${orderStateLabel(orderState).toLowerCase()} at Scalable.` : ""}`
+      : null;
   const watchNote = `Watching the price. The app will ${verb} at market once it ${buying ? "reaches" : "falls to"} ${money(triggerPrice(stop.high, stop.trail, stop.side))}.`;
   const defaultTitle: Record<TrailingStatus, string> = {
     active: watchNote,
@@ -106,6 +113,7 @@ function Row({
               ) : (
                 <Badge tone={TONE[stop.status]} title={statusTitle}>
                   {statusLabel(stop.side, stop.status)}
+                  {stop.status === "sold" && orderState ? ` · ${orderStateLabel(orderState)}` : ""}
                 </Badge>
               )}
             </td>
@@ -193,9 +201,10 @@ type PanelProps = {
   onRemove: (id: string) => void;
   onOpenSecurity: (security: { isin: string; name: string }) => void;
   onDetails: (stop: TrailingStop) => void;
+  orderStates: ReadonlyMap<string, string>;
 };
 
-function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSecurity, onDetails }: PanelProps) {
+function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSecurity, onDetails, orderStates }: PanelProps) {
   const { invoke, tradingEnabled, manageEnabled } = common;
   const copy = PANELS[side];
   const heads = HEADS[side];
@@ -204,7 +213,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
   const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
   const active = stops.filter((stop) => stop.status === "active").length;
   const [search, setSearch] = useState("");
-  const shown = stops.filter((stop) => matchesText(search, [stop.name, stop.isin, statusLabel(side, stop.status)]));
+  const shown = stops.filter((stop) => matchesText(search, [stop.name, stop.isin, statusLabel(side, stop.status), orderStates.get(stop.id) ?? ""]));
   return (
     <Section
       title={copy.title}
@@ -250,6 +259,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
                   onEdit={() => onEdit(stop)}
                   onRemove={() => onRemove(stop.id)}
                   onDetails={() => onDetails(stop)}
+                  orderState={orderStates.get(stop.id)}
                 />
               ))}
             </tbody>
@@ -276,6 +286,7 @@ export function TrailingStops({
   const [adding, setAdding] = useState<TrailSide | null>(null);
   const [editing, setEditing] = useState<TrailingStop | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+  const orderStates = useOrderStates(common, stops);
   const viewed = stops.find((stop) => stop.id === viewing);
 
   async function remove(id: string) {
@@ -323,6 +334,7 @@ export function TrailingStops({
           onRemove={(id) => void remove(id)}
           onOpenSecurity={onOpenSecurity}
           onDetails={(stop) => setViewing(stop.id)}
+          orderStates={orderStates}
         />
       ))}
       {viewed && <TrailingTransactionDialog stop={viewed} onClose={() => setViewing(null)} />}

@@ -46,7 +46,10 @@ describe("buy stops", () => {
 });
 
 describe("triggerBarShare", () => {
-  it.each([{ kind: "percent", value: 10 }, { kind: "amount", value: 20 }] as const)("keeps sell bars full at the high and empty at the trigger with $kind trails", (trail) => {
+  it.each([
+    { kind: "percent", value: 10 },
+    { kind: "amount", value: 20 },
+  ] as const)("keeps sell bars full at the high and empty at the trigger with $kind trails", (trail) => {
     expect(triggerBarShare(200, 200, trail)).toBe(1);
     expect(triggerBarShare(190, 200, trail)).toBeCloseTo(0.5);
     expect(triggerBarShare(180, 200, trail)).toBe(0);
