@@ -86,9 +86,7 @@ function Row({
   const waitingTitle = stop.triggerReached
     ? `The price reached the trigger, but Full access is off or the exchange is closed. The app will ${verb} at the next check once Full access is on, if the price is still past the trigger.`
     : `Full access is off or the exchange is closed. The app still follows the price and moves the ${buying ? "low" : "high"}, but will not ${verb} until Full access is on.`;
-  const statusTitle = waiting
-    ? `${stop.message ?? ""}${stop.message ? "\n" : ""}${waitingTitle}`
-    : (soldNote ?? stop.message ?? defaultTitle[stop.status]);
+  const statusTitle = waiting ? `${stop.message ?? ""}${stop.message ? "\n" : ""}${waitingTitle}` : (soldNote ?? stop.message ?? defaultTitle[stop.status]);
   return (
     <>
       <tr>

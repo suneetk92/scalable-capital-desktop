@@ -80,7 +80,8 @@ describe("set-extension-version.mjs", () => {
   });
 
   it("refuses a bad id or version", () => {
-    for (const args of [["../trailing-stops", "1.2.0"], ["Trailing-Stops", "1.2.0"], ["trailing-stops", "1.2"], ["trailing-stops"]]) expect(run("set-extension-version.mjs", args, dir).code, args.join(" ")).toBe(1);
+    for (const args of [["../trailing-stops", "1.2.0"], ["Trailing-Stops", "1.2.0"], ["trailing-stops", "1.2"], ["trailing-stops"]])
+      expect(run("set-extension-version.mjs", args, dir).code, args.join(" ")).toBe(1);
     expect(JSON.parse(read("extensions/trailing-stops/extension.json")).version).toBe("1.0.0");
   });
 });
