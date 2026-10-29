@@ -46,7 +46,8 @@ export function ColumnPicker({
 
   // A column whose settings were changed (EMA 20 on 1 hour) is listed under its catalogue entry, and so is one that a column with settings stands for (SMA 50).
   const baseOf = (id: string) => baseColumnId(columnOf(id)?.alias ?? id);
-  const chosenId = (id: string) => columns.find((current) => baseOf(current) === id);
+  const chosenIds = (id: string) => columns.filter((current) => baseOf(current) === id);
+  const chosenId = (id: string) => chosenIds(id)[0];
   const isOpen = (group: string, all: readonly { id: string }[]) => needle !== "" || (opened[group] ?? all.some((column) => chosenId(column.id) !== undefined));
 
   function toggle(id: string, checked: boolean) {
@@ -55,7 +56,15 @@ export function ColumnPicker({
   }
 
   function changeSettings(id: string, column: TableColumn, values: Record<string, string>) {
-    if (column.settings) onChange(columns.map((current) => (current === id ? (extension.tableColumns?.updateId?.(id, column, values) ?? column.id) : current)));
+    if (!column.settings) return;
+    const next = extension.tableColumns?.updateId?.(id, column, values) ?? column.id;
+    // Settings that another instance already has would show the same column twice: this instance is dropped.
+    onChange(next !== id && columns.includes(next) ? columns.filter((current) => current !== id) : columns.map((current) => (current === id ? next : current)));
+  }
+
+  function addAnother(column: TableColumn) {
+    const id = extension.tableColumns?.addVariant?.(column, columns);
+    if (id) onChange([...columns, id]);
   }
 
   return (
@@ -80,7 +89,7 @@ export function ColumnPicker({
               options={groups.flatMap(({ columns: all }) => all.map((column) => column.id))}
               selected={columns.map(baseOf)}
               matching={needle !== ""}
-              onChange={(ids) => onChange(ids.map((id) => chosenId(id) ?? id))}
+              onChange={(ids) => onChange(ids.flatMap((id) => (chosenIds(id).length > 0 ? chosenIds(id) : [id])))}
             />
             {groups.length === 0 && <p className="mt-3 text-ink-muted">No column matches “{search.trim()}”.</p>}
             {groups.map(({ group, columns: all }) => {
@@ -95,15 +104,44 @@ export function ColumnPicker({
                   </button>
                   {open &&
                     all.map((column) => {
-                      const id = chosenId(column.id);
-                      const current = id ? columnOf(columnOf(id)?.alias ?? id) : undefined;
+                      const ids = chosenIds(column.id);
+                      const first = ids[0];
+                      const canAdd = ids.length > 0 && column.settings != null && extension.tableColumns?.addVariant !== undefined;
                       return (
                         <div key={column.id} title={column.hint}>
-                          <CheckboxField checked={id !== undefined} onChange={(checked) => toggle(column.id, checked)}>
-                            {current?.label || column.label}
+                          <CheckboxField checked={first !== undefined} onChange={(checked) => toggle(column.id, checked)}>
+                            {(first ? columnOf(columnOf(first)?.alias ?? first)?.label : undefined) || column.label}
                           </CheckboxField>
-                          {id && current?.settings != null && current.values && extension.tableColumns?.renderSettings && (
-                            <div className="mb-1.5 ml-6">{extension.tableColumns.renderSettings(id, column, (next) => changeSettings(id, column, next))}</div>
+                          {ids.map((id, index) => {
+                            const current = columnOf(columnOf(id)?.alias ?? id);
+                            return (
+                              <div key={id} className="mb-1.5 ml-6">
+                                {index > 0 && (
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-ink-body">{current?.label}</span>
+                                    <button
+                                      className={btn.link}
+                                      type="button"
+                                      onClick={() => onChange(columns.filter((entry) => entry !== id))}
+                                      aria-label={`Remove ${current?.label ?? column.label}`}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                )}
+                                {current?.settings != null &&
+                                  current.values &&
+                                  extension.tableColumns?.renderSettings &&
+                                  extension.tableColumns.renderSettings(id, column, (next) => changeSettings(id, column, next))}
+                              </div>
+                            );
+                          })}
+                          {canAdd && (
+                            <div className="mb-1.5 ml-6">
+                              <button className={btn.link} type="button" onClick={() => addAnother(column)} disabled={extension.tableColumns?.addVariant?.(column, columns) == null}>
+                                Add another with other settings
+                              </button>
+                            </div>
                           )}
                         </div>
                       );

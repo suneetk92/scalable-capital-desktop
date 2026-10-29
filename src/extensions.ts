@@ -104,6 +104,8 @@ export type ExtensionColumnProvider = {
   exportValue?(column: TableColumn, record: MarketRecord | undefined): string | number | null;
   renderSettings?(id: string, column: TableColumn, onChange: (values: Record<string, string>) => void): ReactNode;
   updateId?(id: string, column: TableColumn, values: Record<string, string>): string;
+  /** The id of another instance of a column with settings (RSI on a weekly timeframe next to the daily one) that is not in `taken`, or null when every combination is used. */
+  addVariant?(column: TableColumn, taken: readonly string[]): string | null;
   isTextColumn?(column: TableColumn): boolean;
 };
 
