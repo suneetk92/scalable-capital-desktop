@@ -27,12 +27,14 @@ updates:
         update-types:
           - minor
           - patch
+  # The actions are pinned to commit SHAs with the tag in a comment; Dependabot updates both.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
     ignore:
-      # The tag is the Rust version; it must match what rustup serves and rust-version in Cargo.toml
+      # Pinned to the commit of its 1.99.1 branch, and the toolchain input names the Rust version; it must
+      # match src-tauri/rust-toolchain.toml and rust-version in Cargo.toml, so it is updated by hand
       - dependency-name: dtolnay/rust-toolchain
     groups:
       minor-and-patch:

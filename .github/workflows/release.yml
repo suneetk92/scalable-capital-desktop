@@ -4,8 +4,9 @@
 # https://github.com/<this repository>/releases/latest/download/latest.json, which is uploaded last, so they
 # only see the update once its files are there. A pre-release tag like v1.2.3-rc.1 becomes a GitHub
 # pre-release with no latest.json: download it by hand, because releases/latest never points at a
-# pre-release. The publish job runs in the `release` environment, so a required reviewer on that
-# environment makes publishing a manual approval.
+# pre-release. Only a tag on a commit of main is built. The build and publish jobs run in the `release`
+# environment, which holds the updater signing key as environment secrets, so a required reviewer on
+# that environment approves both the signing and the publishing.
 name: Release
 
 on:
@@ -15,17 +16,32 @@ on:
 permissions:
   contents: read
 
+# One release at a time, in the order the tags were pushed; a run in progress is never cancelled. GitHub
+# keeps only one waiting run per group, so push a third tag only after the first one has finished.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   check-version:
     name: Check the tag is a version
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      # Full history, so the tag's commit can be checked against main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
       # The tag is the version: the build writes it into package.json, Cargo.toml and tauri.conf.json.
       - name: Check the tag looks like vX.Y.Z
         run: |
           if ! echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "::error::The tag $GITHUB_REF_NAME is not a version like v1.2.3."
+            exit 1
+          fi
+      - name: Check the tag is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::The tag $GITHUB_REF_NAME points at a commit that is not on main."
             exit 1
           fi
       - name: Check the updater public key and endpoint are set
@@ -49,6 +65,7 @@ jobs:
     with:
       sign: true
       version: ${{ github.ref_name }}
+      environment: release
     secrets: inherit
 
   publish:
@@ -60,10 +77,10 @@ jobs:
       contents: write
     steps:
       # The release notes are made from the commits since the previous release: full history and tags.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: artifacts
           merge-multiple: true

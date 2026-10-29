@@ -26,3 +26,8 @@ hs_err_pid*
 # Playwright UI test output
 e2e/output
 test-results
+
+# Extensions: only the public ones in bundled-extensions.json are part of the repository (add a `!` line
+# for each); any other extension is a local folder, or its own git repository, next to them
+extensions/*
+!extensions/trailing-stops/

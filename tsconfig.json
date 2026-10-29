@@ -20,6 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "extensions/trailing-stops/web"],
+  "include": ["src", "extensions/trailing-stops/web", "e2e", "playwright.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

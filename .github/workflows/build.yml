@@ -12,6 +12,10 @@ on:
         description: A tag like v1.2.3 to write into package.json, Cargo.toml and tauri.conf.json before building. Empty keeps the committed version.
         type: string
         default: ""
+      environment:
+        description: The deployment environment of the build jobs. The release passes `release`, whose environment secrets hold the updater signing key; empty runs without one.
+        type: string
+        default: ""
     secrets:
       TAURI_SIGNING_PRIVATE_KEY:
         required: false
@@ -41,6 +45,7 @@ jobs:
   bundle:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    environment: ${{ inputs.environment }}
     strategy:
       fail-fast: false
       matrix:
@@ -73,7 +78,7 @@ jobs:
             bundles: deb,rpm,appimage
             artifact: linux-arm64
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
@@ -84,16 +89,17 @@ jobs:
             librsvg2-dev libdbus-1-dev libssl-dev pkg-config clang lld \
             libfuse2 xdg-utils file patchelf rpm
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
         with:
+          toolchain: 1.99.1
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri
           key: ${{ matrix.target }}
@@ -103,7 +109,9 @@ jobs:
       - name: Set the version from the tag
         if: inputs.version != ''
         shell: bash
-        run: node scripts/set-version.mjs "${{ inputs.version }}"
+        env:
+          VERSION: ${{ inputs.version }}
+        run: node scripts/set-version.mjs "$VERSION"
 
       # Optional Windows code signing: only when the certificate secrets exist (a base64 .pfx).
       # It adds a config overlay with the thumbprint of the imported certificate.
@@ -132,6 +140,9 @@ jobs:
         env:
           # Not called SIGN: linuxdeploy's AppImage plugin reads $SIGN as "GPG-sign the AppImage".
           UPDATER_SIGN: ${{ inputs.sign }}
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ matrix.target }}
+          BUNDLES: ${{ matrix.bundles }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
           APPLE_CERTIFICATE: ${{ runner.os == 'macOS' && secrets.APPLE_CERTIFICATE || '' }}
@@ -148,29 +159,34 @@ jobs:
           if [ "$UPDATER_SIGN" = "true" ]; then configs+=(--config src-tauri/tauri.updater.conf.json); fi
           if [ -n "${WINDOWS_SIGN_CONFIG:-}" ]; then configs+=(--config "$WINDOWS_SIGN_CONFIG"); fi
           # The Windows MSI cannot carry a pre-release version such as 1.2.3-rc.1, so those build NSIS only.
-          bundles="${{ matrix.bundles }}"
-          case "${{ inputs.version }}" in *-*) bundles="${bundles/,msi/}" ;; esac
-          npx tauri build --target ${{ matrix.target }} --bundles "$bundles" "${configs[@]}"
+          bundles="$BUNDLES"
+          case "$VERSION" in *-*) bundles="${bundles/,msi/}" ;; esac
+          npx tauri build --target "$TARGET" --bundles "$bundles" "${configs[@]}"
 
       # Both macOS builds produce scalable-capital-desktop.app.tar.gz; the architecture keeps them apart.
       - name: Name the macOS updater payload by architecture
         if: runner.os == 'macOS' && inputs.sign
         shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          ARCH: ${{ matrix.updater-arch }}
         run: |
-          dir="src-tauri/target/${{ matrix.target }}/release/bundle/macos"
-          mv "$dir/scalable-capital-desktop.app.tar.gz" "$dir/scalable-capital-desktop_${{ matrix.updater-arch }}.app.tar.gz"
-          mv "$dir/scalable-capital-desktop.app.tar.gz.sig" "$dir/scalable-capital-desktop_${{ matrix.updater-arch }}.app.tar.gz.sig"
+          dir="src-tauri/target/$TARGET/release/bundle/macos"
+          mv "$dir/scalable-capital-desktop.app.tar.gz" "$dir/scalable-capital-desktop_$ARCH.app.tar.gz"
+          mv "$dir/scalable-capital-desktop.app.tar.gz.sig" "$dir/scalable-capital-desktop_$ARCH.app.tar.gz.sig"
 
       # One flat folder: the release job merges every target's files into one directory and publishes
       # them by name, so the artifact must not keep the build's folder layout.
       - name: Collect the release files
         shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
         run: |
           shopt -s nullglob
           mkdir -p dist-artifacts
-          bundle="src-tauri/target/${{ matrix.target }}/release/bundle"
+          bundle="src-tauri/target/$TARGET/release/bundle"
           if [ "$RUNNER_OS" = "Windows" ]; then
-            cp "src-tauri/target/${{ matrix.target }}/release/scalable-capital-desktop.exe" dist-artifacts/scalable-capital-desktop-portable-windows-x64.exe
+            cp "src-tauri/target/$TARGET/release/scalable-capital-desktop.exe" dist-artifacts/scalable-capital-desktop-portable-windows-x64.exe
           fi
           for file in "$bundle"/nsis/*.exe "$bundle"/nsis/*.exe.sig "$bundle"/msi/*.msi "$bundle"/msi/*.msi.sig \
             "$bundle"/macos/*.app.tar.gz "$bundle"/macos/*.app.tar.gz.sig "$bundle"/dmg/*.dmg \
@@ -180,7 +196,7 @@ jobs:
           ls -l dist-artifacts
 
       - name: Upload installers
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: scalable-capital-desktop-${{ matrix.artifact }}
           if-no-files-found: error

@@ -7,7 +7,7 @@
 - [ ] Relevant README development checks pass.
 - [ ] No real Scalable account write tool was called; data-changing behavior was tested with mocks.
 - [ ] No tokens, secrets, or updater private keys were added to the repository or logs.
-- [ ] README and review status are updated when behavior or workflow changed.
+- [ ] README is updated when behavior, commands, workflows or the file layout changed.
 
 ## Notes
 

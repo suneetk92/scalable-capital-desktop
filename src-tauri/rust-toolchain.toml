@@ -1,6 +1,7 @@
 [toolchain]
 channel = "1.99.1"
 components = ["clippy", "rustfmt"]
-# The Windows target is cross-built from Linux (cargo-xwin) by scripts/release-local.sh.
+# The Windows target is for the local cross-build from Linux with cargo-xwin (see "Windows build
+# from Linux" in README.md).
 targets = ["x86_64-pc-windows-msvc"]
 profile = "minimal"

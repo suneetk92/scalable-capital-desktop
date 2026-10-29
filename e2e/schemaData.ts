@@ -3,7 +3,7 @@ import tools from "../tests/fixtures/mcp-tool-list.json" with { type: "json" };
 type Schema = { type?: string | string[]; properties?: Record<string, Schema>; items?: Schema; anyOf?: Schema[]; oneOf?: Schema[]; enum?: unknown[]; format?: string };
 
 const outputSchemas: Record<string, Schema | undefined> = Object.fromEntries(
-  (tools.result.tools as { name: string; outputSchema?: Schema }[]).map((tool) => [tool.name, tool.outputSchema]),
+  (tools.result.tools as unknown as { name: string; outputSchema?: Schema }[]).map((tool) => [tool.name, tool.outputSchema]),
 );
 
 const ISINS = ["DE0007030009", "DE0007100000", "US0378331005", "US5949181045", "IE00B4L5Y983"];

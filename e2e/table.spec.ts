@@ -11,7 +11,11 @@ test.beforeEach(async ({ page }) => {
     window.localStorage.setItem("scalable-capital-desktop.settings", JSON.stringify({ tableColumns: columns }));
   });
   await page.goto("/");
-  await page.getByRole("link", { name: /^Portfolio/ }).or(page.getByRole("button", { name: /^Portfolio/ })).first().click();
+  await page
+    .getByRole("link", { name: /^Portfolio/ })
+    .or(page.getByRole("button", { name: /^Portfolio/ }))
+    .first()
+    .click();
   await page.locator("table tbody tr").first().waitFor();
 });
 
@@ -26,8 +30,20 @@ async function columns(page: Page) {
       const label = head.querySelector("button")!.getBoundingClientRect();
       const content = document.createRange();
       content.selectNodeContents(cell);
-      const value = content.getBoundingClientRect();
-      return { id: head.dataset.col!, headAlign: getComputedStyle(head).textAlign, cellAlign: getComputedStyle(cell).textAlign, labelLeft: label.left, labelRight: label.right, valueLeft: value.left, valueRight: value.right };
+      // A range also counts text that an ellipsis clips, so keep it inside the cell's content box.
+      const range = content.getBoundingClientRect();
+      const box = cell.getBoundingClientRect();
+      const style = getComputedStyle(cell);
+      const value = { left: Math.max(range.left, box.left + parseFloat(style.paddingLeft)), right: Math.min(range.right, box.right - parseFloat(style.paddingRight)) };
+      return {
+        id: head.dataset.col!,
+        headAlign: getComputedStyle(head).textAlign,
+        cellAlign: getComputedStyle(cell).textAlign,
+        labelLeft: label.left,
+        labelRight: label.right,
+        valueLeft: value.left,
+        valueRight: value.right,
+      };
     });
   });
 }

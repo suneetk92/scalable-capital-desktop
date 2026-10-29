@@ -17,8 +17,8 @@ jobs:
     name: Frontend checks
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm
@@ -38,22 +38,26 @@ jobs:
       run:
         working-directory: src-tauri
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install Tauri system libraries
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
             librsvg2-dev libdbus-1-dev libssl-dev pkg-config clang lld
-      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
         with:
+          toolchain: 1.99.1
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri
       - name: Create the empty frontend folder Tauri expects
         run: mkdir -p ../dist
       - run: cargo fmt --check
+      # build.rs pulls the extension modules in with #[path], which cargo fmt does not follow.
+      - name: Check the formatting of the bundled extensions' Rust code
+        run: rustfmt --check --edition 2021 --config-path rustfmt.toml ../extensions/*/src-tauri/*.rs
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
 
@@ -64,11 +68,12 @@ jobs:
       run:
         working-directory: src-tauri
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
         with:
+          toolchain: 1.99.1
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri
       - name: Create the empty frontend folder Tauri expects
@@ -82,8 +87,8 @@ jobs:
     name: Dependency audits
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm
@@ -91,7 +96,9 @@ jobs:
       # `npm audit signatures` checks the installed packages, so install them first.
       - run: npm ci
       - run: npm audit signatures
-      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+        with:
+          toolchain: 1.99.1
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
       - name: Audit Rust dependencies
@@ -100,7 +107,7 @@ jobs:
           cargo audit --file src-tauri/Cargo.lock
           --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369
       - name: Check licences, duplicate versions and sources (cargo-deny)
-        uses: EmbarkStudios/cargo-deny-action@v2
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
         with:
           manifest-path: src-tauri/Cargo.toml
           command: check

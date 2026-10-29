@@ -35,7 +35,9 @@ const holdings = SECURITIES.map(([isin, name, price, , , , quantity]) => ({
 
 export const dashboard = {
   authenticated: true,
-  portfolios: [{ portfolioId: "p1", name: "Main portfolio", portfolio: { id: "p1", name: "Main portfolio", currency: "EUR" }, holdings, overview: null, overviewError: null, cash: null, cashError: null }],
+  portfolios: [
+    { portfolioId: "p1", name: "Main portfolio", portfolio: { id: "p1", name: "Main portfolio", currency: "EUR" }, holdings, overview: null, overviewError: null, cash: null, cashError: null },
+  ],
   watchlist: { items: WATCHED.map(([isin, name]) => ({ isin, name })) },
   watchlistError: null,
   quotes,
