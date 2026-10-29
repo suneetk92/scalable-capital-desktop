@@ -33,10 +33,23 @@ describe("trailing transaction dialog", () => {
     expect(screen.getByText("o-1")).toBeTruthy();
   });
 
+  it("lists every state the order went through", () => {
+    const [stop] = parseTrailingList({ stops: [stored] }).stops;
+    const history = [
+      { state: "SUBMITTED", timestamp: "2026-10-28T20:22:00Z" },
+      { state: "SETTLED", timestamp: "2026-10-30T06:00:00Z" },
+    ];
+    render(<TrailingTransactionDialog stop={stop} order={{ state: "FILLED", final: true, history }} onClose={() => {}} />);
+    expect(screen.getByText("Order history at Scalable")).toBeTruthy();
+    expect(screen.getByText("Submitted")).toBeTruthy();
+    expect(screen.getByText("Settled")).toBeTruthy();
+    expect(screen.queryByText("Scalable's answer when the order was placed")).toBeNull();
+  });
+
   it("copes with a stop sold before the transaction was recorded", () => {
     const [stop] = parseTrailingList({ stops: [{ ...stored, side: "sell", shares: 2, executedAt: undefined, receipt: undefined }] }).stops;
     render(<TrailingTransactionDialog stop={stop} onClose={() => {}} />);
     expect(screen.getByText("Not recorded")).toBeTruthy();
-    expect(screen.queryByText("Scalable's answer")).toBeNull();
+    expect(screen.queryByText("Scalable's answer when the order was placed")).toBeNull();
   });
 });

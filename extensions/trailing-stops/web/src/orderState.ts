@@ -5,7 +5,7 @@ import type { Common } from "../../../../src/types";
 import { humanize } from "../../../../src/tools";
 import type { TrailingStop } from "./trailing";
 
-const FINAL_KEY = "scalable-capital-desktop.trailing-order-final-2";
+const KNOWN_KEY = "scalable-capital-desktop.trailing-order-states";
 /** States Scalable does not move on from, so the order is not asked about again. */
 const FINAL_STATE = /settled|cancel|reject|expire|fail/i;
 
@@ -26,47 +26,76 @@ function transactionIn(value: unknown, depth = 0): Rec | undefined {
     .find((found) => found !== undefined);
 }
 
+type OrderStep = { state: string; timestamp: string | null };
+export type OrderInfo = { state: string; final: boolean; history: OrderStep[] };
+
 /**
- * The state of the order in a `get_transaction_details` answer: the finalisation reason (FILLED, ...) once Scalable
- * has set one, else the trade status, else the latest history entry. It is final when there is a reason or the status cannot change.
+ * The order in a `get_transaction_details` answer. Its state is the finalisation reason (FILLED, ...) once Scalable
+ * has set one, else the trade status, else the latest history entry; it is final when there is a reason or the state cannot change.
  */
-export function orderStateOf(result: unknown): { state: string; final: boolean } | null {
+export function orderStateOf(result: unknown): OrderInfo | null {
   const transaction = transactionIn(result);
   if (!transaction) return null;
   const trade = isRec(transaction.securityTrade) ? transaction.securityTrade : undefined;
   const reason = trade ? pickString(trade, ["finalisationReason"]) : undefined;
   const status = trade ? pickString(trade, ["status"]) : undefined;
-  if (reason) return { state: reason, final: true };
-  if (status) return { state: status, final: isFinalState(status) };
-  const history = Array.isArray(transaction.history) ? transaction.history.filter(isRec) : [];
-  const last = history.length > 0 ? pickString(history[history.length - 1], ["state"]) : undefined;
-  return last ? { state: last, final: isFinalState(last) } : null;
+  const history = (Array.isArray(transaction.history) ? transaction.history.filter(isRec) : []).flatMap((entry) => {
+    const state = pickString(entry, ["state"]);
+    return state ? [{ state, timestamp: pickString(entry, ["timestamp"]) ?? null }] : [];
+  });
+  const last = history.length > 0 ? history[history.length - 1].state : undefined;
+  const state = reason ?? status ?? last;
+  return state ? { state, final: reason !== undefined || isFinalState(state), history } : null;
+}
+
+/** Every state seen so far, oldest first, without repeating one the app already recorded. */
+function mergeSteps(known: OrderStep[], fresh: OrderStep[]): OrderStep[] {
+  const seen = new Set(known.map((step) => `${step.state}|${step.timestamp}`));
+  return [...known, ...fresh.filter((step) => !seen.has(`${step.state}|${step.timestamp}`))].sort((a, b) => Date.parse(a.timestamp ?? "") - Date.parse(b.timestamp ?? "") || 0);
 }
 
 export const orderStateLabel = (state: string) => humanize(state.toLowerCase());
 
-function loadFinals(): Record<string, string> {
+function loadKnown(): Record<string, OrderInfo> {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(FINAL_KEY) ?? "{}");
-    return isRec(parsed) ? Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string")) : {};
+    const parsed: unknown = JSON.parse(localStorage.getItem(KNOWN_KEY) ?? "{}");
+    if (!isRec(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).flatMap(([id, value]) =>
+        isRec(value) && typeof value.state === "string" && Array.isArray(value.history)
+          ? [
+              [
+                id,
+                {
+                  state: value.state,
+                  final: value.final === true,
+                  history: value.history
+                    .filter(isRec)
+                    .flatMap((step) => (typeof step.state === "string" ? [{ state: step.state, timestamp: typeof step.timestamp === "string" ? step.timestamp : null }] : [])),
+                },
+              ],
+            ]
+          : [],
+      ),
+    );
   } catch {
     return {};
   }
 }
 
 /**
- * Where each placed order stands at Scalable (submitted, filled, settled, ...), by stop id. It is asked for on
- * every refresh until the order reaches a final state; that state is remembered and the order is not asked about again.
+ * Where each placed order stands at Scalable (submitted, filled, settled, ...) and every state it went through
+ * with its time, by stop id. It is asked for on every refresh until the order is final; then it is kept and not asked about again.
  */
-export function useOrderStates(common: Common, stops: TrailingStop[]): ReadonlyMap<string, string> {
-  const [finals, setFinals] = useState(loadFinals);
+export function useOrderStates(common: Common, stops: TrailingStop[]): ReadonlyMap<string, OrderInfo> {
+  const [known, setKnown] = useState(loadKnown);
   const pending = useMemo(
     () =>
       stops.flatMap((stop) => {
         const orderId = orderIdOf(stop.receipt);
-        return stop.status === "sold" && orderId && !finals[stop.id] ? [{ stopId: stop.id, orderId, portfolioId: stop.portfolioId }] : [];
+        return stop.status === "sold" && orderId && !known[stop.id]?.final ? [{ stopId: stop.id, orderId, portfolioId: stop.portfolioId }] : [];
       }),
-    [stops, finals],
+    [stops, known],
   );
   const argsList = useMemo<Rec[] | null>(
     () =>
@@ -76,32 +105,38 @@ export function useOrderStates(common: Common, stops: TrailingStop[]): ReadonlyM
     [pending, common.actions],
   );
   const query = useToolQuery(common.invoke, common.defs, "get_transaction_details", argsList, common.reloadKey);
-  const latest = useMemo(() => {
-    const byOrder = new Map<string, { state: string; final: boolean }>();
+
+  useEffect(() => {
+    const byOrder = new Map<string, OrderInfo>();
     for (const entry of query.entries) {
       const id = pickString(entry.semantic, ["transactionId"]);
       const found = entry.outcome.ok ? orderStateOf(entry.outcome.result) : null;
       if (id && found) byOrder.set(id, found);
     }
-    return pending.flatMap((item) => {
+    const changes = pending.flatMap((item) => {
       const found = byOrder.get(item.orderId);
-      return found ? [{ stopId: item.stopId, ...found }] : [];
+      return found ? [[item.stopId, found] as const] : [];
     });
-  }, [query.entries, pending]);
-
-  useEffect(() => {
-    const done = latest.filter((item) => item.final).map((item) => [item.stopId, item.state] as const);
-    if (done.length === 0) return;
-    setFinals((current) => {
-      const next = { ...current, ...Object.fromEntries(done) };
+    if (changes.length === 0) return;
+    setKnown((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const [stopId, found] of changes) {
+        const merged = { ...found, history: mergeSteps(current[stopId]?.history ?? [], found.history) };
+        if (JSON.stringify(merged) !== JSON.stringify(current[stopId])) {
+          next[stopId] = merged;
+          changed = true;
+        }
+      }
+      if (!changed) return current;
       try {
-        localStorage.setItem(FINAL_KEY, JSON.stringify(next));
+        localStorage.setItem(KNOWN_KEY, JSON.stringify(next));
       } catch {
         // Not remembered: the order is asked about again next time.
       }
       return next;
     });
-  }, [latest]);
+  }, [query.entries, pending]);
 
-  return useMemo(() => new Map([...Object.entries(finals), ...latest.map((item) => [item.stopId, item.state] as const)]), [finals, latest]);
+  return useMemo(() => new Map(Object.entries(known)), [known]);
 }

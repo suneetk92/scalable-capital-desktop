@@ -15,7 +15,7 @@ import { EmptyState, ShareBar } from "../../../../src/controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
 import { SearchToolbar, Section } from "../../../../src/pages/shared";
 import { matchesText } from "../../../../src/textSearch";
-import { orderStateLabel, useOrderStates } from "./orderState";
+import { orderStateLabel, useOrderStates, type OrderInfo } from "./orderState";
 
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
@@ -201,7 +201,7 @@ type PanelProps = {
   onRemove: (id: string) => void;
   onOpenSecurity: (security: { isin: string; name: string }) => void;
   onDetails: (stop: TrailingStop) => void;
-  orderStates: ReadonlyMap<string, string>;
+  orderStates: ReadonlyMap<string, OrderInfo>;
 };
 
 function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSecurity, onDetails, orderStates }: PanelProps) {
@@ -213,7 +213,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
   const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
   const active = stops.filter((stop) => stop.status === "active").length;
   const [search, setSearch] = useState("");
-  const shown = stops.filter((stop) => matchesText(search, [stop.name, stop.isin, statusLabel(side, stop.status), orderStates.get(stop.id) ?? ""]));
+  const shown = stops.filter((stop) => matchesText(search, [stop.name, stop.isin, statusLabel(side, stop.status), orderStates.get(stop.id)?.state ?? ""]));
   return (
     <Section
       title={copy.title}
@@ -259,7 +259,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
                   onEdit={() => onEdit(stop)}
                   onRemove={() => onRemove(stop.id)}
                   onDetails={() => onDetails(stop)}
-                  orderState={orderStates.get(stop.id)}
+                  orderState={orderStates.get(stop.id)?.state}
                 />
               ))}
             </tbody>
@@ -337,7 +337,7 @@ export function TrailingStops({
           orderStates={orderStates}
         />
       ))}
-      {viewed && <TrailingTransactionDialog stop={viewed} orderState={orderStates.get(viewed.id)} onClose={() => setViewing(null)} />}
+      {viewed && <TrailingTransactionDialog stop={viewed} order={orderStates.get(viewed.id)} onClose={() => setViewing(null)} />}
       {editing && dialog(editing.side, editing, () => setEditing(null))}
       {adding && dialog(adding, null, () => setAdding(null))}
     </>

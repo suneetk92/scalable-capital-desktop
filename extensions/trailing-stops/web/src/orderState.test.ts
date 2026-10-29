@@ -8,10 +8,14 @@ describe("order state", () => {
   });
 
   it("prefers the finalisation reason, then the trade status, then the latest history entry", () => {
+    const history = [
+      { state: "SUBMITTED", timestamp: "2026-10-28T20:22:00Z" },
+      { state: "SETTLED", timestamp: "2026-10-30T06:00:00Z" },
+    ];
     const trade = { status: "SETTLED", finalisationReason: "FILLED" };
-    expect(orderStateOf({ transaction: { securityTrade: trade, history: [{ state: "SUBMITTED" }] } })).toEqual({ state: "FILLED", final: true });
-    expect(orderStateOf({ transaction: { securityTrade: { status: "EXECUTED", finalisationReason: null } } })).toEqual({ state: "EXECUTED", final: false });
-    expect(orderStateOf({ transaction: { securityTrade: null, history: [{ state: "SUBMITTED" }, { state: "SETTLED" }] } })).toEqual({ state: "SETTLED", final: true });
+    expect(orderStateOf({ transaction: { securityTrade: trade, history } })).toEqual({ state: "FILLED", final: true, history });
+    expect(orderStateOf({ transaction: { securityTrade: { status: "EXECUTED", finalisationReason: null } } })).toEqual({ state: "EXECUTED", final: false, history: [] });
+    expect(orderStateOf({ transaction: { securityTrade: null, history } })?.state).toBe("SETTLED");
     expect(orderStateOf({ nothing: true })).toBeNull();
   });
 

@@ -2,11 +2,11 @@ import { DescriptionList, DescriptionRow, DialogFooter, ModalFrame, ModalHeader,
 import { KeyValues } from "../../../../src/ToolViews";
 import { formatDateTime, formatNumber } from "../../../../src/format";
 import { formatMoney } from "../../../../src/screener";
-import { orderStateLabel } from "./orderState";
+import { orderStateLabel, type OrderInfo } from "./orderState";
 import { trailLabel, triggerPrice, type TrailingStop } from "./trailing";
 
 /** What the app did when a trailing stop fired: the rule, the price and what Scalable answered. */
-export function TrailingTransactionDialog({ stop, orderState, onClose }: { stop: TrailingStop; orderState?: string; onClose: () => void }) {
+export function TrailingTransactionDialog({ stop, order, onClose }: { stop: TrailingStop; order?: OrderInfo; onClose: () => void }) {
   const buying = stop.side === "buy";
   const verb = buying ? "Bought" : "Sold";
   return (
@@ -16,7 +16,7 @@ export function TrailingTransactionDialog({ stop, orderState, onClose }: { stop:
       <DescriptionList>
         <DescriptionRow label="When">{stop.executedAt === null ? "Not recorded" : formatDateTime(stop.executedAt * 1000)}</DescriptionRow>
         <DescriptionRow label={buying ? "Spent" : "Shares sold"}>{buying ? formatMoney(stop.amount ?? 0) : formatNumber(stop.quantity)}</DescriptionRow>
-        {orderState && <DescriptionRow label="Order status">{orderStateLabel(orderState)}</DescriptionRow>}
+        {order && <DescriptionRow label="Order status">{orderStateLabel(order.state)}</DescriptionRow>}
         <DescriptionRow label="Order type">Market</DescriptionRow>
         <DescriptionRow label={`${verb} at about`}>{stop.soldPrice === null ? "Not recorded" : formatMoney(stop.soldPrice)}</DescriptionRow>
         <DescriptionRow label="Distance">{trailLabel(stop.trail, formatMoney)}</DescriptionRow>
@@ -25,11 +25,25 @@ export function TrailingTransactionDialog({ stop, orderState, onClose }: { stop:
         <DescriptionRow label="Price when set">{formatMoney(stop.startPrice)}</DescriptionRow>
         {stop.lastPrice !== null && <DescriptionRow label="Last price checked">{formatMoney(stop.lastPrice)}</DescriptionRow>}
       </DescriptionList>
-      {stop.receipt !== null && stop.receipt !== undefined && (
+      {order && order.history.length > 0 ? (
         <section className="mt-4">
-          <h3 className="mb-1 font-semibold text-ink-heading">Scalable's answer</h3>
-          <KeyValues value={stop.receipt} />
+          <h3 className="mb-1 font-semibold text-ink-heading">Order history at Scalable</h3>
+          <DescriptionList>
+            {order.history.map((step, index) => (
+              <DescriptionRow key={`${step.state}-${step.timestamp}-${index}`} label={orderStateLabel(step.state)}>
+                {formatDateTime(step.timestamp)}
+              </DescriptionRow>
+            ))}
+          </DescriptionList>
         </section>
+      ) : (
+        stop.receipt !== null &&
+        stop.receipt !== undefined && (
+          <section className="mt-4">
+            <h3 className="mb-1 font-semibold text-ink-heading">Scalable's answer when the order was placed</h3>
+            <KeyValues value={stop.receipt} />
+          </section>
+        )
       )}
       <DialogFooter className="mt-5">
         <button className={btn.primary} type="button" onClick={onClose}>
