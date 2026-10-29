@@ -13,7 +13,10 @@ use sha2::{Digest, Sha256};
 use std::{
     fs,
     path::PathBuf,
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Mutex,
+    },
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Manager, State};
@@ -40,6 +43,23 @@ const CALLBACK_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 const KEYRING_SERVICE: &str = "com.sk.scalable-capital-desktop";
 const KEYRING_USER: &str = "scalable-capital-oauth";
 static REFRESH_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+/// Counts sign-outs (by the user or because Scalable rejected the sign-in). Work that started
+/// before one must not report or store a sign-in after it.
+static SIGN_IN_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// The current sign-in generation; compare it with `same_sign_in` when the work is done.
+pub fn sign_in_generation() -> u64 {
+    SIGN_IN_GENERATION.load(Ordering::SeqCst)
+}
+
+/// True when no sign-out happened since `started` was read.
+pub fn same_sign_in(started: u64) -> bool {
+    started == sign_in_generation()
+}
+
+fn end_sign_in_generation() {
+    SIGN_IN_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,7 +80,17 @@ impl Default for LoginStatus {
 #[derive(Default)]
 pub struct AuthState {
     login_status: Mutex<LoginStatus>,
+    pending_login: Mutex<Option<PendingLogin>>,
 }
+
+/// The sign-in waiting for the browser. A new sign-in stops it, which also frees the callback port.
+struct PendingLogin {
+    cancel: tokio::sync::oneshot::Sender<()>,
+    task: tauri::async_runtime::JoinHandle<()>,
+}
+
+/// Serialises `begin_login`, so two clicks cannot both take the callback port.
+static LOGIN_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,15 +181,9 @@ impl TokenResponse {
 
 #[tauri::command]
 pub async fn begin_login(app: AppHandle, state: State<'_, AuthState>) -> Result<String, String> {
-    {
-        let status = state
-            .login_status
-            .lock()
-            .map_err(|_| "Authentication state is unavailable".to_owned())?;
-        if status.status == "pending" {
-            return Err("A Scalable sign-in is already in progress".to_owned());
-        }
-    }
+    let generation = sign_in_generation();
+    let _login = LOGIN_LOCK.lock().await;
+    cancel_pending_login(&state).await?;
 
     let listener = TcpListener::bind(("127.0.0.1", REDIRECT_PORT))
         .await
@@ -196,19 +220,30 @@ pub async fn begin_login(app: AppHandle, state: State<'_, AuthState>) -> Result<
 
     let app_handle = app.clone();
     let token_endpoint = metadata.token_endpoint;
-    tauri::async_runtime::spawn(async move {
-        let result = complete_login(
-            listener,
-            &client_id,
-            &token_endpoint,
-            &state_value,
-            &verifier,
-        )
-        .await;
+    let (cancel, cancelled) = tokio::sync::oneshot::channel::<()>();
+    let task = tauri::async_runtime::spawn(async move {
+        let result = tokio::select! {
+            result = complete_login(
+                listener,
+                &client_id,
+                &token_endpoint,
+                &state_value,
+                &verifier,
+            ) => result,
+            // A newer sign-in replaced this one and sets the status itself.
+            _ = cancelled => return,
+        };
         match result {
             Ok(tokens) => {
                 let _guard = REFRESH_LOCK.lock().await;
-                let status = match save_tokens_async(tokens).await {
+                // A sign-out while the browser was open wins: its tokens are not stored. Checked
+                // under the lock that `logout` takes before it clears the stored sign-in.
+                let status = if !same_sign_in(generation) {
+                    Err("You were signed out during the sign-in. Sign in again.".to_owned())
+                } else {
+                    save_tokens_async(tokens).await
+                };
+                let status = match status {
                     Ok(()) => LoginStatus {
                         status: "authenticated".to_owned(),
                         error: None,
@@ -229,8 +264,35 @@ pub async fn begin_login(app: AppHandle, state: State<'_, AuthState>) -> Result<
             ),
         }
     });
+    *state
+        .pending_login
+        .lock()
+        .map_err(|_| "Authentication state is unavailable".to_owned())? =
+        Some(PendingLogin { cancel, task });
 
     Ok(authorization_url.to_string())
+}
+
+/// Stops a sign-in that is still waiting for the browser and waits until its listener is closed.
+async fn cancel_pending_login(state: &AuthState) -> Result<(), String> {
+    let pending = state
+        .pending_login
+        .lock()
+        .map_err(|_| "Authentication state is unavailable".to_owned())?
+        .take();
+    let Some(pending) = pending else {
+        return Ok(());
+    };
+    let _ = pending.cancel.send(());
+    let _ = pending.task.await;
+    let mut status = state
+        .login_status
+        .lock()
+        .map_err(|_| "Authentication state is unavailable".to_owned())?;
+    if status.status == "pending" {
+        *status = LoginStatus::default();
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -252,6 +314,7 @@ pub async fn logout(
     trade: State<'_, TradeState>,
     plans: State<'_, SavingsState>,
 ) -> Result<(), String> {
+    end_sign_in_generation();
     trading::switch_trading(&gate, &trade, &plans, false);
     let _guard = REFRESH_LOCK.lock().await;
     clear_tokens_async().await?;
@@ -277,38 +340,61 @@ pub async fn is_signed_in() -> bool {
     matches!(load_tokens_async().await, Ok(Some(_)))
 }
 
-pub async fn current_access_token(_app: &AppHandle) -> Result<Option<String>, String> {
-    Ok(refresh_and_save(false)
+pub async fn current_access_token(app: &AppHandle) -> Result<Option<String>, String> {
+    Ok(refresh_and_save(app, false)
         .await?
         .map(|tokens| tokens.access_token))
 }
 
-/// Refreshes the tokens and stores them. A rejected refresh token signs the user out (`Ok(None)`).
-async fn refresh_and_save(force: bool) -> Result<Option<OAuthTokens>, String> {
+/// Refreshes the tokens and stores them. A rejected refresh token signs the user out (`Ok(None)`)
+/// with the same reset as `logout`: Trading off, pending previews and the shared session dropped.
+async fn refresh_and_save(app: &AppHandle, force: bool) -> Result<Option<OAuthTokens>, String> {
+    let (tokens, signed_out) = refresh_locked(force).await?;
+    if signed_out {
+        end_session(app).await;
+    }
+    Ok(tokens)
+}
+
+/// The refresh itself, under `REFRESH_LOCK`. The flag is true when it cleared the stored sign-in.
+async fn refresh_locked(force: bool) -> Result<(Option<OAuthTokens>, bool), String> {
     let _guard = REFRESH_LOCK.lock().await;
     let Some(mut tokens) = load_tokens_async().await? else {
-        return Ok(None);
+        return Ok((None, false));
     };
     if !force && tokens.expires_at > now_seconds().saturating_add(60) {
-        return Ok(Some(tokens));
+        return Ok((Some(tokens), false));
     }
     if tokens.refresh_token.is_empty() {
         clear_tokens_async().await?;
-        return Ok(None);
+        return Ok((None, true));
     }
     let client = http_client();
     let metadata = discover_oauth(&client).await?;
     match refresh_tokens(&client, &metadata, &mut tokens).await {
         Ok(()) => {
             save_tokens_async(tokens.clone()).await?;
-            Ok(Some(tokens))
+            Ok((Some(tokens), false))
         }
         Err(error) if error.contains("invalid_grant") || error.contains("invalid_token") => {
             clear_tokens_async().await?;
-            Ok(None)
+            Ok((None, true))
         }
         Err(error) => Err(error),
     }
+}
+
+/// Ends the sign-in generation, switches Trading off (which drops pending previews) and forgets the
+/// shared MCP session.
+async fn end_session(app: &AppHandle) {
+    end_sign_in_generation();
+    trading::switch_trading(
+        &app.state::<TradingGate>(),
+        &app.state::<TradeState>(),
+        &app.state::<SavingsState>(),
+        false,
+    );
+    app.state::<SessionPool>().clear().await;
 }
 
 /// Sign-ins stored before the sign-in time was recorded have no `signed_in_at`. Fill it in with the
@@ -336,9 +422,9 @@ pub async fn get_session_info() -> Result<SessionInfo, String> {
 
 /// Renews the access token now, even if it is still valid.
 #[tauri::command]
-pub async fn refresh_session(pool: State<'_, SessionPool>) -> Result<SessionInfo, String> {
-    let refreshed = refresh_and_save(true).await?;
-    pool.clear().await;
+pub async fn refresh_session(app: AppHandle) -> Result<SessionInfo, String> {
+    let refreshed = refresh_and_save(&app, true).await?;
+    app.state::<SessionPool>().clear().await;
     Ok(SessionInfo::from_tokens(refreshed.as_ref()))
 }
 
@@ -561,25 +647,29 @@ async fn complete_login(
             .await;
             continue;
         }
-        write_callback_response(
-            &mut stream,
-            "200 OK",
-            "Sign-in finished. You can return to Scalable Capital Desktop.",
-        )
-        .await;
-        if let Some(error) = query.get("error") {
-            return Err(format!(
+        let result = match (query.get("error"), query.get("code")) {
+            (Some(error), _) => Err(format!(
                 "Scalable sign-in was not completed: {}",
                 sanitize_oauth_code(error).unwrap_or_else(|| "OAuth error".to_owned())
-            ));
-        }
-        let code = query
-            .get("code")
-            .filter(|code| !code.is_empty())
-            .ok_or_else(|| {
-                "Scalable sign-in callback did not include an authorization code".to_owned()
-            })?;
-        return exchange_authorization_code(client_id, token_endpoint, code, verifier).await;
+            )),
+            (None, Some(code)) if !code.is_empty() => {
+                exchange_authorization_code(client_id, token_endpoint, code, verifier).await
+            }
+            (None, _) => {
+                Err("Scalable sign-in callback did not include an authorization code".to_owned())
+            }
+        };
+        // The browser is answered once the code exchange is done, so it shows the real outcome.
+        write_callback_response(&mut stream, "200 OK", callback_message(result.is_ok())).await;
+        return result;
+    }
+}
+
+fn callback_message(signed_in: bool) -> &'static str {
+    if signed_in {
+        "Sign-in finished. You can return to Scalable Capital Desktop."
+    } else {
+        "Sign-in did not finish. Return to Scalable Capital Desktop to try again."
     }
 }
 
@@ -1069,6 +1159,46 @@ mod tests {
         assert!(parse_callback_request("GET https://elsewhere/ HTTP/1.1")
             .2
             .is_some());
+    }
+
+    #[tokio::test]
+    async fn a_new_sign_in_stops_the_pending_one_and_frees_its_port() {
+        let state = AuthState::default();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (cancel, cancelled) = tokio::sync::oneshot::channel::<()>();
+        let task = tauri::async_runtime::spawn(async move {
+            tokio::select! {
+                _ = listener.accept() => {}
+                _ = cancelled => {}
+            }
+        });
+        *state.pending_login.lock().unwrap() = Some(PendingLogin { cancel, task });
+        *state.login_status.lock().unwrap() = LoginStatus {
+            status: "pending".to_owned(),
+            error: None,
+        };
+        cancel_pending_login(&state).await.unwrap();
+        assert!(state.pending_login.lock().unwrap().is_none());
+        assert_eq!(state.login_status.lock().unwrap().status, "idle");
+        assert!(TcpListener::bind(address).await.is_ok());
+        // Nothing pending: nothing to do.
+        cancel_pending_login(&state).await.unwrap();
+    }
+
+    #[test]
+    fn the_callback_page_tells_the_outcome_without_details() {
+        assert!(callback_message(true).starts_with("Sign-in finished"));
+        assert!(callback_message(false).starts_with("Sign-in did not finish"));
+    }
+
+    #[test]
+    fn a_sign_out_ends_the_sign_in_generation() {
+        let started = sign_in_generation();
+        assert!(same_sign_in(started));
+        end_sign_in_generation();
+        assert!(!same_sign_in(started));
+        assert!(same_sign_in(sign_in_generation()));
     }
 
     #[test]

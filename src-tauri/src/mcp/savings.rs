@@ -34,6 +34,12 @@ pub struct SavingsPlanRequest {
     pub dynamization_rate: Option<String>,
     #[serde(default)]
     pub payment_method: Option<String>,
+    /// The appropriateness check and the warning version the user accepted, when an earlier
+    /// preview asked for them.
+    #[serde(default)]
+    pub appropriateness_id: Option<String>,
+    #[serde(default)]
+    pub acknowledged_appropriateness_warning_version: Option<String>,
 }
 
 /// Codes such as `MONTHLY` or `SEPA_DIRECT_DEBIT`.
@@ -91,6 +97,17 @@ impl SavingsPlanRequest {
                 return Err("The dynamization rate must be a number, 0 or more".to_owned());
             }
         }
+        for text in [
+            &self.appropriateness_id,
+            &self.acknowledged_appropriateness_warning_version,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if text.trim().is_empty() || text.len() > 128 || text.chars().any(char::is_control) {
+                return Err("The appropriateness confirmation is not valid".to_owned());
+            }
+        }
         Ok(())
     }
 }
@@ -117,6 +134,15 @@ fn preview_arguments(request: &SavingsPlanRequest) -> Value {
     }
     if let Some(method) = &request.payment_method {
         arguments.insert("paymentMethod".to_owned(), json!(method));
+    }
+    if let Some(id) = &request.appropriateness_id {
+        arguments.insert("appropriatenessId".to_owned(), json!(id));
+    }
+    if let Some(version) = &request.acknowledged_appropriateness_warning_version {
+        arguments.insert(
+            "acknowledgedAppropriatenessWarningVersion".to_owned(),
+            json!(version),
+        );
     }
     Value::Object(arguments)
 }
@@ -269,6 +295,8 @@ mod tests {
             year_month: Some("2026-11".to_owned()),
             dynamization_rate: Some("0.05".to_owned()),
             payment_method: Some("SEPA_DIRECT_DEBIT".to_owned()),
+            appropriateness_id: None,
+            acknowledged_appropriateness_warning_version: None,
         }
     }
 
@@ -294,6 +322,10 @@ mod tests {
             |r: &mut SavingsPlanRequest| r.payment_method = Some("A B".to_owned()),
             |r: &mut SavingsPlanRequest| r.dynamization_rate = Some("-1".to_owned()),
             |r: &mut SavingsPlanRequest| r.dynamization_rate = Some("lots".to_owned()),
+            |r: &mut SavingsPlanRequest| r.appropriateness_id = Some(String::new()),
+            |r: &mut SavingsPlanRequest| {
+                r.acknowledged_appropriateness_warning_version = Some("1\n2".to_owned())
+            },
         ] {
             let mut bad = request();
             change(&mut bad);
@@ -328,6 +360,14 @@ mod tests {
         minimal.payment_method = None;
         let arguments = preview_arguments(&minimal);
         assert_eq!(arguments, json!({ "isin": "IE00B4L5Y983", "amount": 50 }));
+        crate::mcp::fixtures::assert_matches(&schemas, "preview_savings_plan", &arguments);
+        let mut acknowledged = minimal;
+        acknowledged.appropriateness_id = Some("a-1".to_owned());
+        acknowledged.acknowledged_appropriateness_warning_version = Some("3".to_owned());
+        assert!(acknowledged.validate().is_ok());
+        let arguments = preview_arguments(&acknowledged);
+        assert_eq!(arguments["appropriatenessId"], "a-1");
+        assert_eq!(arguments["acknowledgedAppropriatenessWarningVersion"], "3");
         crate::mcp::fixtures::assert_matches(&schemas, "preview_savings_plan", &arguments);
     }
 

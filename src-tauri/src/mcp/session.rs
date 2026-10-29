@@ -82,18 +82,35 @@ pub fn trading_enabled(app: &AppHandle) -> bool {
     app.state::<TradingGate>().is_on()
 }
 
-async fn signed_in_token(app: &AppHandle) -> Result<String, String> {
-    auth::current_access_token(app)
+const SIGNED_OUT: &str = "You are signed out. Sign in to Scalable Capital again.";
+
+/// The access token and the sign-in generation it belongs to. The generation is read first, so a
+/// sign-out after it is seen by `still_signed_in` even when the token was read before the sign-out.
+async fn signed_in_token(app: &AppHandle) -> Result<(String, u64), String> {
+    let generation = auth::sign_in_generation();
+    let token = auth::current_access_token(app)
         .await?
-        .ok_or_else(|| "You are signed out. Sign in to Scalable Capital again.".to_owned())
+        .ok_or_else(|| SIGNED_OUT.to_owned())?;
+    Ok((token, generation))
+}
+
+/// Checked under the pool lock, which `logout` also takes after it ended the generation: a token
+/// read before a sign-out never ends up in the cache after it.
+fn still_signed_in(generation: u64) -> Result<(), String> {
+    if auth::same_sign_in(generation) {
+        Ok(())
+    } else {
+        Err(SIGNED_OUT.to_owned())
+    }
 }
 
 /// The shared client and its tool list. Concurrent callers wait for one handshake instead of
 /// each opening a session.
 pub async fn connect(app: &AppHandle) -> Result<(McpClient, Vec<Value>), String> {
-    let token = signed_in_token(app).await?;
+    let (token, generation) = signed_in_token(app).await?;
     let pool = app.state::<SessionPool>();
     let mut cached = pool.cached.lock().await;
+    still_signed_in(generation)?;
     let reuse = cached
         .as_ref()
         .map(|session| (session.token.as_str(), session.created.elapsed()));
@@ -108,9 +125,10 @@ pub async fn connect(app: &AppHandle) -> Result<(McpClient, Vec<Value>), String>
 /// Always opens a new session and makes it the shared one. Used by dashboard loads (a refresh
 /// should see the current tool list) and by order submission (never ride on a stale session).
 pub async fn connect_fresh(app: &AppHandle) -> Result<(McpClient, Vec<Value>), String> {
-    let token = signed_in_token(app).await?;
+    let (token, generation) = signed_in_token(app).await?;
     let pool = app.state::<SessionPool>();
     let mut cached = pool.cached.lock().await;
+    still_signed_in(generation)?;
     store(&mut cached, &token).await
 }
 

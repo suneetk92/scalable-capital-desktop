@@ -53,18 +53,25 @@ impl DashboardResponse {
 
 #[tauri::command]
 pub async fn load_dashboard(app: tauri::AppHandle) -> Result<DashboardResponse, String> {
+    // Read first, so a sign-out at any point of the load turns its answer into a signed-out one.
+    let generation = auth::sign_in_generation();
     if auth::current_access_token(&app).await?.is_none() {
         return Ok(DashboardResponse::signed_out());
     }
     // A load is a refresh: it starts a new session, which the other commands then share.
     let (mcp, tools) = session::connect_fresh(&app).await?;
-    match build_dashboard(mcp, tools).await {
+    let dashboard = match build_dashboard(mcp, tools).await {
         Err(error) if session::is_stale_session_error(&error) => {
             let (mcp, tools) = session::connect_fresh(&app).await?;
             build_dashboard(mcp, tools).await
         }
         other => other,
-    }
+    }?;
+    Ok(if auth::same_sign_in(generation) {
+        dashboard
+    } else {
+        DashboardResponse::signed_out()
+    })
 }
 
 /// Just the groups, read again after a change to them, so the rest of the dashboard stays as it is.

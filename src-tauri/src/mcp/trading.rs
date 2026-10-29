@@ -77,13 +77,24 @@ pub(super) fn is_read_tool(name: &str) -> bool {
             .any(|prefix| name.starts_with(prefix))
 }
 
-/// Tools of Scalable's "Limited access" level: they change watchlists, price alerts and portfolio groups, never money. Keep in sync with `isManageTool` in `src/tools.ts`.
+/// Tools of Scalable's "Limited access" level: they change watchlists, price alerts and portfolio groups, never money.
+/// An exact list, so a new tool that merely mentions a watchlist or group still needs Full access. Keep in sync
+/// with `isManageTool` in `src/tools.ts`; `tools.test.ts` reads this declaration, so keep its shape.
+const MANAGE_TOOLS: [&str; 9] = [
+    "add_watchlist_item",
+    "remove_watchlist_item",
+    "create_price_alert",
+    "remove_price_alert",
+    "create_portfolio_group",
+    "upsert_portfolio_group",
+    "remove_portfolio_group",
+    "add_portfolio_group_holdings",
+    "remove_portfolio_group_holdings",
+];
+
 pub(super) fn is_manage_tool(name: &str) -> bool {
     let name = name.trim().to_ascii_lowercase();
-    !is_read_tool(&name)
-        && ["watchlist", "price_alert", "portfolio_group"]
-            .iter()
-            .any(|part| name.contains(part))
+    MANAGE_TOOLS.contains(&name.as_str())
 }
 
 /// The Trading gate is fail-closed: every unknown or non-read tool needs Full access, except the manage tools, which need Restricted access.
@@ -859,6 +870,13 @@ mod tests {
         assert_eq!(trading_block(&gate, "create_price_alert"), Some(MANAGE_OFF));
         assert_eq!(trading_block(&gate, "add_watchlist_item"), Some(MANAGE_OFF));
         assert!(trading_block(&gate, "unknown_future_tool").is_some());
+        for name in [
+            "sell_portfolio_group_holdings",
+            "submit_order_from_watchlist",
+            "update_price_alert_order",
+        ] {
+            assert!(is_trading_tool(name), "{name} needs Full access");
+        }
         assert!(trading_block(&gate, "get_portfolio_holdings").is_none());
         gate.enabled.store(true, Ordering::SeqCst);
         assert!(trading_block(&gate, "cancel_order").is_none());

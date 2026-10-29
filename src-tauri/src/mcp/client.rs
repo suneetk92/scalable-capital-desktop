@@ -2,7 +2,13 @@ use super::{response::tool_name, trading::is_read_tool};
 use crate::auth::MCP_ENDPOINT;
 use crate::logging;
 use serde_json::{json, Value};
-use std::time::Duration;
+use std::{
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 /// How often a request throttled with 429 is sent again, and the longest wait between tries.
 const THROTTLE_RETRIES: u32 = 2;
@@ -17,7 +23,8 @@ pub struct McpClient {
     access_token: String,
     session_id: Option<String>,
     protocol_version: String,
-    next_request_id: u64,
+    /// Shared by every clone of the client, so requests on one session never reuse a JSON-RPC id.
+    next_request_id: Arc<AtomicU64>,
 }
 
 impl McpClient {
@@ -30,7 +37,7 @@ impl McpClient {
             access_token,
             session_id: None,
             protocol_version: "2025-03-26".to_owned(),
-            next_request_id: 1,
+            next_request_id: Arc::new(AtomicU64::new(1)),
         }
     }
 
@@ -62,10 +69,8 @@ impl McpClient {
         Ok(())
     }
 
-    fn next_id(&mut self) -> u64 {
-        let id = self.next_request_id;
-        self.next_request_id += 1;
-        id
+    fn next_id(&self) -> u64 {
+        self.next_request_id.fetch_add(1, Ordering::Relaxed)
     }
 
     async fn rpc(&mut self, payload: Value) -> Result<Value, String> {
@@ -369,6 +374,17 @@ fn parse_event_stream(body: &str) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clones_of_a_client_never_reuse_a_request_id() {
+        let client = McpClient::new("t".to_owned());
+        assert_eq!(client.next_id(), 1);
+        let first = client.clone();
+        let second = client.clone();
+        let ids = [first.next_id(), second.next_id(), client.next_id()];
+        assert_eq!(ids, [2, 3, 4]);
+        assert_eq!(client.clone().next_id(), 5);
+    }
 
     #[test]
     fn parses_tool_text_content_as_json() {
