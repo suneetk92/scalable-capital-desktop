@@ -1,3 +1,4 @@
+import { JsonTree } from "../JsonTree";
 import { useState } from "react";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { useTableLayout } from "../hooks/useTableLayout";
@@ -19,7 +20,7 @@ const HEADS: Record<string, string> = { name: "Argument", type: "Type", required
 
 function Json({ value, empty }: { value: unknown; empty: string }) {
   if (value === null || value === undefined) return <p className={EMPTY}>{empty}</p>;
-  return <pre className="max-h-96 overflow-auto rounded-control bg-inset p-2.5 break-words whitespace-pre-wrap select-text">{pretty(value)}</pre>;
+  return <JsonTree value={value} />;
 }
 
 /** Shows what Scalable publishes for one tool in `tools/list`: its arguments, input schema and output schema. */

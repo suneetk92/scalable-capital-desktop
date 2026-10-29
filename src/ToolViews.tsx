@@ -1,3 +1,4 @@
+import { JsonTree } from "./JsonTree";
 import { Field, Label } from "@headlessui/react";
 import { InboxIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
@@ -68,9 +69,10 @@ export function JsonView({ value, label = "Raw data" }: { value: unknown; label?
   const visible = useShowDiagnostics();
   if (!visible) return null;
   return (
-    <details className="mt-3 text-ink-muted [&_pre]:mt-2 [&_pre]:max-h-[17.3333rem] [&_pre]:overflow-auto [&_pre]:rounded-control [&_pre]:bg-inset [&_pre]:p-2.5 [&_pre]:break-words [&_pre]:whitespace-pre-wrap [&_pre]:select-text">
+    <details className="mt-3 text-ink-muted">
       <summary className="cursor-pointer">{label}</summary>
-      <pre>{pretty(value)}</pre>
+      <div className="mt-2" />
+      <JsonTree value={value} />
     </details>
   );
 }
@@ -95,7 +97,9 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
           {copied ? "Copied" : "Copy as JSON"}
         </button>
       </div>
-      <pre className="mt-2 max-h-[17.3333rem] overflow-auto rounded-control bg-inset p-2.5 break-words whitespace-pre-wrap text-ink-muted select-text">{text}</pre>
+      <div className="mt-2">
+        <JsonTree value={value} />
+      </div>
     </div>
   );
 }
