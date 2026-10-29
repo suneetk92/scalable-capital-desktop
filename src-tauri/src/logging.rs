@@ -452,12 +452,12 @@ fn is_secret_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || matches!(c, '+' | '_' | '=' | '-')
 }
 
-/// JWTs and runs of 32 or more hex or base64 characters.
+/// JWTs and runs of 32 or more hex or base64 characters, standard base64 with `/` included.
 fn redact_secrets(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut run = String::new();
     for c in text.chars() {
-        if is_secret_char(c) || c == '.' {
+        if is_secret_char(c) || matches!(c, '.' | '/') {
             run.push(c);
         } else {
             out.push_str(&redact_run(&run));
@@ -474,9 +474,40 @@ fn redact_run(run: &str) -> String {
         return "[jwt]".to_owned();
     }
     run.split('.')
-        .map(|part| if looks_secret(part) { "[secret]" } else { part })
+        .map(|part| {
+            if looks_base64(part) {
+                return "[secret]".to_owned();
+            }
+            part.split('/')
+                .map(|segment| {
+                    if looks_secret(segment) {
+                        "[secret]"
+                    } else {
+                        segment
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("/")
+        })
         .collect::<Vec<_>>()
         .join(".")
+}
+
+/// Standard base64 with a `/` in it, which a path or URL path (lower-case words, `-`, `_` or a
+/// leading `/`) does not look like: 32 or more characters of mixed case and digits.
+fn looks_base64(part: &str) -> bool {
+    part.len() >= 32
+        && part.contains('/')
+        && !part.starts_with('/')
+        && part
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='))
+        && part.chars().any(|c| c.is_ascii_digit())
+        && part.chars().any(|c| c.is_ascii_uppercase())
+        && part.chars().any(|c| c.is_ascii_lowercase())
+        && !part
+            .split('/')
+            .any(|segment| segment.len() >= 3 && segment.chars().all(|c| c.is_ascii_lowercase()))
 }
 
 fn looks_secret(part: &str) -> bool {
@@ -555,6 +586,27 @@ mod tests {
         assert_eq!(
             clean("scalable-capital-desktop.exe"),
             "scalable-capital-desktop.exe"
+        );
+    }
+
+    #[test]
+    fn removes_standard_base64_with_slashes_but_keeps_paths_and_urls() {
+        let b64 = "Zm9vYmFyYmF6cXV4/QUJDREVGR0hJSktMTU5P+UFFSU1RVVldYWVo9MTIz/NDU2Nzg5MA==";
+        assert_eq!(
+            clean(&format!("token was {b64} end")),
+            "token was [secret] end"
+        );
+        assert_eq!(clean(b64), "[secret]");
+        for text in [
+            "/home/user/Projects2/scalable-capital-desktop/src-tauri/target",
+            "src/Components/Button2/IndexFile/ThingHolder.tsx",
+            "C:\\Users\\Me\\AppData\\Local\\Scalable2Capital\\logs",
+        ] {
+            assert_eq!(clean(text), text);
+        }
+        assert_eq!(
+            clean("GET https://github.com/Owner1/RepoName/releases/latest/download/latest.json"),
+            "GET https://github.com/Owner1/RepoName/releases/latest/download/latest.json"
         );
     }
 

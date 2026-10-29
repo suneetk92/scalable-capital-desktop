@@ -7,13 +7,14 @@
 //! no permission for it): only `get_background` and `set_background` are reachable.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, State, Window, WindowEvent};
+use tauri::{AppHandle, ExitRequestApi, Manager, State, Window, WindowEvent, RESTART_EXIT_CODE};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{files, logging, notify};
@@ -27,6 +28,9 @@ const MENU_SHOW: &str = "show";
 const MENU_QUIT: &str = "quit";
 const SALE_QUIT_WAIT: Duration = Duration::from_secs(20);
 const SALE_QUIT_POLL: Duration = Duration::from_millis(200);
+/// The steps of an exit while an extension is busy, after none (0): waiting for it, and done waiting.
+const EXIT_WAITING: u8 = 1;
+const EXIT_READY: u8 = 2;
 
 /// Passed to the app when the OS starts it at login, so it can tell that launch from a manual one.
 pub const AUTOSTART_FLAG: &str = "--autostart";
@@ -54,19 +58,25 @@ impl Default for Prefs {
 }
 
 #[derive(Default)]
-pub struct BackgroundState(Mutex<Prefs>);
+pub struct BackgroundState {
+    prefs: Mutex<Prefs>,
+    /// The file is there but could not be read at launch, so it is never saved over until it can be.
+    unreadable: AtomicBool,
+    /// Where an exit is in waiting for a busy extension (0, `EXIT_WAITING`, `EXIT_READY`).
+    exit: AtomicU8,
+}
 
 impl BackgroundState {
     fn get(&self) -> Prefs {
         *self
-            .0
+            .prefs
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     fn set(&self, prefs: Prefs) {
         *self
-            .0
+            .prefs
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = prefs;
     }
@@ -112,7 +122,7 @@ fn serialize_prefs(prefs: &Prefs) -> Result<String, serde_json::Error> {
 }
 
 fn keep_bad_prefs(path: &Path) {
-    let backup = path.with_extension("bad");
+    let backup = path.with_file_name(format!("{FILE}.bad"));
     let backup = if backup.exists() {
         (1..=100)
             .map(|suffix| path.with_file_name(format!("{FILE}.bad.{suffix}")))
@@ -125,25 +135,21 @@ fn keep_bad_prefs(path: &Path) {
     }
 }
 
-fn read_prefs(path: &Path) -> Prefs {
+/// `None` when the file is there but cannot be read right now (locked, no permission): it is left
+/// as it is, because the next read may work.
+fn read_prefs(path: &Path) -> Option<Prefs> {
     match std::fs::read_to_string(path) {
-        Ok(text) => match parse_prefs(&text) {
-            Ok(prefs) => prefs,
-            Err(_) => {
-                keep_bad_prefs(path);
-                Prefs::default()
-            }
-        },
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Prefs::default(),
-        Err(_) => {
+        Ok(text) => Some(parse_prefs(&text).unwrap_or_else(|_| {
             keep_bad_prefs(path);
             Prefs::default()
-        }
+        })),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(Prefs::default()),
+        Err(_) => None,
     }
 }
 
-fn load_prefs(app: &AppHandle) -> Prefs {
-    prefs_path(app).map_or_else(Prefs::default, |path| read_prefs(&path))
+fn load_prefs(app: &AppHandle) -> Option<Prefs> {
+    prefs_path(app).map_or(Some(Prefs::default()), |path| read_prefs(&path))
 }
 
 fn save_prefs(app: &AppHandle, prefs: Prefs) -> Result<(), String> {
@@ -187,10 +193,44 @@ pub fn on_window_event(window: &Window, event: &WindowEvent) {
                 );
                 prefs.tray_hint_shown = true;
                 state.set(prefs);
-                let _ = save_prefs(window.app_handle(), prefs);
+                if !state.unreadable.load(Ordering::SeqCst) {
+                    let _ = save_prefs(window.app_handle(), prefs);
+                }
             }
         }
     }
+}
+
+/// Called from the run loop for every exit (Quit in the tray, the last window closed): while an
+/// extension is busy (a trailing-stop sale), the exit waits up to `SALE_QUIT_WAIT` for it. A restart
+/// (after an update) cannot be held back and is let through.
+pub fn on_exit_requested(app: &AppHandle, api: &ExitRequestApi, code: Option<i32>) {
+    if code == Some(RESTART_EXIT_CODE) {
+        return;
+    }
+    let state = app.state::<BackgroundState>();
+    match state.exit.load(Ordering::SeqCst) {
+        EXIT_READY => return,
+        EXIT_WAITING => return api.prevent_exit(),
+        _ => {}
+    }
+    if !crate::extensions::busy(app) {
+        return;
+    }
+    // Exit requests arrive one at a time on the main thread, so a plain store is enough.
+    state.exit.store(EXIT_WAITING, Ordering::SeqCst);
+    api.prevent_exit();
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let deadline = tokio::time::Instant::now() + SALE_QUIT_WAIT;
+        while crate::extensions::busy(&app) && tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(SALE_QUIT_POLL).await;
+        }
+        app.state::<BackgroundState>()
+            .exit
+            .store(EXIT_READY, Ordering::SeqCst);
+        app.exit(code.unwrap_or(0));
+    });
 }
 
 /// Called when a second copy is started: shows the window of the running one instead.
@@ -200,8 +240,11 @@ pub fn on_second_instance(app: &AppHandle) {
 
 /// Loads the options, builds the tray icon and shows the main window (hidden at a minimized login start).
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
-    let prefs = load_prefs(app);
-    app.state::<BackgroundState>().set(prefs);
+    let loaded = load_prefs(app);
+    let prefs = loaded.unwrap_or_default();
+    let state = app.state::<BackgroundState>();
+    state.set(prefs);
+    state.unreadable.store(loaded.is_none(), Ordering::SeqCst);
 
     let show = MenuItem::with_id(
         app,
@@ -218,16 +261,8 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             MENU_SHOW => show_main(app),
-            MENU_QUIT => {
-                let app = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    let deadline = tokio::time::Instant::now() + SALE_QUIT_WAIT;
-                    while crate::extensions::busy(&app) && tokio::time::Instant::now() < deadline {
-                        tokio::time::sleep(SALE_QUIT_POLL).await;
-                    }
-                    app.exit(0);
-                });
-            }
+            // `on_exit_requested` holds the exit back while a sale finishes.
+            MENU_QUIT => app.exit(0),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -271,29 +306,53 @@ pub fn set_background(
     start_minimized: bool,
     launch_at_startup: bool,
 ) -> Result<Status, String> {
+    let mut previous = state.get();
+    if state.unreadable.load(Ordering::SeqCst) {
+        // Read again before saving, so a file that could not be read at launch is not replaced blindly.
+        let saved = load_prefs(&app).ok_or_else(|| {
+            logging::log_failure("background", "reading the background options", "");
+            "The background options could not be read, so they were not changed. Try again."
+                .to_owned()
+        })?;
+        previous = Prefs {
+            tray_hint_shown: previous.tray_hint_shown || saved.tray_hint_shown,
+            ..saved
+        };
+        state.unreadable.store(false, Ordering::SeqCst);
+    }
     let prefs = Prefs {
         close_to_tray,
         start_minimized,
-        tray_hint_shown: state.get().tray_hint_shown,
+        tray_hint_shown: previous.tray_hint_shown,
     };
-    let autolaunch = app.autolaunch();
-    let registered = autolaunch.is_enabled().unwrap_or(false);
-    if launch_at_startup && !registered {
-        autolaunch
-            .enable()
-            .map_err(|e| format!("Could not turn on start with Windows: {e}"))
-            .inspect_err(|_| logging::log_failure("background", "turning on autostart", ""))?;
-    } else if !launch_at_startup && registered {
-        autolaunch
-            .disable()
-            .map_err(|e| format!("Could not turn off start with Windows: {e}"))
-            .inspect_err(|_| logging::log_failure("background", "turning off autostart", ""))?;
-    }
+    // Saved first: if start on boot cannot be changed, the saved options go back to what they were.
     save_prefs(&app, prefs).inspect_err(|error| {
         logging::log_failure("background", "saving the background options", error)
     })?;
+    if let Err(error) = set_autostart(&app, launch_at_startup) {
+        let _ = save_prefs(&app, previous);
+        return Err(error);
+    }
     state.set(prefs);
     Ok(status(&app))
+}
+
+fn set_autostart(app: &AppHandle, on: bool) -> Result<(), String> {
+    let autolaunch = app.autolaunch();
+    let registered = autolaunch.is_enabled().unwrap_or(false);
+    if on && !registered {
+        autolaunch
+            .enable()
+            .map_err(|e| format!("Could not turn on start with Windows: {e}"))
+            .inspect_err(|_| logging::log_failure("background", "turning on autostart", ""))
+    } else if !on && registered {
+        autolaunch
+            .disable()
+            .map_err(|e| format!("Could not turn off start with Windows: {e}"))
+            .inspect_err(|_| logging::log_failure("background", "turning off autostart", ""))
+    } else {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -360,13 +419,37 @@ mod tests {
         let path = directory.join(FILE);
         std::fs::write(&path, "not json").unwrap();
 
-        assert_eq!(read_prefs(&path), Prefs::default());
+        assert_eq!(read_prefs(&path), Some(Prefs::default()));
         assert!(!path.exists());
         assert_eq!(
-            std::fs::read_to_string(directory.join("background.bad")).unwrap(),
+            std::fs::read_to_string(directory.join("background.json.bad")).unwrap(),
             "not json"
         );
-        assert_eq!(read_prefs(&path), Prefs::default());
+        assert_eq!(read_prefs(&path), Some(Prefs::default()));
+        std::fs::write(&path, "still not json").unwrap();
+        assert_eq!(read_prefs(&path), Some(Prefs::default()));
+        assert_eq!(
+            std::fs::read_to_string(directory.join("background.json.bad.1")).unwrap(),
+            "still not json"
+        );
+
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn a_file_that_cannot_be_read_now_is_left_alone() {
+        let directory = std::env::temp_dir().join(format!(
+            "scalable-capital-desktop-background-locked-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&directory);
+        // A folder in place of the file cannot be read as text, like a locked file.
+        let path = directory.join(FILE);
+        std::fs::create_dir_all(&path).unwrap();
+
+        assert_eq!(read_prefs(&path), None);
+        assert!(path.is_dir());
+        assert!(!directory.join("background.json.bad").exists());
 
         let _ = std::fs::remove_dir_all(directory);
     }

@@ -46,6 +46,7 @@ fn core_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let extension_handler = extensions::handler();
+    let core = core_handler();
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             background::on_second_instance(app)
@@ -68,7 +69,6 @@ pub fn run() {
             if extensions::handles(invoke.message.command()) {
                 return extension_handler(invoke);
             }
-            let core = core_handler();
             core(invoke)
         })
         .on_window_event(background::on_window_event)
@@ -86,9 +86,16 @@ pub fn run() {
             extensions::setup(app.handle());
             Ok(background::setup(app.handle())?)
         })
-        .run(tauri::generate_context!());
-    if let Err(error) = result {
-        eprintln!("error while running Scalable Capital Desktop: {error}");
-        std::process::exit(1);
+        .build(tauri::generate_context!());
+    match result {
+        Ok(app) => app.run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { code, api, .. } = &event {
+                background::on_exit_requested(app, api, *code);
+            }
+        }),
+        Err(error) => {
+            eprintln!("error while running Scalable Capital Desktop: {error}");
+            std::process::exit(1);
+        }
     }
 }
