@@ -16,7 +16,7 @@ export function NotificationCenter({ notifications }: { notifications: Notificat
           <PopoverButton className={cx(iconButtonClass(), "relative", open && "bg-hover text-ink-strong")} aria-label={count > 0 ? `Notifications, ${count}` : "Notifications"} title="Notifications">
             <BellIcon aria-hidden="true" />
             {count > 0 && (
-              <span className="absolute top-0.5 right-0.5 grid h-[1.3em] min-w-[1.3em] place-items-center rounded-full bg-sell px-1 text-[0.75em] leading-none font-semibold text-white">
+              <span className="absolute top-0.5 right-0.5 grid h-[1.3em] min-w-[1.3em] place-items-center rounded-full bg-sell px-1 text-[0.75em] leading-none font-semibold text-on-sell">
                 {count > 9 ? "9+" : count}
               </span>
             )}

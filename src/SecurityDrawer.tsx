@@ -101,7 +101,8 @@ export function SecurityDrawer({
   const bid = findField(quote, ["bidPrice"]);
   const ask = findField(quote, ["askPrice"]);
   const chartOutcome = chart.entries[0]?.outcome;
-  const points = chartOutcome?.ok ? extractSeries(chartOutcome.result) : [];
+  // Memoized: LineChart rebuilds the chart whenever it gets a new `points` array.
+  const points = useMemo(() => (chartOutcome?.ok ? extractSeries(chartOutcome.result) : []), [chartOutcome]);
   const newsOutcome = news.entries[0]?.outcome;
   const venuesOutcome = venues.entries[0]?.outcome;
   const footer = (

@@ -4,7 +4,10 @@ import { cx, SignGlyph, signClass } from "./ui";
 import { formatCell, formatPointTime, seriesTimes, type SeriesPoint } from "./tools";
 import { formatDate, formatPercent } from "./format";
 
-/** The chart takes its colours and font from the theme variables, so both themes work. */
+/** Axis labels at 0.75rem; the canvas needs pixels, so the size follows the font-size setting through the root size. */
+const AXIS_FONT_REM = 0.75;
+
+/** The chart takes its colours and font from the theme variables, so both themes and the font-size setting work. */
 function chartStyle() {
   const css = getComputedStyle(document.documentElement);
   const read = (name: string) => css.getPropertyValue(name).trim();
@@ -13,6 +16,7 @@ function chartStyle() {
       background: { type: ColorType.Solid, color: read("--color-inset") },
       textColor: read("--color-ink-muted"),
       fontFamily: getComputedStyle(document.body).fontFamily,
+      fontSize: Math.round((parseFloat(css.fontSize) || 15) * AXIS_FONT_REM),
       attributionLogo: false,
     },
     grid: { vertLines: { color: read("--color-line") }, horzLines: { color: read("--color-line") } },
@@ -52,7 +56,7 @@ export function LineChart({ points, label = "Price chart", format = formatCell }
 
     const chart = createChart(element, {
       autoSize: true,
-      layout: { ...style.layout, fontSize: 11 },
+      layout: style.layout,
       grid: style.grid,
       crosshair: style.crosshair,
       rightPriceScale: style.rightPriceScale,
@@ -106,7 +110,8 @@ export function LineChart({ points, label = "Price chart", format = formatCell }
       chart.applyOptions({ layout: next.layout, grid: next.grid, crosshair: next.crosshair, rightPriceScale: next.rightPriceScale, timeScale: next.timeScale });
       series.applyOptions({ color: up ? next.up : next.down });
     });
-    themed.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    // The theme sets `data-theme` and the font settings set the root's `style`.
+    themed.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "style"] });
 
     return () => {
       themed.disconnect();

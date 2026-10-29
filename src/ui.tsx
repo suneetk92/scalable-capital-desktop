@@ -11,12 +11,12 @@ import { useRef, useState, type ComponentType, type CSSProperties, type ReactNod
  */
 
 const BADGE_TONES = {
-  gray: { box: "bg-ink-soft/10 text-ink-soft", dot: "fill-gray-400" },
+  gray: { box: "bg-ink-soft/10 text-ink-soft", dot: "fill-ink-faint" },
   red: { box: "bg-danger-bg text-danger-ink", dot: "fill-danger-ink" },
   yellow: { box: "bg-warn-bg text-warn-ink", dot: "fill-warn-ink" },
   green: { box: "bg-up/10 text-up", dot: "fill-up" },
-  blue: { box: "bg-blue-400/10 text-blue-400 light:text-blue-700", dot: "fill-blue-400" },
-  purple: { box: "bg-purple-400/10 text-purple-400", dot: "fill-purple-400" },
+  blue: { box: "bg-tone-blue/10 text-tone-blue", dot: "fill-tone-blue" },
+  purple: { box: "bg-tone-purple/10 text-tone-purple", dot: "fill-tone-purple" },
 } as const;
 
 type BadgeTone = keyof typeof BADGE_TONES;
@@ -53,7 +53,7 @@ export function Switch({ label, checked, onToggle, disabled = false }: { label: 
       aria-label={label}
       className="group relative inline-flex w-11 shrink-0 cursor-pointer rounded-full bg-ink-heading/10 p-0.5 inset-ring inset-ring-ink-heading/10 transition-colors duration-200 ease-in-out data-checked:bg-accent data-disabled:cursor-not-allowed data-disabled:opacity-50 data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-accent"
     >
-      <span aria-hidden="true" className="size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-data-checked:translate-x-5" />
+      <span aria-hidden="true" className="size-5 rounded-full bg-knob shadow-xs ring-1 ring-line transition-transform duration-200 ease-in-out group-data-checked:translate-x-5" />
     </HeadlessSwitch>
   );
 }
@@ -388,7 +388,7 @@ export const btn = {
   secondary:
     "flex h-[2.2rem] shrink-0 cursor-pointer items-center gap-[0.4667rem] rounded-control border border-line-strong bg-raised px-3 whitespace-nowrap text-ink-body hover:border-line-hover hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:size-[1.2rem]",
   primary: `${BTN_BASE} h-[2.3333rem] border-buy-edge bg-buy px-3.5 text-on-accent enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`,
-  danger: `${BTN_BASE} h-[2.2rem] border-danger-edge bg-sell px-3.5 text-white enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`,
+  danger: `${BTN_BASE} h-[2.2rem] border-danger-edge bg-sell px-3.5 text-on-sell enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`,
   trade: `${TRADE_BASE} border-line-strong`,
   buy: `${TRADE_BASE} border-accent-line-strong text-up`,
   sell: `${TRADE_BASE} border-danger-line text-down`,
@@ -518,7 +518,7 @@ export function PanelFooter({ tradingEnabled, manageEnabled }: { tradingEnabled:
     <footer className="flex min-h-[2.3333rem] items-center justify-between border-t border-line px-4 text-ink-muted [&>span:last-child]:flex [&>span:last-child]:items-center [&>span:last-child]:gap-[0.3333rem] [&_svg]:size-3 [&_svg]:text-ink-accent-dim">
       <span>Data provided by Scalable Capital</span>
       <span>
-        <ShieldCheckIcon aria-hidden="true" /> Secure connection · {tradingEnabled ? "Trading enabled" : manageEnabled ? "Restricted access" : "Read only"}
+        <ShieldCheckIcon aria-hidden="true" /> Secure connection · {tradingEnabled ? "Trading enabled" : manageEnabled ? "Restricted access" : "Read-only"}
       </span>
     </footer>
   );

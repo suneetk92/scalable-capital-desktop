@@ -15,6 +15,8 @@ export function usePreviewExpiry(expiresAt: number | null): { expired: boolean; 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (expiresAt === null) return;
+    // A new preview counts from now, not from the last tick of the previous one.
+    setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [expiresAt]);

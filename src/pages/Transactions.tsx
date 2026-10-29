@@ -102,7 +102,7 @@ const COLUMNS = ["when", "kind", "name", "status", "quantity", "limit", "amount"
 const HEADS: Record<string, { label: string; numeric?: boolean; iconAfter?: boolean; className?: string }> = {
   when: { label: "Date" },
   kind: { label: "Type" },
-  name: { label: "Symbol / Name", iconAfter: true, className: NAME_COLUMN },
+  name: { label: "Symbol / name", iconAfter: true, className: NAME_COLUMN },
   status: { label: "Status" },
   quantity: { label: "Quantity", numeric: true },
   limit: { label: "Limit price", numeric: true },
@@ -217,7 +217,7 @@ export function TransactionsPage({
     );
   };
 
-  // Sorting covers every page and
+  // Sorting covers every page and the whole history, not only the rows shown.
   const [sort, setSort] = useState<SortState>(null);
   const { order, layout } = useTableLayout("transactions", COLUMNS);
   const resized = resizedTable(layout.widths);
@@ -243,7 +243,7 @@ export function TransactionsPage({
   const copyCsv = async () => {
     const lines = [
       ["Date", "Type", "ISIN", "Name", "Status", "Quantity", "Limit price", "Amount"],
-      ...visible.map((row) => {
+      ...ordered.map((row) => {
         const { fields } = row;
         return [
           fields.when,

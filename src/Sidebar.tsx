@@ -71,7 +71,7 @@ export function Sidebar({
                 className={navItemClass(view === id, navDragId === id)}
                 type="button"
                 aria-label={count === undefined ? item.label : `${item.label}, ${count}`}
-                title={`${item.label}. Drag to reorder, or use Alt+↑ and Alt+↓`}
+                title={`${item.label}. Drag to reorder, or use Alt+Up and Alt+Down`}
                 onPointerDown={(event) => startNavDrag(event, id)}
                 onKeyDown={(event) => onNavKeyDown(event, id)}
                 onClick={() => {

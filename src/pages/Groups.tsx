@@ -312,7 +312,14 @@ export function GroupsPage({
             else if (group)
               void actions.run(
                 "upsert_portfolio_group",
-                { portfolioId: group.portfolioId, groupId: group.id, name: values.name, description: values.description },
+                // An empty description is left out of the call, so clearing one needs `clearDescription`.
+                {
+                  portfolioId: group.portfolioId,
+                  groupId: group.id,
+                  name: values.name,
+                  description: values.description,
+                  ...(values.description === "" && group.description ? { clearDescription: true } : {}),
+                },
                 { done: `Group renamed to “${values.name}”` },
               );
           }}

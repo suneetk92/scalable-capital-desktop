@@ -65,13 +65,7 @@ export const ScreenerRowView = memo(function ScreenerRowView({
   dragging?: boolean;
 }) {
   return (
-    <tr
-      className={cx("group/row", movable && "cursor-grab", dropTarget && "bg-accent-bg!", dragging && "opacity-50")}
-      aria-selected={selected}
-      data-index={index}
-      data-section={sectionKey}
-      aria-rowindex={index + 2}
-    >
+    <tr className={cx("group/row", movable && "cursor-grab", dropTarget && "bg-accent-bg!", dragging && "opacity-50")} data-index={index} data-section={sectionKey} aria-rowindex={index + 2}>
       <td className="w-11 px-3!">
         <RowCheckbox label={`Select ${row.name}`} checked={selected} onChange={(checked) => onToggleRow(row.rowId, checked)} />
       </td>

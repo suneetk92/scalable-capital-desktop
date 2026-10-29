@@ -1,7 +1,7 @@
-import { JsonTree } from "../JsonTree";
 import { useState } from "react";
 import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { useTableLayout } from "../hooks/useTableLayout";
+import { JsonTree } from "../JsonTree";
 import { Modal } from "../ToolViews";
 import { schemaArguments, type PublishedTool } from "../toolSchema";
 import { pretty } from "../tools";
@@ -20,7 +20,7 @@ const HEADS: Record<string, string> = { name: "Argument", type: "Type", required
 
 function Json({ value, empty }: { value: unknown; empty: string }) {
   if (value === null || value === undefined) return <p className={EMPTY}>{empty}</p>;
-  return <JsonTree value={value} />;
+  return <JsonTree value={value} maxHeight="max-h-96" />;
 }
 
 /** Shows what Scalable publishes for one tool in `tools/list`: its arguments, input schema and output schema. */

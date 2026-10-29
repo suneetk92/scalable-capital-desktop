@@ -61,6 +61,53 @@ describe("mocked-invoke smoke flows", () => {
     expect(onPlaced).toHaveBeenCalledOnce();
   });
 
+  it("keeps the review and submits the previewed order when the portfolios reload", async () => {
+    const invoke = mockInvoke((command) => {
+      if (command === "preview_order") return emptyPreview;
+      if (command === "submit_order") return { orderId: "order-1" };
+      return undefined;
+    });
+    const props = { target, defaultVenue: "gettex" as const, invoke, parseSearch, formatMoney: (value: number | null) => `${value ?? "—"} EUR`, onClose: vi.fn(), onPlaced: vi.fn() };
+    const { rerender } = render(<OrderDialog {...props} portfolios={portfolios} />);
+
+    fireEvent.change(screen.getAllByRole("textbox")[0], { target: { value: "900" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview buy order" }));
+    await screen.findByRole("button", { name: "Confirm and place buy order" });
+    // A reload lowers the buying power below the previewed amount; the review must not disappear.
+    rerender(<OrderDialog {...props} portfolios={[{ ...portfolios[0], buyingPower: 10 }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and place buy order" }));
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("submit_order", expect.objectContaining({ previewId: "preview-id-1", request: expect.objectContaining({ amount: 900 }) })));
+  });
+
+  it("keeps the order receipt when a protection order is started and cancelled", async () => {
+    const invoke = mockInvoke((command) => {
+      if (command === "preview_order") return emptyPreview;
+      if (command === "submit_order") return { orderId: "order-1" };
+      return undefined;
+    });
+    render(
+      <OrderDialog
+        target={target}
+        defaultVenue="gettex"
+        portfolios={portfolios}
+        invoke={invoke}
+        parseSearch={parseSearch}
+        formatMoney={(value) => `${value ?? "—"} EUR`}
+        onClose={vi.fn()}
+        onPlaced={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getAllByRole("textbox")[0], { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview buy order" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm and place buy order" }));
+    expect(await screen.findByText("order-1")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: /^Set / })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByText("order-1")).toBeTruthy();
+  });
+
   it("shows the failed preview request and a venue hint", async () => {
     const invoke = mockInvoke((command) => {
       if (command === "preview_order") throw new Error("Scalable MCP tool preview_sell_order failed. The request could not be completed. Details: error.code=internal_error; error.requestId=req-123");

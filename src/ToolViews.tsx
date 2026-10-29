@@ -1,9 +1,9 @@
-import { JsonTree } from "./JsonTree";
 import { Field, Label } from "@headlessui/react";
 import { InboxIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { ColumnHead, resizedTable } from "./ColumnHead";
 import { useTableLayout } from "./hooks/useTableLayout";
+import { JsonTree } from "./JsonTree";
 import { CheckboxField, EmptyState, Pagination, Select, SortHeader } from "./controls";
 import { nextSort, sortItems, type SortState } from "./sorting";
 import { useShowDiagnostics } from "./settings";
@@ -71,8 +71,9 @@ export function JsonView({ value, label = "Raw data" }: { value: unknown; label?
   return (
     <details className="mt-3 text-ink-muted">
       <summary className="cursor-pointer">{label}</summary>
-      <div className="mt-2" />
-      <JsonTree value={value} />
+      <div className="mt-2">
+        <JsonTree value={value} />
+      </div>
     </details>
   );
 }
@@ -136,7 +137,7 @@ type RecordColumn = { path: string; label: string };
 
 const SECURITY_NAME_PATH = /^((instrument|security)Name|(instrument|security)\.name)$/i;
 
-/** The column that names a security: shown like the Symbol / Name column of the Portfolio table. */
+/** The column that names a security: shown like the Symbol / name column of the Portfolio table. */
 const isSecurityName = (path: string) => SECURITY_NAME_PATH.test(path);
 
 function pickColumns(records: Rec[], max = 6): RecordColumn[] {
@@ -159,7 +160,7 @@ function pickColumns(records: Rec[], max = 6): RecordColumn[] {
   const named = ordered.some(isSecurityName);
   return ordered
     .filter((path) => !(named && ["isin", "identifier"].includes(path.split(".").slice(-1)[0].toLowerCase())))
-    .map((path) => ({ path, label: isSecurityName(path) ? "Symbol / Name" : humanize(path.split(".").slice(-2).join(" ")) }));
+    .map((path) => ({ path, label: isSecurityName(path) ? "Symbol / name" : humanize(path.split(".").slice(-2).join(" ")) }));
 }
 
 function valueAt(record: Rec, path: string): unknown {
@@ -225,7 +226,6 @@ export function RecordTable({
   emptyTitle = "Nothing to show",
   emptyIcon,
   emptyAction,
-  onRow,
   onOpenSecurity,
   pageSize = DEFAULT_RECORD_PAGE_SIZE,
   invoke,
@@ -236,7 +236,6 @@ export function RecordTable({
   emptyTitle?: string;
   emptyIcon?: ComponentType<SVGProps<SVGSVGElement>>;
   emptyAction?: ReactNode;
-  onRow?: (record: Rec) => void;
   /** Makes the security names open the security details. */
   onOpenSecurity?: (security: { isin: string; name: string }) => void;
   /** Rows per page; 0 shows every row. */
@@ -290,10 +289,10 @@ export function RecordTable({
           </thead>
           <tbody>
             {sorted.slice(offset, offset + rowsPerPage).map((record, index) => (
-              <tr key={offset + index} className={onRow ? "cursor-pointer" : ""} onClick={onRow ? () => onRow(record) : undefined}>
+              <tr key={offset + index}>
                 {order.map((id) =>
                   id === ACTIONS_COLUMN && actions ? (
-                    <td key={id} className={TD_NUM} onClick={(event) => event.stopPropagation()}>
+                    <td key={id} className={TD_NUM}>
                       <div className="flex justify-end gap-1.5">{actions(record)}</div>
                     </td>
                   ) : (

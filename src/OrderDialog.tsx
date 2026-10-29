@@ -1,6 +1,7 @@
 import { Description, Field, Label } from "@headlessui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GroupInput, Select } from "./controls";
+import { JsonTree } from "./JsonTree";
 import { LINES, PreviewReviewBody } from "./PreviewReview";
 import { SecurityPicker } from "./SecurityPicker";
 import { PROTECTION_LEGS, protectionIssue, type ProtectionKind } from "./protection";
@@ -9,7 +10,7 @@ import { invokeCommand } from "./commands";
 import { humanize } from "./tools";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Alert, btn, cx, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "./ui";
-import { formatNumber, parseDecimal } from "./format";
+import { ambiguousThousands, ambiguousThousandsMessage, formatNumber, parseDecimal } from "./format";
 import { amountExceedsBuyingPower, amountIssue, limitPriceHint, previewFailureHint, priceIssue, quantityExceedsHolding, stopPriceIssue } from "./order";
 import { usePreviewFlow } from "./hooks/usePreviewFlow";
 import { extension } from "./extensions";
@@ -108,7 +109,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
   const showDiagnostics = useShowDiagnostics();
   const flow = usePreviewFlow();
   const stage = flow.stage === "complete" ? "placed" : flow.stage;
-  const { preview, result, accepted, setAccepted, busy, error, setError, review, expiry, allAccepted } = flow;
+  const { preview, accepted, setAccepted, busy, error, setError, review, expiry, allAccepted } = flow;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [side, setSide] = useState<OrderSide>(target.side);
   const [security, setSecurity] = useState<SecurityHit | null>(target.security);
@@ -120,8 +121,12 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
   const [stopPrice, setStopPrice] = useState("");
   const [venue, setVenue] = useState<VenueSetting>(defaultVenue);
   const [failedPreview, setFailedPreview] = useState<FailedPreview | null>(null);
+  // The order as it was previewed: the review shows and submits this copy, so a reload of the portfolios cannot change or empty it.
+  const [reviewed, setReviewed] = useState<{ request: OrderRequest; security: SecurityHit } | null>(null);
   const [protect, setProtect] = useState<ProtectionKind | null>(null);
   const [protectable, setProtectable] = useState(false);
+  // What Scalable answered for the last order placed; kept when a protection leg is started and cancelled.
+  const [receipt, setReceipt] = useState<unknown>(null);
   const [placedLegs, setPlacedLegs] = useState<ProtectionKind[]>([]);
   const [bought, setBought] = useState<{ quantity: number | null; limitPrice: number | null }>({ quantity: null, limitPrice: null });
 
@@ -146,6 +151,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
 
   const validation = useMemo<Validation>(() => {
     if (!security) return issue("security", "Choose a security first.");
+    if (ambiguousThousands(size)) return issue("size", ambiguousThousandsMessage(size));
     const number = toNumber(size);
     if (number === null || number <= 0) return issue("size", sizing === "amount" ? "Enter an amount greater than zero." : "Enter a number of shares greater than zero.");
     if (side === "buy" && sizing === "shares" && !Number.isInteger(number)) return issue("size", "Buy orders accept whole shares only.");
@@ -158,6 +164,8 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
     if (side === "sell" && sizing === "shares" && quantityExceedsHolding(number, heldQuantity)) {
       return issue("size", `You hold ${heldQuantity} shares and cannot sell more than that.`);
     }
+    if (orderType === "limit" && ambiguousThousands(limitPrice)) return issue("limit", ambiguousThousandsMessage(limitPrice));
+    if (orderType === "stop" && ambiguousThousands(stopPrice)) return issue("stop", ambiguousThousandsMessage(stopPrice));
     const limit = toNumber(limitPrice);
     const stop = toNumber(stopPrice);
     if (orderType === "limit" && (limit === null || limit <= 0)) return issue("limit", "Enter a limit price.");
@@ -214,16 +222,20 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
       portfolioCurrency: attemptedPortfolio?.currency ?? "",
       attemptedAt: new Date().toLocaleString(),
     };
+    const previewedSecurity = security;
     const response = await flow.runPreview(() => invokeCommand(invoke, "preview_order", { request }));
     if (response === null) setFailedPreview(failedRequest);
+    else if (previewedSecurity) setReviewed({ request, security: previewedSecurity });
   }
 
   async function placeOrder() {
-    if (request === null || !preview) return;
+    if (reviewed === null || !preview) return;
+    const { request } = reviewed;
     setFailedPreview(null);
     await flow.runSubmit(
       (previewId) => invokeCommand(invoke, "submit_order", { previewId, request, acknowledgeWarning: allAccepted }),
-      () => {
+      (placed) => {
+        setReceipt(placed);
         if (request.side === "buy") {
           setProtectable(true);
           setBought({ quantity: request.shares, limitPrice: request.orderType === "limit" ? request.limitPrice : null });
@@ -244,6 +256,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
     setOrderType(kind);
     setLimitPrice("");
     setStopPrice("");
+    setReviewed(null);
     flow.reset();
   }
 
@@ -254,8 +267,10 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
   // Escape and outside clicks go through Headless UI's Dialog; the review step can only be left with its buttons.
   const dialogClose = stage === "preview" ? () => undefined : stage === "placed" ? onClose : requestClose;
 
-  const sideLabel = side === "buy" ? "Buy" : "Sell";
-  const summary = request;
+  const summary = reviewed?.request ?? null;
+  const reviewedSecurity = reviewed?.security ?? null;
+  const reviewedPortfolio = summary ? portfolios.find((item) => item.portfolioId === summary.portfolioId) : undefined;
+  const sideLabel = (summary?.side ?? side) === "buy" ? "Buy" : "Sell";
   const failedRequest = failedPreview?.request;
   const failureHint = error && failedPreview ? previewFailureHint(error) : null;
 
@@ -311,7 +326,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
               </button>
               <button
                 type="button"
-                className={cx(SIDE_BUTTON, side === "sell" ? "bg-sell text-white" : "bg-inset text-ink-soft")}
+                className={cx(SIDE_BUTTON, side === "sell" ? "bg-sell text-on-sell" : "bg-inset text-ink-soft")}
                 onClick={() => {
                   setSide("sell");
                   setSizing("shares");
@@ -467,33 +482,35 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
         </>
       )}
 
-      {stage === "preview" && summary && security && preview && (
+      {stage === "preview" && summary && reviewedSecurity && preview && (
         <>
           <div
             className={cx(
               "mb-3.5 grid gap-[0.2rem] rounded-control border border-l-4 border-y-line-strong border-r-line-strong bg-inset p-3 text-ink-body [&_small]:text-[1em] [&_small]:text-ink-muted [&_strong]:text-ink-heading",
-              side === "buy" ? "border-l-buy" : "border-l-sell",
+              summary.side === "buy" ? "border-l-buy" : "border-l-sell",
             )}
           >
             <strong>
-              {sideLabel} {security.name}
+              {sideLabel} {reviewedSecurity.name}
             </strong>
             <span>
               {summary.amount !== null ? orderMoney(summary.amount) : `${summary.shares} shares`} · {summary.orderType}
-              {summary.limitPrice !== null && ` @ ${formatMoney(summary.limitPrice, currency)}`}
-              {summary.stopPrice !== null && ` stop ${formatMoney(summary.stopPrice, currency)}`}
+              {summary.limitPrice !== null && ` @ ${formatMoney(summary.limitPrice, reviewedSecurity.currency)}`}
+              {summary.stopPrice !== null && ` stop ${formatMoney(summary.stopPrice, reviewedSecurity.currency)}`}
             </span>
             <small>
-              {security.isin}
-              {portfolio ? ` · ${portfolio.name}` : ""}
-              {` · ${VENUE_OPTIONS.find((item) => item.value === venue)?.label ?? venue}`}
+              {reviewedSecurity.isin}
+              {reviewedPortfolio ? ` · ${reviewedPortfolio.name}` : ""}
+              {` · ${VENUE_OPTIONS.find((item) => item.value === summary.venue)?.label ?? summary.venue}`}
             </small>
           </div>
           <PreviewReviewBody review={review} accepted={accepted} onAccepted={setAccepted} expired={expiry.expired} expiryLabel={expiry.label} />
           {showDiagnostics && (
-            <details className="mb-3.5 text-ink-muted [&_pre]:max-h-48 [&_pre]:overflow-auto [&_pre]:rounded-control [&_pre]:bg-inset [&_pre]:p-2 [&_pre]:whitespace-pre-wrap">
-              <summary>Raw preview from Scalable</summary>
-              <pre>{JSON.stringify(preview.preview, null, 2)}</pre>
+            <details className="mb-3.5 text-ink-muted">
+              <summary className="cursor-pointer">Raw preview from Scalable</summary>
+              <div className="mt-2">
+                <JsonTree value={preview.preview} />
+              </div>
             </details>
           )}
           <p className={NOTE}>Placing this order is final once submitted. The preview expires after 5 minutes.</p>
@@ -508,6 +525,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
               type="button"
               onClick={() => {
                 flow.backToForm();
+                setReviewed(null);
                 setError(null);
               }}
               disabled={busy}
@@ -515,10 +533,10 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
               Back
             </button>
             <span className="mr-auto min-w-0 self-center text-left text-sm text-ink-muted">
-              {sideLabel} {security.name} · {summary.amount !== null ? orderMoney(summary.amount) : `${summary.shares} shares`} · {summary.orderType} order
+              {sideLabel} {reviewedSecurity.name} · {summary.amount !== null ? orderMoney(summary.amount) : `${summary.shares} shares`} · {summary.orderType} order
             </span>
-            <button className={side === "buy" ? btn.primary : btn.danger} type="button" onClick={() => void placeOrder()} disabled={busy || expiry.expired || review.blocked || !allAccepted}>
-              {busy ? "Submitting…" : `Confirm and place ${side} order`}
+            <button className={summary.side === "buy" ? btn.primary : btn.danger} type="button" onClick={() => void placeOrder()} disabled={busy || expiry.expired || review.blocked || !allAccepted}>
+              {busy ? "Submitting…" : `Confirm and place ${summary.side} order`}
             </button>
           </DialogFooter>
         </>
@@ -528,7 +546,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
         <>
           <p className={NOTE}>Scalable accepted the request. Check your transactions for the final order status.</p>
           <dl className={LINES}>
-            {payloadLines(result).map((line, index) => (
+            {payloadLines(receipt).map((line, index) => (
               <div key={`${line.label}-${index}`}>
                 <dt>{line.label}</dt>
                 <dd>{line.value}</dd>

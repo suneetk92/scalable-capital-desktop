@@ -21,6 +21,8 @@
  *   line / line-strong / line-hover                     borders and dividers
  *   ink-faint ... ink-heading                           text, quietest to loudest
  *   accent, ink-accent*, buy, sell, danger-*, warn-*    brand and status colours
+ *   on-sell, knob                                       text on the sell colour, the thumb of a switch
+ *   tone-blue, tone-purple                              badge tones without a status meaning (security types)
  */
 @theme {
   --color-canvas: #101217;
@@ -58,6 +60,10 @@
   --color-buy: #3fc9a3;
   --color-buy-edge: #2f8f76;
   --color-sell: #b4414b;
+  --color-on-sell: #ffffff;
+  --color-knob: #ffffff;
+  --color-tone-blue: #60a5fa;
+  --color-tone-purple: #c084fc;
   --color-danger-edge: #8a3d44;
   --color-up: #41c59f;
   --color-down: #e46d76;
@@ -228,6 +234,8 @@
     --color-logo-edge: rgb(0 126 100 / 0.35);
     --color-up: #017e5f;
     --color-down: #c9303f;
+    --color-tone-blue: #1d4ed8;
+    --color-tone-purple: #7e22ce;
 
     --color-danger-bg: #fdecee;
     --color-danger-line: #efb8be;

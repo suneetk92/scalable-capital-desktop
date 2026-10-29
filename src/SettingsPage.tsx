@@ -32,7 +32,6 @@ import {
   type FontFamilySetting,
   type Settings,
   type ThemeSetting,
-  type UpdateChannelSetting,
   type VenueSetting,
 } from "./settings";
 
@@ -64,16 +63,12 @@ const DENSITIES: [DensitySetting, string][] = [
   ["comfortable", "Comfortable"],
   ["compact", "Compact"],
 ];
-const UPDATE_CHANNELS: [UpdateChannelSetting, string][] = [
-  ["stable", "Stable"],
-  ["rc", "Release candidate"],
-];
 
 const SHORTCUTS: [string, string][] = [
   ["Ctrl+K or Alt+K", "Focus the table search"],
   ["Ctrl+P", "Open the command palette"],
   ["Ctrl+,", "Open these settings"],
-  ["Alt+↑ or Alt+↓", "Move the focused sidebar item"],
+  ["Alt+Up or Alt+Down", "Move the focused sidebar item"],
   ["Esc", "Close the open menu, dialog or panel"],
 ];
 
@@ -215,11 +210,11 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 /** Copies the sanitised bug-report text built in Rust (`diagnostics.rs`) and opens the log folder; no path or data passes through the webview. */
-function DiagnosticsCard({ updateChannel, onCopyText }: { updateChannel: UpdateChannelSetting; onCopyText: (text: string, done: string) => void }) {
+function DiagnosticsCard({ onCopyText }: { onCopyText: (text: string, done: string) => void }) {
   const [problem, setProblem] = useState<string | null>(null);
   async function copy() {
     try {
-      const text = await invokeCommand(invoke, "export_diagnostics", { updateChannel });
+      const text = await invokeCommand(invoke, "export_diagnostics");
       setProblem(null);
       onCopyText(text, "Diagnostics copied to the clipboard.");
     } catch (error) {
@@ -238,7 +233,7 @@ function DiagnosticsCard({ updateChannel, onCopyText }: { updateChannel: UpdateC
     <SectionCard title="Diagnostics">
       <Row
         label="Copy diagnostics"
-        hint="Copies a report for bug reports: app version, system, update channel, whether Trading is on and whether you are signed in, background options and the recent log lines. Tokens, account details, securities, balances, orders and file paths are never included"
+        hint="Copies a report for bug reports: app version, system, whether Trading is on and whether you are signed in, background options and the recent log lines. Tokens, account details, securities, balances, orders and file paths are never included"
       >
         <button className={btn.secondary} type="button" onClick={() => void copy()}>
           Copy diagnostics
@@ -284,20 +279,22 @@ export function SettingsPage({
   const [stored, setStored] = useState(() => storedCount());
   return (
     <TabGroup className="flex items-start gap-6 max-[900px]:flex-col max-[900px]:gap-4">
-      <TabList className="flex w-56 shrink-0 flex-col gap-1 max-[900px]:w-full max-[900px]:flex-row max-[900px]:flex-wrap">
-        {SECTIONS.map(({ id, label, icon: Icon }) => (
-          <Tab
-            key={id}
-            className="flex cursor-pointer items-center gap-2.5 rounded-control px-3 py-2 text-left text-ink-soft hover:bg-raised hover:text-ink-strong data-focus:outline-2 data-focus:outline-accent data-selected:bg-hover data-selected:text-ink-heading"
-          >
-            <Icon aria-hidden="true" className="size-5 shrink-0" />
-            {label}
-          </Tab>
-        ))}
+      <div className="flex w-56 shrink-0 flex-col gap-1 max-[900px]:w-full max-[900px]:flex-row max-[900px]:flex-wrap max-[900px]:items-center">
+        <TabList className="flex flex-col gap-1 max-[900px]:flex-row max-[900px]:flex-wrap">
+          {SECTIONS.map(({ id, label, icon: Icon }) => (
+            <Tab
+              key={id}
+              className="flex cursor-pointer items-center gap-2.5 rounded-control px-3 py-2 text-left text-ink-soft hover:bg-raised hover:text-ink-strong data-focus:outline-2 data-focus:outline-accent data-selected:bg-hover data-selected:text-ink-heading"
+            >
+              <Icon aria-hidden="true" className="size-5 shrink-0" />
+              {label}
+            </Tab>
+          ))}
+        </TabList>
         <button className={cx(btn.secondary, "mt-3 max-[900px]:mt-0")} type="button" onClick={onReset} disabled={JSON.stringify(settings) === JSON.stringify(DEFAULT_SETTINGS)}>
           Reset to defaults
         </button>
-      </TabList>
+      </div>
 
       <TabPanels className="min-w-0 flex-1">
         <TabPanel className={PANEL_NARROW}>
@@ -423,7 +420,7 @@ export function SettingsPage({
               <pre className="my-4 max-h-96 overflow-auto rounded-control bg-inset p-3 break-words whitespace-pre-wrap select-text">{diagnostics}</pre>
             </SectionCard>
           )}
-          {isTauri() && <DiagnosticsCard updateChannel={settings.updateChannel} onCopyText={onCopyText} />}
+          {isTauri() && <DiagnosticsCard onCopyText={onCopyText} />}
         </TabPanel>
 
         <TabPanel className={PANEL_NARROW}>
@@ -548,14 +545,6 @@ export function SettingsPage({
                 </button>
               </div>
             </Row>
-            {extension.variantName && (
-              <Row
-                label="Update channel"
-                hint="Stable gets tested releases only. Release candidate also offers early -rc versions, which may still have bugs. Switching does not downgrade an installed version"
-              >
-                <Pills label="Update channel" value={settings.updateChannel} options={UPDATE_CHANNELS} onSelect={(updateChannel) => onChange({ updateChannel })} />
-              </Row>
-            )}
             <Row
               label="Check for updates on launch"
               hint="Asks the update server once when the app starts whether a newer version exists. It sends no account data, only what any download request sends, such as your IP address. Installing always asks you first"
