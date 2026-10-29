@@ -82,8 +82,9 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   app config folder, because they apply before the webview has loaded. Starting a second copy shows the window of the
   running one. A hidden window keeps the alert check running; Scalable auto-refresh pauses while it is hidden.
   Returning to the window or reconnecting to the network triggers one dashboard refresh. When a delayed timer tick
-  indicates the computer slept, the app drops its cached MCP session before reloading. Quit from the tray waits up to
-  20 seconds for a trailing-stop sale already in progress, then exits. The auto-refresh runs
+  indicates the computer slept, the app drops its cached MCP session before reloading. Quitting waits up to
+  20 seconds for a trailing-stop sale already in progress, then exits; this holds for every exit (Quit in
+  the tray, or the close button when close to the tray is off). The auto-refresh runs
   one reload at a time and re-arms after each; when a reload fails, the next one waits twice as long (up to
   10 minutes) until one succeeds, and the minute-by-minute connection check (`ping`) is skipped while a reload
   answered within the last minute.
@@ -161,7 +162,9 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   Scalable and to GitHub for the update check.
   The `settings` value and the Rust `background.json` carry a schema `version`; older files (without one)
   are read as version 0 and brought up to date by one migration step per version, and an unreadable value is
-  kept aside (`settings.bad`, `background.bad`) instead of being overwritten by the defaults.
+  kept aside (`settings.bad`; `background.json.bad`, then `background.json.bad.1` and so on) instead of
+  being overwritten by the defaults; a `background.json` that cannot be read for a passing reason (locked,
+  no permission) is left in place and not saved over.
 
 ## Getting started
 
@@ -244,7 +247,7 @@ src-tauri/           Rust backend
   tauri.updater.conf.json   CI-only overlay that turns on the signed updater files
   icons/             app icon: app-icon.svg is the master, the rest is generated
 tests/fixtures/       Scalable's published tool list (a saved tools/list response) and the read/write tool policy, read by the tests only
-scripts/             check-exports.mjs: no unused exports (tested); check-tauri-versions.mjs: checks npm/Cargo Tauri minors (tested); set-version.mjs: writes a version into the three version fields; make-latest-json.mjs: writes the updater's manifest (tested); release-notes.mjs: writes a release's notes from the commits since the previous release (tested); publish-github-release.sh: publishes the release files to this repository's GitHub Releases with `gh`
+scripts/             check-exports.mjs: no unused exports (tested); check-tauri-versions.mjs: checks npm/Cargo Tauri minors (tested); set-version.mjs: writes a version into the three version fields and the lockfiles (tested); set-extension-version.mjs: sets an extension's version (tested); make-latest-json.mjs: writes the updater's manifest (tested); release-notes.mjs: writes a release's notes from the commits since the previous release (tested); publish-github-release.sh: publishes the release files to this repository's GitHub Releases with `gh`
 .github/workflows/   CI and release pipelines
 ```
 
@@ -286,7 +289,7 @@ command palette and the account menu change the level too:
 
 | Level      | What the app allows                                                                                               | When                       |
 | ---------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Read-only  | Only reading: `ping` and the `get_`, `list_`, `search_` tools.                                                    | Always; the default.       |
+| Read-only  | Only reading: `ping` and the `get_`, `list_`, `search_` and `preview_` tools.                                     | Always; the default.       |
 | Restricted | Read-only plus watchlists, price alerts, portfolio groups and trailing stops (create, change, remove).            | At any hour, also off-hours. |
 | Full       | Everything, including buy and sell orders, savings plans, previews and the watching of trailing stops.            | Only while the exchange is open. |
 
@@ -301,7 +304,8 @@ allowed, its buttons are hidden and Run in Settings, Scalable tools is disabled.
 Rust backend also refuses every tool above the current level, including unknown tools (they need Full access).
 
 - The level is a backend-enforced **kill switch**, not just a UI preference. The UI tells the backend on every
-  change and every reload of the window. Signing out switches it to read-only (in Rust and in the UI) and drops all
+  change and every reload of the window. Signing out, also when Scalable rejects the sign-in and the app signs you
+  out, switches it to read-only (in Rust and in the UI) and drops all
   pending previews, so the next sign-in starts read-only too, until the next launch. Below Full access, only `ping`
   and tools whose names start with `get_`, `list_`, `search_` or `preview_` may run, plus the watchlist,
   price-alert and portfolio-group tools in Restricted access (`tests/fixtures/tool-policy.json` lists the tools of
@@ -354,18 +358,18 @@ Rust backend also refuses every tool above the current level, including unknown 
   choose it. The sell can only be accepted once the bought shares are in your portfolio, and Scalable may
   refuse the second order if the first already reserves the same shares. When the buy was a limit order, the
   take-profit price must be above and the stop-loss price below the limit price.
-- **Trailing buy stop (optional, local).** The mirror image, in its own panel on the Trailing stops page: pick any security, an amount of money to spend and a distance above the low. The app follows the lowest ask price and, when the price rises to the low plus the distance, buys at market with `preview_buy_order` and `submit_buy_order`. The bar under **Now** fills from empty at the low to full at the buy trigger, opposite to the stop-loss bar. It has the same rules as the stop loss (app running, signed in, Trading on, never accepts a warning, never repeats a submitted order) and also needs enough cash; an ask more than 25% above the trigger needs manual review. Edit works the same way.
+- **Trailing buy stop (optional, local).** The mirror image, in its own panel on the Trailing stops page: pick any security, an amount of money to spend and a distance above the low. The app follows the lowest ask price (the ask of `get_security_quote`, else the mid price) and, when the price rises to the low plus the distance, buys at market with `preview_buy_order` and `submit_buy_order`. The bar under **Now** fills from empty at the low to full at the buy trigger, opposite to the stop-loss bar. It has the same rules as the stop loss (app running, signed in, the low follows the price at any access level, buys only with Full access while the exchange is open, never accepts a warning, never repeats a submitted order) and also needs enough cash; an ask more than 25% above the trigger needs manual review. Edit works the same way.
 - **Trailing stop loss (optional, local).** Scalable's MCP has no trailing stop, so the app does it itself
   (`extensions/trailing-stops/src-tauri/`: the saved file, quotes, the sale, the watcher and the commands in one file each). Start one on the Trailing stops page (**New trailing stop**) or after a buy
   (**Set trailing stop loss**): pick a security you hold (the dialog shows your shares and a **Sell all** link), the shares to sell and a distance in percent or money, and
   tick that the app may sell without asking again. The app remembers the highest price from then on (the
   bid of `get_security_quote`, else the mid price), checks it every 30 seconds by default (on the Trailing stops page the header Refresh uses this frequency, shows its countdown bar and reads the prices right away; it only runs while a stop is active; the sidebar shows how many stops exist) (Settings, Trailing stops, "Trailing stops check frequency", for both stop losses and buy stops: 15 seconds to 10 minutes; the watcher sleeps while no stop is active, and the page refreshes on a `trailing-stops-changed` event, focus or return to visibility, with a 60-second fallback poll only while visible and a stop is active or selling), and when the price is at
   or below the high minus the distance it sells the shares at market with `preview_sell_order` and
-  `submit_sell_order`. **Edit** on a watching row changes its shares and distance (the high is kept; it needs Restricted or Full access); on a "Needs you" row it starts watching again from the last price, after you have checked in Scalable that nothing was sold. A thin bar under **Now** shows how much of the distance between the high and the sell price is left. With Trading off the **Now** price still follows the market, but the high is not raised and nothing is sold (the row shows "Paused, Full access is off" and **Stop watching** is disabled until Full access is on). Limits and safeguards:
-  - It works only while the app runs (the tray keeps it running), is signed in and **Full access is on** (starting or editing a stop needs only Restricted access). It is
+  `submit_sell_order`. **Edit** on a watching row changes its shares and distance (the high is kept; it needs Restricted or Full access); on a "Needs you" row it starts watching again from the last price, after you have checked in Scalable that nothing was sold. A thin bar under **Now** shows how much of the distance between the high and the sell price is left. The high (or the low of a buy stop) follows the price at every access level, so the trigger stays current with Trading off too, but nothing is sold or bought without Full access while the exchange is open: the row then shows "Watching, Full access is off". When the price reaches the trigger in that state, the app shows one desktop notification ("Trailing stop reached … Switch to Full access while the exchange is open to sell") and the row shows "Trigger reached, needs Full access"; the stop stays active and trades at the next check once Full access is on, if the price is still past the trigger. The notice comes again only after the price has moved back past the trigger or the stop was edited. Limits and safeguards:
+  - It works only while the app runs (the tray keeps it running) and is signed in, and it only sells or buys while **Full access is on** and the exchange is open (starting or editing a stop needs only Restricted access). It is
     not a Scalable order: nothing protects the position while the app is closed, offline or in Read-only mode,
     and a fast drop, a closed market or a price gap can fill well below the trigger.
-  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens; a stop that fired also keeps the time and Scalable's answer, shown by **Details** on its Sold or Bought row). Each refresh asks Scalable (`get_transaction_details`, read-only) where that order stands and adds it to the status, for example "Bought · Filled"; once Scalable gives a final reason such as FILLED (or the order is settled, cancelled or rejected) it is not asked again. Every state the order went through is kept with its time (in the browser storage of the app) and listed in the Details dialog, but the access level is not
+  - The stops are saved in `trailing_stops.json` in the app config folder (no tokens; a stop that fired also keeps the time and Scalable's answer, shown by **Details** on its Sold or Bought row). If the file cannot be read, it is left alone: adding, changing and removing stops is refused, and a notice stays on screen until a read works again. Each refresh asks Scalable (`get_transaction_details`, read-only) where that order stands and adds it to the status, for example "Bought · Filled"; once Scalable gives a final reason such as FILLED (or the order is settled, cancelled or rejected) it is not asked again. Every state the order went through is kept with its time (in the browser storage of the app) and listed in the Details dialog, but the access level is not
     saved, so after a restart they wait until Full access is on again (automatically when Start with is Full).
   - It never accepts a warning for you: when the sell preview asks for an acknowledgement or a questionnaire,
     the stop is marked "Needs you" and a notification is shown. An outdated quote or an untradable security
@@ -392,7 +396,7 @@ Every log message is redacted first: bearer tokens and authorization headers, `t
 addresses, and the home folder (shown as `~`).
 
 "Copy diagnostics" in the same Settings section copies a text report with the app version, OS and architecture,
-the update channel, whether Trading is on (Read-only or enabled), whether you are signed in, the background
+whether Trading is on (Read-only or enabled), whether you are signed in, the background
 options, a count of recent failure categories and the recent redacted log lines. It holds no tokens, account
 ids, securities, balances, portfolio names, orders or user paths. Check it before pasting it into an issue.
 
@@ -461,7 +465,7 @@ shapes, or change access rules. The app is not an official integration.
 ```bash
 npm ci                                   # install exactly what package-lock.json pins
 npm run typecheck                        # tsc --noEmit
-npm run lint                             # Oxlint through Vite+ (React hooks rules)
+npm run lint                             # Oxlint through Vite+ (React hooks rules): src, scripts, e2e and the bundled extension
 npm run format:check                     # Oxfmt through Vite+ (Prettier-compatible)
 npm run check:tauri                      # Tauri npm/Cargo major.minor versions match
 npm run check:exports                    # no unused exports in src/
@@ -472,7 +476,8 @@ npm audit --audit-level=high
 npm audit signatures
 (cd src-tauri && cargo test --offline)   # trading gate, order validation, argument mapping, session cache
 (cd src-tauri && cargo fmt --check && cargo clippy --offline --all-targets -- -D warnings)
-(cd src-tauri && cargo audit --file Cargo.lock)
+(cd src-tauri && rustfmt --check --edition 2021 --config-path rustfmt.toml ../extensions/*/src-tauri/*.rs)   # cargo fmt does not reach the extensions
+(cd src-tauri && cargo audit --file Cargo.lock --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369)   # the same ignores as CI, explained in deny.toml
 (cd src-tauri && cargo deny check)       # licences, duplicate versions, sources (deny.toml)
 ```
 
@@ -516,16 +521,18 @@ cp $T/bundle/nsis/scalable-capital-desktop_1.0.0_x64-setup.exe release/
 
 ### CI and tagged releases
 
-| Workflow      | Runs on                         | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`      | pushes to `main`, pull requests | Frontend checks, Rust checks, npm/Cargo dependency audits, then installer builds.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `build.yml`   | called by the two others        | Builds installers on five targets and uploads them as artifacts (14 days). With `sign: true` it also makes the signed updater files (`.sig`).                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `release.yml` | tags like `v0.1.0`              | Checks the tag looks like `vX.Y.Z` and that the updater public key and endpoint are set, writes the tag's version into `tauri.conf.json`, `Cargo.toml` and `package.json` (`scripts/set-version.mjs`), builds every target with signing, and publishes all the installers, their `.sig` files, `SHA256SUMS.txt` and `latest.json` to this repository's GitHub Releases with `scripts/publish-github-release.sh`. The publish job runs in the `release` environment (add a required reviewer there to approve each release) and uses the built-in `GITHUB_TOKEN` with `contents: write`. |
+| Workflow      | Runs on                         | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`      | pushes to `main`, pull requests | Frontend checks, Rust checks, npm/Cargo dependency audits, then installer builds.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `build.yml`   | called by the two others        | Builds installers on five targets and uploads them as artifacts (14 days). With `sign: true` it also makes the signed updater files (`.sig`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `release.yml` | tags like `v0.1.0`              | Checks the tag looks like `vX.Y.Z`, that its commit is on `main` and that the updater public key and endpoint are set, writes the tag's version into `tauri.conf.json`, `Cargo.toml` and `package.json` (`scripts/set-version.mjs`), builds every target with signing, and publishes all the installers, their `.sig` files, `SHA256SUMS.txt` and `latest.json` to this repository's GitHub Releases with `scripts/publish-github-release.sh`. The signing build and the publish job run in the `release` environment, which holds the signing key (add a required reviewer there to approve each release); publishing uses the built-in `GITHUB_TOKEN` with `contents: write`. Releases run one at a time, in tag order. |
 
 Targets the CI workflows can build: Windows x64 (NSIS installer, MSI and portable exe), macOS Apple
 Silicon and Intel (dmg and the `.app.tar.gz` the updater needs), Linux x64 and arm64 (deb, rpm,
 AppImage). A release publishes all of them, and only once every target has built: if one fails, re-run
-that job and the release goes on. To release a version, tag `vX.Y.Z` and push the tag:
+that job and the release goes on. If the publish job itself fails, re-run it: it finishes a draft that an
+earlier run left behind, or replaces the files of a published release (taking `latest.json` down first and
+putting it back last). To release a version, tag `vX.Y.Z` and push the tag:
 the build takes the version from the tag, so there is nothing to bump by hand (to change the committed
 version, run `node scripts/set-version.mjs X.Y.Z`, which updates `package.json`, `src-tauri/Cargo.toml` and
 `src-tauri/tauri.conf.json` together). A tag like `vX.Y.Z-rc.N` builds NSIS only on Windows (the MSI cannot carry
@@ -549,18 +556,27 @@ Installed apps update from this repository's GitHub Releases. Rust makes the req
   changed fails the signature. A restart starts read-only like every launch, and an install is not
   held back by the Trading switch. A failed check on launch shows nothing. "Open download page" opens the
   GitHub release page.
-- **Stable only.** The app offers only the Stable update channel; the Update channel choice is
-  hidden. The Rust comparator accepts only strictly newer versions and rejects pre-releases on Stable, so a
-  `-rc` release is never offered as an update.
+- **Stable only.** There is one update channel. The Rust comparator accepts only strictly newer
+  versions and rejects pre-releases, so a `-rc` release is never offered as an update.
 - **Privacy.** The update check is the one request that does not go to Scalable. It sends no account
   data, only what any download sends (such as your IP address). Switch it off in Settings, About;
   the **Check for updates** button still works.
 - **Maintainer setup, once.** The public half of the updater key is already in `plugins.updater.pubkey` in
   `src-tauri/tauri.conf.json` (the release fails early if it is empty or a placeholder); the endpoint must
-  stay the GitHub Releases `latest.json` URL above. Add the matching private key and its
-  password as this repository's GitHub secrets `TAURI_SIGNING_PRIVATE_KEY` and
-  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. The private key never goes into the repository, logs or docs. Keep an
-  offline backup: without the key no update can be signed, and installed apps would need a manual reinstall.
+  stay the GitHub Releases `latest.json` URL above. The private key and its password are secrets of the
+  `release` environment, not of the repository, so only the release jobs that the environment lets run
+  can read them. In the repository's **Settings > Environments**:
+  1. Create the environment `release` (or open it).
+  2. Under **Deployment branches and tags**, choose **Selected branches and tags** and add the tag rule `v*`.
+  3. Optionally add yourself under **Required reviewers**: each release then waits for your approval, once
+     for the signing build (all targets in one review) and once for publishing.
+  4. Under **Environment secrets**, add `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+     The code-signing secrets below (`WINDOWS_*`, `APPLE_*`) can live there too.
+  5. In **Settings > Secrets and variables > Actions**, delete the repository secrets of the same names, so
+     no other workflow or branch can read them.
+
+  The private key never goes into the repository, logs or docs. Keep an offline backup: without the key no
+  update can be signed, and installed apps would need a manual reinstall.
 - **What a release does.** `release.yml` builds with `src-tauri/tauri.updater.conf.json`, which turns on
   `createUpdaterArtifacts`, so each updatable installer gets a `.sig` file. `scripts/publish-github-release.sh`
   then writes `latest.json` with `scripts/make-latest-json.mjs` (it stops the release if the updatable
@@ -568,7 +584,8 @@ Installed apps update from this repository's GitHub Releases. Rust makes the req
   `.app.tar.gz` files and both Linux AppImages), creates the release as a draft with every installer, the
   `.sig` files and `SHA256SUMS.txt`, adds `latest.json` and publishes the draft, so the manifest
   never shows before its files, and finally checks that the public endpoint serves the new version. A stable tag
-  becomes the repository's latest release; an `-rc.N` tag is marked a pre-release and gets no manifest.
+  becomes the repository's latest release unless a newer one is out already (a fix for an older version keeps
+  `latest.json` on the newest); an `-rc.N` tag is marked a pre-release and gets no manifest.
 - **Release notes.** There is no changelog file to keep: the notes are made when a tag is released.
   `scripts/release-notes.mjs vX.Y.Z` lists the commit subjects between the previous release and the tag
   (a stable tag starts at the previous stable tag, so release candidate changes are included; an `-rc.N`

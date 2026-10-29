@@ -38,6 +38,7 @@ npm run typecheck                                                       # tsc --
 npm test                                                                # Vitest
 (cd src-tauri && cargo test --offline)                                  # use --locked in CI
 (cd src-tauri && cargo fmt --check && cargo clippy --offline --all-targets -- -D warnings)
+(cd src-tauri && rustfmt --check --edition 2021 --config-path rustfmt.toml ../extensions/*/src-tauri/*.rs)
 ```
 
 CI (`.github/workflows/ci.yml`) runs the same checks plus `vp build` and installer builds for Windows,
@@ -52,13 +53,16 @@ shared code.
 - **Never put tokens or secrets in the repository**, in logs, in docs or in test fixtures. The access
   token is short-lived but still gives account access. `.junie/mcp/mcp.json` is local and ignored.
 - The Trading gate lives in Rust (`src-tauri/src/mcp/trading.rs`; the savings-plan commands in `savings.rs`
-  use it too). It is never persisted: every launch starts read-only. Do not weaken it, and do not add a
-  command that reaches a write tool without going through it.
+  use it too). Rust never persists it and starts every launch read-only; the only saved choice is the
+  **Start with** setting (Read-only by default), which the UI sends at launch, and Full starts as Restricted
+  while the exchange is closed. Signing out, by the user or by Rust, switches it back to read-only. Do not
+  weaken it, and do not add a command that reaches a write tool without going through it.
 - **The updater private key never enters the repository**, logs, docs or test fixtures. It lives only in
-  the GitHub secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Local builds
-  need no signing key; CI enables updater artifacts through `src-tauri/tauri.updater.conf.json`. The
-  public key in `src-tauri/tauri.conf.json` is safe to commit. Test signing only with a throwaway key
-  created in the scratch directory; never print or commit its private half.
+  the secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` of the GitHub `release`
+  environment, which only the release jobs use. Local builds need no signing key; CI enables updater
+  artifacts through `src-tauri/tauri.updater.conf.json`. The public key in `src-tauri/tauri.conf.json` is
+  safe to commit. Test signing only with a throwaway key created in the scratch directory; never print or
+  commit its private half.
 - Releases are built by GitHub Actions and published to this repository's Releases. The updater
   endpoint in `src-tauri/tauri.conf.json` must remain the GitHub Releases `latest.json` URL. Do not add
   fallback update hosts or storage credentials to the repository.
