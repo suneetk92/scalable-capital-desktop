@@ -4,9 +4,26 @@ import { formatDate } from "../format";
 import { SearchBox, SkeletonRows } from "../controls";
 import { useToolQuery, type QueryEntry } from "../toolActions";
 import { type Common, type PagePortfolio } from "../types";
-import { Alert, PANEL, PANEL_BODY, PanelHeader } from "../ui";
-import { JsonView, KeyValues, Modal, RecordTable } from "../ToolViews";
+import { Alert, btn, PANEL, PANEL_BODY, PanelHeader } from "../ui";
+import { JsonView, KeyValues, Modal, RecordTable, recordsCsv } from "../ToolViews";
+import { pluralize } from "../format";
 import { findRecords, type Rec } from "../response";
+
+export function CopyCsvButton({ records, common, what }: { records: Rec[]; common: Common; what: string }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(recordsCsv(records));
+      common.actions.notify({ kind: "ok", text: `${pluralize(records.length, what)} copied as CSV` });
+    } catch {
+      common.actions.notify({ kind: "error", text: "Could not copy to the clipboard." });
+    }
+  };
+  return (
+    <button className={btn.secondary} type="button" onClick={() => void copy()} disabled={records.length === 0} title="Copy the rows shown as CSV">
+      Copy CSV
+    </button>
+  );
+}
 
 export function Loading({ show, what }: { show: boolean; what: string }) {
   return show ? <SkeletonRows rows={3} columns={3} label={`Loading ${what}…`} /> : null;

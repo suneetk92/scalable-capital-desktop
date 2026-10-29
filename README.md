@@ -94,7 +94,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   Settings, Background, "Also show in the app" is on, or when Windows cannot show the notification (toasts
   go away after a few seconds; errors stay until dismissed). Clear all or remove
   single entries from the panel. The history is not saved between launches.
-- **Discover** (securities and derivatives), **Price alerts** (search and Direction and Status filters, and a New alert button in the page header), **Trailing stops**, **Savings plans** (search and a Frequency filter, and a New plan button in the page header) (list, options,
+- **Discover** (securities and derivatives), **Price alerts** (search and Direction and Status filters, Copy CSV, and a New alert button in the page header), **Trailing stops**, **Savings plans** (search and a Frequency filter, Copy CSV, and a New plan button in the page header) (list, options,
   guided create and edit with Scalable's preview, removal) and **Transactions** (table, details, cancel open
   orders). The list is the history stored on this computer (the same one the Overview uses, newest first), so
   the pages cover every transaction at once and the count is the real total. It is brought up to date in the

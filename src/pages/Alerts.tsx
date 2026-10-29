@@ -8,7 +8,7 @@ import { RecordTable } from "../ToolViews";
 import { alertRemovedNotice } from "../notifications";
 import { isAlertFiltering, matchesAlert, NO_ALERT_FILTER, parseAlerts, type AlertFilter } from "../alerts";
 import { pickString, type Rec } from "../response";
-import { QueryPanel, collect, perPortfolio, Section } from "./shared";
+import { CopyCsvButton, QueryPanel, collect, perPortfolio, Section } from "./shared";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
 
@@ -72,6 +72,7 @@ export function AlertsPage({ common, searchInput, onOpenSecurity }: { common: Co
                   ]}
                 />
               </FiltersPopover>
+              <CopyCsvButton records={visible} common={common} what="alert" />
             </div>
           </div>
         }

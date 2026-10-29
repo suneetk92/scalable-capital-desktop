@@ -48,6 +48,7 @@ import {
   type ToolOutcome,
 } from "./tools";
 import { useExtensionIsinLogos } from "./extensions";
+import { csvCell } from "./screener";
 import { isRec, parseMaybeJson, recordsOf, type Rec } from "./response";
 
 export function Modal({ title, onClose, wide = false, children }: { title: string; onClose: () => void; wide?: boolean; children: ReactNode }) {
@@ -159,6 +160,13 @@ function pickColumns(records: Rec[], max = 6): RecordColumn[] {
 
 function valueAt(record: Rec, path: string): unknown {
   return path.split(".").reduce<unknown>((current, key) => (isRec(current) ? current[key] : undefined), record);
+}
+
+/** The records as CSV, with the columns the table shows. */
+export function recordsCsv(records: Rec[]): string {
+  const columns = pickColumns(records);
+  const lines = records.map((record) => columns.map((column) => formatCell(valueAt(record, column.path))));
+  return [columns.map((column) => column.label), ...lines].map((line) => line.map((cell) => csvCell(cell === "" ? null : cell)).join(",")).join("\n");
 }
 
 /** The first non-empty text among the dotted paths. */

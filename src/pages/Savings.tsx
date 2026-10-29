@@ -7,7 +7,7 @@ import { useToolQuery } from "../toolActions";
 import { type Common } from "../types";
 import { btn, EMPTY, PANEL_BODY, PanelFooter } from "../ui";
 import { RecordTable } from "../ToolViews";
-import { QueryPanel, collect, perPortfolio, Section, DetailsModal } from "./shared";
+import { CopyCsvButton, QueryPanel, collect, perPortfolio, Section, DetailsModal } from "./shared";
 import { SavingsPlanDialog } from "./SavingsPlanDialog";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
@@ -69,6 +69,7 @@ export function SavingsPage({
                   options={[["", "All"], ...frequencies.map((value): [string, string] => [value, frequencyLabel(value)])]}
                 />
               </FiltersPopover>
+              <CopyCsvButton records={visible} common={common} what="plan" />
             </div>
           </div>
         }
