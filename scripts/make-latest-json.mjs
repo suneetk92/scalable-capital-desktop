@@ -4,18 +4,17 @@
 //   node scripts/make-latest-json.mjs <artifacts-dir> <tag> <base-url> <out-dir> [--partial]
 //     [--download-base=<url>] [--notes-url=<url>] [--notes-file=<path>]
 //
-// Two update channels: latest.json (stable) and latest-rc.json (release candidate), each with a
-// download page (index.html, index-rc.html). A stable tag (v1.2.3) writes both channels, so release
-// candidate users move on to the final version. A pre-release tag (v1.2.3-rc.1) writes only the
-// release candidate files, so stable users never see it. The Windows MSI cannot carry a pre-release
-// version, so pre-release builds are NSIS only and the MSI is not required for them.
+// There is one update channel, stable: the app is never offered a pre-release, and
+// scripts/publish-github-release.sh publishes no manifest for a pre-release tag (v1.2.3-rc.1). The
+// Windows MSI cannot carry a pre-release version, so pre-release builds are NSIS only and the MSI is
+// not required for them.
 //
 // <base-url> is the public https folder that holds latest.json, for example
 // https://updates.example.com/scalable-capital-desktop. The installers are expected at <base-url>/<tag>/<file>.
 // Every platform needs an installer file and its `.sig` file next to it in the artifacts directory; a
 // missing one stops the release instead of shipping an update that some installs cannot find.
-// `--partial` (the local release from one machine, which builds Windows only) lists only the
-// platforms that have a file, and still needs at least one.
+// `--partial` lists only the platforms that have a file, and still needs at least one: for trying the
+// manifest on the files of one machine (a release always needs every platform).
 // `--download-base` puts the installers at <download-base>/<tag>/<file> instead of under <base-url>
 // (GitHub Releases: https://github.com/<owner>/<repo>/releases/download), and `--notes-url` replaces the
 // link to the download page in the manifest's notes. `--notes-file` puts the text of a release notes file
@@ -40,13 +39,8 @@ export const PLATFORMS = {
   "linux-aarch64": /_(aarch64|arm64)\.AppImage$/,
 };
 
-/** A tag like v1.2.3-rc.1 is a release candidate; v1.2.3 is stable. */
-export const isPrerelease = (tag) => tag.includes("-");
-
-/** The manifest and download page names a tag publishes. */
-export function siteFiles(tag) {
-  return isPrerelease(tag) ? { manifests: ["latest-rc.json"], pages: ["index-rc.html"] } : { manifests: ["latest.json", "latest-rc.json"], pages: ["index.html", "index-rc.html"] };
-}
+/** A tag like v1.2.3-rc.1 is a pre-release; v1.2.3 is stable. */
+const isPrerelease = (tag) => tag.includes("-");
 
 /** Installers people download by hand; the signatures and checksums are not listed. */
 const DOWNLOADS = /\.(exe|msi|dmg|deb|rpm|AppImage)$/;
@@ -81,7 +75,7 @@ export function buildLatest(names, readSignature, { tag, baseUrl, downloadBase, 
     platforms[key] = { signature, url: `${installersBase}/${tag}/${encodeURIComponent(file)}` };
   }
   if (Object.keys(platforms).length === 0) throw new Error("No updatable installer was found.");
-  const downloads = `See ${notesUrl ?? `${base}/${isPrerelease(tag) ? "index-rc" : "index"}.html`} for the downloads.`;
+  const downloads = `See ${notesUrl ?? `${base}/index.html`} for the downloads.`;
   return {
     version: tag.slice(1),
     notes: notesText?.trim() ? `${notesText.trim()}\n\n${downloads}` : downloads,
@@ -135,8 +129,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     notesText: flag("notes-file") ? readFileSync(flag("notes-file"), "utf8") : undefined,
   });
   mkdirSync(outDir, { recursive: true });
-  const { manifests, pages } = siteFiles(tag);
-  for (const name of manifests) writeFileSync(join(outDir, name), `${JSON.stringify(latest, null, 2)}\n`);
-  for (const name of pages) writeFileSync(join(outDir, name), buildIndexHtml(names, { tag, baseUrl }));
-  console.log(`Wrote ${[...manifests, ...pages].join(", ")} in ${outDir} for ${tag}: ${Object.keys(latest.platforms).join(", ")}`);
+  writeFileSync(join(outDir, "latest.json"), `${JSON.stringify(latest, null, 2)}\n`);
+  writeFileSync(join(outDir, "index.html"), buildIndexHtml(names, { tag, baseUrl }));
+  console.log(`Wrote latest.json, index.html in ${outDir} for ${tag}: ${Object.keys(latest.platforms).join(", ")}`);
 }

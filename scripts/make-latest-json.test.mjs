@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { buildIndexHtml, buildLatest, PLATFORMS, siteFiles } from "./make-latest-json.mjs";
+import { buildIndexHtml, buildLatest, PLATFORMS } from "./make-latest-json.mjs";
 
 const FILES = [
   "scalable-capital-desktop_0.2.0_x64-setup.exe",
@@ -47,19 +47,13 @@ describe("buildLatest", () => {
     expect(latest.notes).toBe("- **New:** a thing.\n\nSee https://updates.example.com/scalable-capital-desktop/index.html for the downloads.");
   });
 
-  it("needs no MSI for a release candidate, which the Windows MSI cannot carry", () => {
-    const rcFiles = withSigs(FILES.filter((name) => !name.includes(".msi")));
-    const latest = buildLatest(rcFiles, read, { ...options, tag: "v0.3.0-rc.1" });
+  it("needs no MSI for a pre-release, which the Windows MSI cannot carry", () => {
+    const preFiles = withSigs(FILES.filter((name) => !name.includes(".msi")));
+    const latest = buildLatest(preFiles, read, { ...options, tag: "v0.3.0-rc.1" });
     expect(latest.version).toBe("0.3.0-rc.1");
     expect(Object.keys(latest.platforms)).not.toContain("windows-x86_64-msi");
     expect(latest.platforms["windows-x86_64-nsis"].url).toContain("/v0.3.0-rc.1/");
-    expect(latest.notes).toContain("/index-rc.html");
-    expect(() => buildLatest(rcFiles, read, options)).toThrow(/windows-x86_64-msi/);
-  });
-
-  it("publishes a stable tag to both channels and a release candidate to its own only", () => {
-    expect(siteFiles("v1.2.3")).toEqual({ manifests: ["latest.json", "latest-rc.json"], pages: ["index.html", "index-rc.html"] });
-    expect(siteFiles("v1.2.3-rc.1")).toEqual({ manifests: ["latest-rc.json"], pages: ["index-rc.html"] });
+    expect(() => buildLatest(preFiles, read, options)).toThrow(/windows-x86_64-msi/);
   });
 
   it("stops when a signature file is missing", () => {

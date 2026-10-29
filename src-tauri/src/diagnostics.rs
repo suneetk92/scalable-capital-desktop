@@ -1,9 +1,9 @@
 //! A sanitised diagnostics bundle for bug reports, and a button to open the log folder.
 //!
-//! The report holds only what is safe to paste into an issue: the app version, the OS, the update
-//! channel, whether Trading is on, whether the app is signed in, the background options, the
-//! recent redacted log lines and a count of the failure categories in them. It never reads tokens,
-//! account data, tool results or settings stored in the webview, and the home folder shows as `~`.
+//! The report holds only what is safe to paste into an issue: the app version, the OS, whether
+//! Trading is on, whether the app is signed in, the background options, the recent redacted log
+//! lines and a count of the failure categories in them. It never reads tokens, account data, tool
+//! results or settings stored in the webview, and the home folder shows as `~`.
 
 use std::collections::BTreeMap;
 
@@ -19,14 +19,6 @@ const RECENT_LINES: usize = 80;
 const APP_NAME: &str = "Scalable Capital Desktop";
 #[cfg(feature = "extension")]
 const APP_NAME: &str = crate::extensions::APP_NAME;
-
-/// Anything but "rc" is the stable channel, like `UpdateChannel::parse` in `updates.rs`.
-fn channel_label(value: Option<&str>) -> &'static str {
-    match value {
-        Some("rc") => "rc",
-        _ => "stable",
-    }
-}
 
 /// How often each warning or error message appears in the log lines. The messages hold only a
 /// label and an error category (see `logging::log_failure`).
@@ -49,7 +41,6 @@ fn failure_counts(lines: &[String]) -> BTreeMap<String, u64> {
 
 fn build_report(
     version: &str,
-    channel: &str,
     trading_on: bool,
     signed_in: bool,
     background: Value,
@@ -60,7 +51,6 @@ fn build_report(
         "app": {"name": APP_NAME, "version": version},
         "system": {"os": std::env::consts::OS, "arch": std::env::consts::ARCH},
         "settings": {
-            "updateChannel": channel,
             "trading": if trading_on { "enabled" } else { "read-only" },
             "signedIn": signed_in,
             "background": background,
@@ -73,17 +63,13 @@ fn build_report(
 }
 
 #[tauri::command]
-pub async fn export_diagnostics(
-    app: AppHandle,
-    update_channel: Option<String>,
-) -> Result<String, String> {
+pub async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
     let signed_in = auth::is_signed_in().await;
     let background =
         serde_json::to_value(background::get_background(app.clone())).unwrap_or_default();
     let log_folder = logging::log_dir().map(|dir| logging::redact(&dir.display().to_string()));
     Ok(build_report(
         env!("CARGO_PKG_VERSION"),
-        channel_label(update_channel.as_deref()),
         mcp::session::trading_enabled(&app),
         signed_in,
         background,
@@ -110,14 +96,6 @@ mod tests {
     }
 
     #[test]
-    fn only_the_known_channel_values_are_reported() {
-        assert_eq!(channel_label(Some("rc")), "rc");
-        assert_eq!(channel_label(Some("stable")), "stable");
-        assert_eq!(channel_label(Some("https://x?token=abc")), "stable");
-        assert_eq!(channel_label(None), "stable");
-    }
-
-    #[test]
     fn counts_warnings_and_errors_but_not_info() {
         let lines = vec![
             line("INFO", "app", "started"),
@@ -141,7 +119,6 @@ mod tests {
         )];
         let text = build_report(
             "1.2.3",
-            "rc",
             false,
             true,
             json!({"closeToTray": true}),
@@ -152,7 +129,6 @@ mod tests {
         assert_eq!(report["app"]["version"], "1.2.3");
         assert_eq!(report["settings"]["trading"], "read-only");
         assert_eq!(report["settings"]["signedIn"], true);
-        assert_eq!(report["settings"]["updateChannel"], "rc");
         assert_eq!(report["logFolder"], "~/logs");
         assert!(!text.contains("abc123secret"), "{text}");
         assert!(report["recentLog"][0]
@@ -163,7 +139,7 @@ mod tests {
 
     #[test]
     fn trading_shows_only_enabled_or_read_only() {
-        let on = build_report("1", "stable", true, false, json!({}), None, &[]);
+        let on = build_report("1", true, false, json!({}), None, &[]);
         let report: Value = serde_json::from_str(&on).unwrap();
         assert_eq!(report["settings"]["trading"], "enabled");
         assert_eq!(report["settings"]["signedIn"], false);
@@ -171,16 +147,8 @@ mod tests {
 
     #[test]
     fn the_report_names_the_build_variant() {
-        let report: Value = serde_json::from_str(&build_report(
-            "1",
-            "stable",
-            false,
-            false,
-            json!({}),
-            None,
-            &[],
-        ))
-        .unwrap();
+        let report: Value =
+            serde_json::from_str(&build_report("1", false, false, json!({}), None, &[])).unwrap();
         assert_eq!(report["app"]["name"], APP_NAME);
         assert!(APP_NAME.starts_with("Scalable Capital Desktop"));
         #[cfg(not(feature = "extension"))]

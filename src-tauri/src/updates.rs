@@ -2,9 +2,8 @@
 //!
 //! The webview cannot use the updater or process plugins itself (`capabilities/default.json` grants
 //! neither): only these two commands are reachable. `check_for_update` asks the endpoint in
-//! `tauri.conf.json` (`plugins.updater`) for a newer version (the release candidate channel asks
-//! `latest-rc.json` next to it instead, see `UpdateChannel`) and keeps the answer in managed state,
-//! `install_update` downloads it, verifies its minisign signature against the public key from the
+//! `tauri.conf.json` (`plugins.updater`) for a newer stable version and keeps the answer in managed
+//! state, `install_update` downloads it, verifies its minisign signature against the public key from the
 //! same file, installs it and restarts the app. The restart starts read-only like every launch, so an
 //! install is not held back by the Trading switch.
 
@@ -16,54 +15,16 @@ use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
-use url::Url;
 
 use crate::logging;
 
 const MAX_NOTES: usize = 2000;
 const MAX_ERROR: usize = 200;
 
-/// Which manifest an update check reads: `latest.json` (stable releases only) or `latest-rc.json`
-/// (the newest release, release candidates included).
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum UpdateChannel {
-    Stable,
-    ReleaseCandidate,
-}
-
-impl UpdateChannel {
-    /// Anything but "rc" is the stable channel, so a bad value never opts in to pre-releases.
-    fn parse(value: Option<&str>) -> Self {
-        match value {
-            Some("rc") => Self::ReleaseCandidate,
-            _ => Self::Stable,
-        }
-    }
-
-    fn manifest(self) -> &'static str {
-        match self {
-            Self::Stable => "latest.json",
-            Self::ReleaseCandidate => "latest-rc.json",
-        }
-    }
-
-    fn page(self) -> &'static str {
-        match self {
-            Self::Stable => "index.html",
-            Self::ReleaseCandidate => "index-rc.html",
-        }
-    }
-}
-
-/// A reinstall also accepts the version that is already running, so the user can install it again.
-fn accepts_update(
-    current: &Version,
-    remote: &Version,
-    channel: UpdateChannel,
-    reinstall: bool,
-) -> bool {
-    (remote > current || (reinstall && remote == current))
-        && (channel == UpdateChannel::ReleaseCandidate || remote.pre.is_empty())
+/// Only stable releases are offered. A reinstall also accepts the version that is already running,
+/// so the user can install it again.
+fn accepts_update(current: &Version, remote: &Version, reinstall: bool) -> bool {
+    (remote > current || (reinstall && remote == current)) && remote.pre.is_empty()
 }
 
 /// The update `check_for_update` found, waiting for `install_update`.
@@ -119,49 +80,41 @@ fn build_info(
     }
 }
 
-/// The download page next to `latest.json` (`<base>/latest.json` gives `<base>/index.html`, and
-/// `<base>/index-rc.html` for the release candidate channel). The release scripts write it with the
-/// links to the current installers.
-fn download_page_url(endpoint: &str, channel: UpdateChannel) -> Option<String> {
+/// The download page next to `latest.json` (`<base>/latest.json` gives `<base>/index.html`). The
+/// release scripts write it with the links to the current installers.
+fn download_page_url(endpoint: &str) -> Option<String> {
     let base = endpoint.strip_suffix("/latest.json")?;
     if !base.starts_with("https://") {
         return None;
     }
-    Some(format!("{base}/{}", channel.page()))
+    Some(format!("{base}/index.html"))
 }
 
 const GITHUB_LATEST_MANIFEST: &str = "/releases/latest/download/latest.json";
 
-/// The GitHub release page for the endpoints that point at a GitHub repository's releases: the latest
-/// release for the stable channel, the releases list (which shows pre-releases) for the release
-/// candidate channel. Falls back to the download page next to the first endpoint.
-fn release_page_url(endpoints: &[String], channel: UpdateChannel) -> Option<String> {
+/// The latest GitHub release page when an endpoint points at a GitHub repository's releases, else
+/// the download page next to the first endpoint.
+fn release_page_url(endpoints: &[String]) -> Option<String> {
     let github = endpoints.iter().find_map(|endpoint| {
         let repo = endpoint.strip_suffix(GITHUB_LATEST_MANIFEST)?;
         repo.starts_with("https://github.com/").then_some(repo)
     });
-    match (github, channel) {
-        (Some(repo), UpdateChannel::Stable) => Some(format!("{repo}/releases/latest")),
-        (Some(repo), UpdateChannel::ReleaseCandidate) => Some(format!("{repo}/releases")),
-        (None, _) => endpoints
+    match github {
+        Some(repo) => Some(format!("{repo}/releases/latest")),
+        None => endpoints
             .first()
-            .and_then(|endpoint| download_page_url(endpoint, channel)),
+            .and_then(|endpoint| download_page_url(endpoint)),
     }
 }
 
-/// The manifest of a channel, next to the configured `latest.json`.
-fn manifest_url(endpoint: &str, channel: UpdateChannel) -> Option<Url> {
-    let base = endpoint.strip_suffix("/latest.json")?;
-    Url::parse(&format!("{base}/{}", channel.manifest())).ok()
-}
-
-/// Whether this install can replace itself. The portable Windows exe, deb and rpm installs and a
-/// build that does not run from a bundle cannot: the updater would run an installer or overwrite
-/// files the package manager owns.
-fn can_self_update(os: &str, exe: &Path, appimage: bool, has_uninstaller: bool) -> bool {
+/// Whether this install can replace itself. The portable Windows exe (wherever it was copied to),
+/// deb and rpm installs and a build that does not run from a bundle cannot: the updater would run an
+/// installer or overwrite files the package manager owns. `installed` is a Windows install made by
+/// the NSIS or MSI installer.
+fn can_self_update(os: &str, exe: &Path, appimage: bool, installed: bool) -> bool {
     let exe = exe.to_string_lossy().to_lowercase().replace('\\', "/");
     match os {
-        "windows" => has_uninstaller || exe.contains("/program files"),
+        "windows" => installed,
         "macos" => exe.contains(".app/contents/macos/"),
         "linux" => appimage,
         _ => false,
@@ -172,11 +125,13 @@ fn running_install_can_update() -> bool {
     let Ok(exe) = std::env::current_exe() else {
         return false;
     };
-    let has_uninstaller = exe
+    // NSIS puts its uninstaller next to the exe; an MSI install is marked in the exe by the bundler.
+    let installed = exe
         .parent()
-        .is_some_and(|dir| dir.join("uninstall.exe").is_file());
+        .is_some_and(|dir| dir.join("uninstall.exe").is_file())
+        || tauri::utils::platform::bundle_type() == Some(tauri::utils::config::BundleType::Msi);
     let appimage = std::env::var_os("APPIMAGE").is_some_and(|value| !value.is_empty());
-    can_self_update(std::env::consts::OS, &exe, appimage, has_uninstaller)
+    can_self_update(std::env::consts::OS, &exe, appimage, installed)
 }
 
 fn endpoints(app: &AppHandle) -> Vec<String> {
@@ -203,10 +158,9 @@ fn failure(error: impl std::fmt::Display) -> String {
 pub async fn check_for_update(
     app: AppHandle,
     pending: State<'_, PendingUpdate>,
-    channel: Option<String>,
     reinstall: Option<bool>,
 ) -> Result<Option<UpdateInfo>, String> {
-    check(app, pending, channel, reinstall.unwrap_or(false))
+    check(app, pending, reinstall.unwrap_or(false))
         .await
         .inspect_err(|error| logging::log_failure("updates", "update check", error))
 }
@@ -214,30 +168,23 @@ pub async fn check_for_update(
 async fn check(
     app: AppHandle,
     pending: State<'_, PendingUpdate>,
-    channel: Option<String>,
     reinstall: bool,
 ) -> Result<Option<UpdateInfo>, String> {
     *pending.0.lock().map_err(failure)? = None;
-    let channel = UpdateChannel::parse(channel.as_deref());
     let configured = endpoints(&app);
-    let mut builder = app.updater_builder();
-    builder = builder.version_comparator(move |current, remote| {
-        accepts_update(&current, &remote.version, channel, reinstall)
-    });
-    if channel != UpdateChannel::Stable {
-        let url = configured
-            .first()
-            .and_then(|endpoint| manifest_url(endpoint, channel))
-            .ok_or("The update endpoint has no release candidate channel.")?;
-        builder = builder.endpoints(vec![url]).map_err(failure)?;
-    }
-    let updater = builder.build().map_err(failure)?;
+    let updater = app
+        .updater_builder()
+        .version_comparator(move |current, remote| {
+            accepts_update(&current, &remote.version, reinstall)
+        })
+        .build()
+        .map_err(failure)?;
     let update = updater.check().await.map_err(failure)?;
     let Some(update) = update else {
         *pending.0.lock().map_err(failure)? = None;
         return Ok(None);
     };
-    let release_url = release_page_url(&configured, channel);
+    let release_url = release_page_url(&configured);
     let info = build_info(
         &update.version,
         &update.current_version,
@@ -300,9 +247,12 @@ mod tests {
         let msi =
             Path::new(r"C:\Program Files\scalable-capital-desktop\scalable-capital-desktop.exe");
         let portable = Path::new(r"C:\Users\me\Downloads\scalable-capital-desktop-portable.exe");
+        let copied = Path::new(r"C:\Program Files\Tools\scalable-capital-desktop-portable.exe");
         assert!(can_self_update("windows", nsis, false, true));
-        assert!(can_self_update("windows", msi, false, false));
+        assert!(can_self_update("windows", msi, false, true));
         assert!(!can_self_update("windows", portable, false, false));
+        // A portable exe copied into Program Files is still not an install.
+        assert!(!can_self_update("windows", copied, false, false));
     }
 
     #[test]
@@ -379,82 +329,52 @@ mod tests {
     #[test]
     fn a_reinstall_accepts_the_running_version_but_never_an_older_one() {
         let current = Version::parse("1.2.0").unwrap();
-        let channel = UpdateChannel::Stable;
-        assert!(accepts_update(&current, &current, channel, true));
-        assert!(!accepts_update(&current, &current, channel, false));
+        assert!(accepts_update(&current, &current, true));
+        assert!(!accepts_update(&current, &current, false));
         assert!(!accepts_update(
             &current,
             &Version::parse("1.1.0").unwrap(),
-            channel,
             true
         ));
     }
 
     #[test]
-    fn update_comparator_requires_newer_versions_and_keeps_stable_releases_stable() {
+    fn update_comparator_requires_newer_stable_versions() {
         let current = Version::parse("1.2.0").unwrap();
         assert!(accepts_update(
             &current,
             &Version::parse("1.2.1").unwrap(),
-            UpdateChannel::Stable,
             false
         ));
         assert!(!accepts_update(
             &current,
             &Version::parse("1.2.0").unwrap(),
-            UpdateChannel::Stable,
             false
         ));
         assert!(!accepts_update(
             &current,
             &Version::parse("1.3.0-rc.1").unwrap(),
-            UpdateChannel::Stable,
-            false
-        ));
-        assert!(accepts_update(
-            &current,
-            &Version::parse("1.3.0-rc.1").unwrap(),
-            UpdateChannel::ReleaseCandidate,
             false
         ));
         assert!(!accepts_update(
+            &current,
             &Version::parse("1.3.0-rc.1").unwrap(),
-            &Version::parse("1.3.0-rc.1").unwrap(),
-            UpdateChannel::ReleaseCandidate,
-            false
+            true
         ));
     }
 
     #[test]
     fn the_download_page_sits_next_to_latest_json_on_https_only() {
         assert_eq!(
-            download_page_url(
-                "https://updates.example.com/app/latest.json",
-                UpdateChannel::Stable
-            )
-            .as_deref(),
+            download_page_url("https://updates.example.com/app/latest.json").as_deref(),
             Some("https://updates.example.com/app/index.html")
         );
         assert_eq!(
-            download_page_url(
-                "https://updates.example.com/app/latest.json",
-                UpdateChannel::ReleaseCandidate
-            )
-            .as_deref(),
-            Some("https://updates.example.com/app/index-rc.html")
-        );
-        assert_eq!(
-            download_page_url(
-                "http://updates.example.com/app/latest.json",
-                UpdateChannel::Stable
-            ),
+            download_page_url("http://updates.example.com/app/latest.json"),
             None
         );
         assert_eq!(
-            download_page_url(
-                "https://updates.example.com/app/manifest.json",
-                UpdateChannel::Stable
-            ),
+            download_page_url("https://updates.example.com/app/manifest.json"),
             None
         );
     }
@@ -466,48 +386,13 @@ mod tests {
             "https://github.com/owner/repo/releases/latest/download/latest.json".to_owned(),
         ];
         assert_eq!(
-            release_page_url(&endpoints, UpdateChannel::Stable).as_deref(),
+            release_page_url(&endpoints).as_deref(),
             Some("https://github.com/owner/repo/releases/latest")
         );
         assert_eq!(
-            release_page_url(&endpoints, UpdateChannel::ReleaseCandidate).as_deref(),
-            Some("https://github.com/owner/repo/releases")
-        );
-        assert_eq!(
-            release_page_url(&endpoints[..1], UpdateChannel::Stable).as_deref(),
+            release_page_url(&endpoints[..1]).as_deref(),
             Some("https://updates.example.com/app/index.html")
         );
-        assert_eq!(release_page_url(&[], UpdateChannel::Stable), None);
-    }
-
-    #[test]
-    fn only_rc_selects_the_release_candidate_channel() {
-        assert_eq!(
-            UpdateChannel::parse(Some("rc")),
-            UpdateChannel::ReleaseCandidate
-        );
-        assert_eq!(UpdateChannel::parse(Some("stable")), UpdateChannel::Stable);
-        assert_eq!(UpdateChannel::parse(Some("RC ")), UpdateChannel::Stable);
-        assert_eq!(UpdateChannel::parse(None), UpdateChannel::Stable);
-    }
-
-    #[test]
-    fn the_release_candidate_manifest_sits_next_to_latest_json() {
-        assert_eq!(
-            manifest_url(
-                "https://updates.example.com/app/latest.json",
-                UpdateChannel::ReleaseCandidate
-            )
-            .map(String::from)
-            .as_deref(),
-            Some("https://updates.example.com/app/latest-rc.json")
-        );
-        assert_eq!(
-            manifest_url(
-                "https://updates.example.com/app/other.json",
-                UpdateChannel::ReleaseCandidate
-            ),
-            None
-        );
+        assert_eq!(release_page_url(&[]), None);
     }
 }

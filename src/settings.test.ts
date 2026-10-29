@@ -45,7 +45,6 @@ describe("sanitizeSettings", () => {
         alertMinutes: 7,
         alertToasts: "yes",
         checkUpdates: "yes",
-        updateChannel: "nightly",
         orderVenue: "nasdaq",
       }),
     ).toEqual(DEFAULT_SETTINGS);
@@ -72,7 +71,6 @@ describe("sanitizeSettings", () => {
       alertMinutes: 15,
       alertToasts: true,
       checkUpdates: false,
-      updateChannel: "rc",
       orderVenue: "xetra",
       startAccess: "restricted",
     } as const;
@@ -85,10 +83,8 @@ describe("sanitizeSettings", () => {
     expect(sanitizeSettings({ checkUpdates: "no" }).checkUpdates).toBe(true);
   });
 
-  it("stays on the stable update channel unless release candidates are chosen", () => {
-    expect(DEFAULT_SETTINGS.updateChannel).toBe("stable");
-    expect(sanitizeSettings({ updateChannel: "rc" }).updateChannel).toBe("rc");
-    expect(sanitizeSettings({ updateChannel: "beta" }).updateChannel).toBe("stable");
+  it("ignores the update channel of older versions, which offered release candidates", () => {
+    expect(parseStoredSettings(JSON.stringify({ updateChannel: "rc" }))).toEqual(DEFAULT_SETTINGS);
   });
 
   it("defaults new orders to EIX and sanitizes the saved venue", () => {

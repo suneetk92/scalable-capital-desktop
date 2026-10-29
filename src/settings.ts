@@ -8,8 +8,6 @@ import { extension } from "./extensions";
 export type ThemeSetting = "dark" | "light" | "system";
 export type FontFamilySetting = "inter" | "system" | "segoe" | "serif" | "mono";
 export type DensitySetting = "comfortable" | "compact";
-/** Which releases the update check offers: stable ones only, or release candidates (`-rc` versions) as well. */
-export type UpdateChannelSetting = "stable" | "rc";
 export type VenueSetting = "eix" | "gettex" | "xetra";
 
 export const VENUE_OPTIONS: { value: VenueSetting; label: string }[] = [
@@ -41,7 +39,6 @@ export type Settings = {
   alertToasts: boolean;
   /** Asks the update server once at launch whether a newer version exists. The only request that does not go to Scalable. */
   checkUpdates: boolean;
-  updateChannel: UpdateChannelSetting;
   /** Venue preselected for new orders. */
   orderVenue: VenueSetting;
   /** The access level every launch starts with (Full becomes Restricted while the exchange is closed). Only the Settings choice changes it; the top bar affects the current session only. */
@@ -86,7 +83,6 @@ export const DEFAULT_SETTINGS: Settings = {
   alertMinutes: 5,
   alertToasts: false,
   checkUpdates: true,
-  updateChannel: "stable",
   orderVenue: "eix",
   startAccess: "readonly",
 };
@@ -124,7 +120,6 @@ export function sanitizeSettings(raw: Partial<Record<keyof Settings, unknown>>):
     alertMinutes: ALERT_MINUTE_OPTIONS.find((minutes) => minutes === raw.alertMinutes) ?? DEFAULT_SETTINGS.alertMinutes,
     alertToasts: typeof raw.alertToasts === "boolean" ? raw.alertToasts : DEFAULT_SETTINGS.alertToasts,
     checkUpdates: typeof raw.checkUpdates === "boolean" ? raw.checkUpdates : DEFAULT_SETTINGS.checkUpdates,
-    updateChannel: oneOf(raw.updateChannel, ["stable", "rc"], DEFAULT_SETTINGS.updateChannel),
     orderVenue: oneOf(raw.orderVenue, ["eix", "gettex", "xetra"], DEFAULT_SETTINGS.orderVenue),
     startAccess: oneOf(raw.startAccess, ["readonly", "restricted", "full"], (raw as { tradingAtStart?: unknown }).tradingAtStart === true ? "full" : DEFAULT_SETTINGS.startAccess),
   };
