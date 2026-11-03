@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vite-plus/test";
+import { formatDateTime } from "../../../../src/format";
+import { formatMoney } from "../../../../src/screener";
+import type { OrderInfo } from "./orderState";
 import { TrailingTransactionDialog } from "./TrailingTransactionDialog";
 import { parseTrailingList } from "./trailing";
 
@@ -39,11 +42,31 @@ describe("trailing transaction dialog", () => {
       { state: "SUBMITTED", timestamp: "2026-10-28T20:22:00Z" },
       { state: "SETTLED", timestamp: "2026-10-30T06:00:00Z" },
     ];
-    render(<TrailingTransactionDialog stop={stop} order={{ state: "FILLED", final: true, history }} onClose={() => {}} />);
+    render(
+      <TrailingTransactionDialog
+        stop={stop}
+        order={{ state: "FILLED", final: true, history, executionPrice: 94.25, executionTime: "2026-10-29T12:30:00Z", currency: "EUR", executionChecked: true }}
+        onClose={() => {}}
+      />,
+    );
     expect(screen.getByText("Order history at Scalable")).toBeTruthy();
     expect(screen.getByText("Submitted")).toBeTruthy();
     expect(screen.getByText("Settled")).toBeTruthy();
+    expect(screen.getByText("Execution time")).toBeTruthy();
+    expect(screen.getByText(formatDateTime("2026-10-29T12:30:00Z"))).toBeTruthy();
+    expect(screen.getByText("Execution price")).toBeTruthy();
+    expect(screen.getByText(formatMoney(94.25, "EUR"))).toBeTruthy();
+    expect(screen.getByText("Order placed")).toBeTruthy();
     expect(screen.queryByText("Scalable's answer when the order was placed")).toBeNull();
+  });
+
+  it("distinguishes an unreported fill from the price at which the stop fired", () => {
+    const [stop] = parseTrailingList({ stops: [stored] }).stops;
+    const order: OrderInfo = { state: "SETTLED", final: true, history: [], executionPrice: null, executionTime: null, currency: null, executionChecked: true };
+    render(<TrailingTransactionDialog stop={stop} order={order} onClose={() => {}} />);
+    expect(screen.getAllByText("Not reported")).toHaveLength(2);
+    expect(screen.getByText("Quote when order was placed")).toBeTruthy();
+    expect(screen.getAllByText(formatMoney(stored.soldPrice))).toHaveLength(2);
   });
 
   it("copes with a stop sold before the transaction was recorded", () => {

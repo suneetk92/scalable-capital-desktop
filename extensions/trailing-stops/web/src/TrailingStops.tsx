@@ -5,6 +5,7 @@ import { ArrowTrendingDownIcon, ArrowTrendingUpIcon } from "@heroicons/react/24/
 import { useState } from "react";
 import { invokeCommand } from "./commands";
 import { formatMoney } from "../../../../src/screener";
+import { formatDateTime } from "../../../../src/format";
 import { TrailingStopDialog } from "./TrailingStopDialog";
 import { TrailingTransactionDialog } from "./TrailingTransactionDialog";
 import { errorText } from "../../../../src/tools";
@@ -19,7 +20,7 @@ import { orderStateLabel, useOrderStates, type OrderInfo } from "./orderState";
 
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
-const COLUMN_IDS = ["name", "status", "quantity", "trail", "high", "trigger", "now", "actions"];
+const COLUMN_IDS = ["name", "status", "quantity", "trail", "high", "trigger", "now", "placed", "atAbout", "actions"];
 const HEADS: Record<TrailSide, Record<string, { label: string; className?: string }>> = {
   sell: {
     name: { label: "ISIN / name", className: NAME_COLUMN },
@@ -29,6 +30,8 @@ const HEADS: Record<TrailSide, Record<string, { label: string; className?: strin
     high: { label: "High", className: TH_NUM },
     trigger: { label: "Sells at or below", className: TH_NUM },
     now: { label: "Now", className: TH_NUM },
+    placed: { label: "Execution time", className: TH_NUM },
+    atAbout: { label: "Execution price", className: TH_NUM },
     actions: { label: "Actions", className: TH_NUM },
   },
   buy: {
@@ -39,6 +42,8 @@ const HEADS: Record<TrailSide, Record<string, { label: string; className?: strin
     high: { label: "Low", className: TH_NUM },
     trigger: { label: "Buys at or above", className: TH_NUM },
     now: { label: "Now", className: TH_NUM },
+    placed: { label: "Execution time", className: TH_NUM },
+    atAbout: { label: "Execution price", className: TH_NUM },
     actions: { label: "Actions", className: TH_NUM },
   },
 };
@@ -53,7 +58,7 @@ function Row({
   onEdit,
   onRemove,
   onDetails,
-  orderState,
+  orderInfo,
 }: {
   order: string[];
   stop: TrailingStop;
@@ -64,8 +69,8 @@ function Row({
   onEdit: () => void;
   onRemove: () => void;
   onDetails: () => void;
-  /** Where the placed order stands at Scalable (filled, settled, ...), once known. */
-  orderState?: string;
+  /** Where the placed order stands at Scalable, with any reported fill data. */
+  orderInfo?: OrderInfo;
 }) {
   const money = (value: number) => formatMoney(value);
   const watching = stop.status === "active";
@@ -73,8 +78,8 @@ function Row({
   const buying = stop.side === "buy";
   const verb = buying ? "buy" : "sell";
   const soldNote =
-    stop.status === "sold" && stop.soldPrice !== null
-      ? `${buying ? "Bought" : "Sold"} at ${money(stop.soldPrice)}${orderState ? `. Order ${orderStateLabel(orderState).toLowerCase()} at Scalable.` : ""}`
+    stop.status === "sold"
+      ? `${buying ? "Buy" : "Sell"} order placed.${stop.executedAt !== null ? ` Order placed ${formatDateTime(stop.executedAt * 1000)}.` : ""}${stop.soldPrice !== null ? ` Quote when placed: about ${money(stop.soldPrice)}.` : ""}${orderInfo ? ` Scalable reports ${orderStateLabel(orderInfo.state).toLowerCase()}.` : ""}`
       : null;
   const watchNote = `Watching the price. The app will ${verb} at market once it ${buying ? "reaches" : "falls to"} ${money(triggerPrice(stop.high, stop.trail, stop.side))}.`;
   const defaultTitle: Record<TrailingStatus, string> = {
@@ -118,7 +123,7 @@ function Row({
               ) : (
                 <Badge tone={TONE[stop.status]} title={statusTitle}>
                   {statusLabel(stop.side, stop.status)}
-                  {stop.status === "sold" && orderState ? ` · ${orderStateLabel(orderState)}` : ""}
+                  {stop.status === "sold" && orderInfo ? ` · ${orderStateLabel(orderInfo.state)}` : ""}
                 </Badge>
               )}
             </td>
@@ -139,6 +144,12 @@ function Row({
               ) : (
                 "—"
               )}
+            </td>
+          ),
+          placed: <td className={`${TD_NUM} whitespace-nowrap`}>{stop.status === "sold" && orderInfo?.executionTime ? formatDateTime(orderInfo.executionTime) : "—"}</td>,
+          atAbout: (
+            <td className={TD_NUM}>
+              {stop.status === "sold" && orderInfo?.executionPrice !== null && orderInfo?.executionPrice !== undefined ? formatMoney(orderInfo.executionPrice, orderInfo.currency ?? "EUR") : "—"}
             </td>
           ),
           actions: (
@@ -264,7 +275,7 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
                   onEdit={() => onEdit(stop)}
                   onRemove={() => onRemove(stop.id)}
                   onDetails={() => onDetails(stop)}
-                  orderState={orderStates.get(stop.id)?.state}
+                  orderInfo={orderStates.get(stop.id)}
                 />
               ))}
             </tbody>

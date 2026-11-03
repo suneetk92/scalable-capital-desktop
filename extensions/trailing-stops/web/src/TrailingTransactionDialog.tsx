@@ -14,11 +14,13 @@ export function TrailingTransactionDialog({ stop, order, onClose }: { stop: Trai
       <ModalHeader title={`${verb}: ${stop.name}`} closeLabel="Close details" onClose={onClose} />
       <p className="mb-3 text-ink-muted">{stop.isin}</p>
       <DescriptionList>
-        <DescriptionRow label="When">{stop.executedAt === null ? "Not recorded" : formatDateTime(stop.executedAt * 1000)}</DescriptionRow>
+        <DescriptionRow label="Order placed">{stop.executedAt === null ? "Not recorded" : formatDateTime(stop.executedAt * 1000)}</DescriptionRow>
+        <DescriptionRow label="Execution time">{order?.executionTime ? formatDateTime(order.executionTime) : "Not reported"}</DescriptionRow>
+        <DescriptionRow label="Execution price">{order?.executionPrice == null ? "Not reported" : formatMoney(order.executionPrice, order.currency ?? "EUR")}</DescriptionRow>
         <DescriptionRow label={buying ? "Spent" : "Shares sold"}>{buying ? formatMoney(stop.amount ?? 0) : formatNumber(stop.quantity)}</DescriptionRow>
         {order && <DescriptionRow label="Order status">{orderStateLabel(order.state)}</DescriptionRow>}
         <DescriptionRow label="Order type">Market</DescriptionRow>
-        <DescriptionRow label={`${verb} at about`}>{stop.soldPrice === null ? "Not recorded" : formatMoney(stop.soldPrice)}</DescriptionRow>
+        <DescriptionRow label="Quote when order was placed">{stop.soldPrice === null ? "Not recorded" : formatMoney(stop.soldPrice)}</DescriptionRow>
         <DescriptionRow label="Distance">{trailLabel(stop.trail, formatMoney)}</DescriptionRow>
         <DescriptionRow label={buying ? "Lowest price seen" : "Highest price seen"}>{formatMoney(stop.high)}</DescriptionRow>
         <DescriptionRow label="Trigger price">{formatMoney(triggerPrice(stop.high, stop.trail, stop.side))}</DescriptionRow>
