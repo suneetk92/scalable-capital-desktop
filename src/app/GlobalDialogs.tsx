@@ -45,9 +45,7 @@ export function GlobalDialogs() {
           }}
         />
       )}
-      {data.watchlistDialog && data.watchedIsins && (
-        <WatchlistAddDialog common={data.common} watched={data.watchedIsins} held={data.heldIsins} onClose={() => data.setWatchlistDialog(false)} />
-      )}
+      {data.watchlistDialog && data.watchedIsins && <WatchlistAddDialog common={data.common} watched={data.watchedIsins} held={data.heldIsins} onClose={() => data.setWatchlistDialog(false)} />}
       {paletteOpen && <CommandPalette items={paletteItems()} onClose={() => setPaletteOpen(false)} />}
       {confirmingTrading && (
         <ConfirmDialog

@@ -64,10 +64,15 @@ function SecurityResults({
                   logo={logos.get(hit.isin.toUpperCase())}
                   initials={(hit.symbol || hit.name).slice(0, 2).toUpperCase()}
                   title={
-                    <button className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline" type="button" onClick={(event) => {
-                      event.stopPropagation();
-                      onOpen(hit);
-                    }}>
+                    <button
+                      className="cursor-pointer text-right hover:text-ink-accent-bright hover:underline"
+                      type="button"
+                      title="Open details, chart and news"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpen(hit);
+                      }}
+                    >
                       {hit.symbol || hit.name}
                     </button>
                   }
@@ -84,7 +89,9 @@ function SecurityResults({
               </td>
               <td>
                 {watched === null ? (
-                  <small className={field.hint} title="Your watchlist could not be loaded. Refresh to check.">Watchlist unknown</small>
+                  <small className={field.hint} title="Your watchlist could not be loaded. Refresh to check.">
+                    Watchlist unknown
+                  </small>
                 ) : watched.has(hit.isin) ? (
                   <small className={field.hint}>On watchlist</small>
                 ) : held.has(hit.isin) ? (
@@ -96,18 +103,26 @@ function SecurityResults({
               <td>
                 <span className="flex items-center gap-1.5">
                   {watched && actions.has(TOOL.addWatchlistItem) && !watched.has(hit.isin) && !held.has(hit.isin) && (
-                    <button className={btn.trade} type="button" onClick={(event) => {
-                      event.stopPropagation();
-                      void actions.run(TOOL.addWatchlistItem, { isin: hit.isin }, { done: `${hit.name} added to your watchlist` });
-                    }}>
+                    <button
+                      className={btn.trade}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void actions.run(TOOL.addWatchlistItem, { isin: hit.isin }, { done: `${hit.name} added to your watchlist` });
+                      }}
+                    >
                       Add to watchlist
                     </button>
                   )}
                   {common.tradingEnabled && (
-                    <button className={btn.buy} type="button" onClick={(event) => {
-                      event.stopPropagation();
-                      onTrade(hit);
-                    }}>
+                    <button
+                      className={btn.buy}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onTrade(hit);
+                      }}
+                    >
                       Buy
                     </button>
                   )}
@@ -123,7 +138,11 @@ function SecurityResults({
 
 function DerivativeResults({ result, common, onOpen }: { result: unknown; common: Common; onOpen: (security: FoundSecurity) => void }) {
   const products = useMemo(() => parseFoundDerivatives(result), [result]);
-  const logos = useExtensionIsinLogos({ invoke: common.invoke, isins: products.slice(0, 40).flatMap((product) => (product.isin ? [product.isin] : [])), enabled: Boolean(extension.logos?.useIsinLogos) });
+  const logos = useExtensionIsinLogos({
+    invoke: common.invoke,
+    isins: products.slice(0, 40).flatMap((product) => (product.isin ? [product.isin] : [])),
+    enabled: Boolean(extension.logos?.useIsinLogos),
+  });
   if (products.length === 0) return <p className={EMPTY}>Nothing found.</p>;
   return (
     <div className={SCROLL_X}>
@@ -170,10 +189,23 @@ function DerivativeRow({ product, logo, onOpen }: { product: FoundDerivative; lo
         <SecurityCell
           logo={logo}
           initials={(product.issuer || product.name).slice(0, 2).toUpperCase()}
-          title={product.isin ? <button className="cursor-pointer text-left hover:text-ink-accent-bright hover:underline" type="button" onClick={(event) => {
-            event.stopPropagation();
-            open();
-          }}>{product.name}</button> : product.name}
+          title={
+            product.isin ? (
+              <button
+                className="cursor-pointer text-right hover:text-ink-accent-bright hover:underline"
+                type="button"
+                title="Open details, chart and news"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  open();
+                }}
+              >
+                {product.name}
+              </button>
+            ) : (
+              product.name
+            )
+          }
           subtitle={product.isin ?? undefined}
         />
       </td>

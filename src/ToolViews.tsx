@@ -486,7 +486,20 @@ type PanelProps = {
 };
 
 /** Form generated from a tool's input schema, with a Run button and the result below. */
-export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolios, invoke, tradingEnabled, manageEnabled, runLabel, hideHeader = false, showRaw = true, renderResult, onResult }: PanelProps) {
+export function ToolRunnerPanel({
+  tool,
+  prefill = {},
+  autoRun = false,
+  portfolios,
+  invoke,
+  tradingEnabled,
+  manageEnabled,
+  runLabel,
+  hideHeader = false,
+  showRaw = true,
+  renderResult,
+  onResult,
+}: PanelProps) {
   const [values, setValues] = useState<FormValues>(() => initialValues(tool, prefill, portfolios));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

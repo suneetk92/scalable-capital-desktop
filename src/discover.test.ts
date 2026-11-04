@@ -6,7 +6,13 @@ describe("parseFoundSecurities", () => {
     const result = {
       data: {
         results: [
-          { isin: "US0378331005", name: "Apple Inc.", symbol: "AAPL", securityType: "STOCK", currentQuote: { midPrice: "190.5", currency: "USD", timestampUtc: "2026-10-30T12:00:00Z", isOutdated: true } },
+          {
+            isin: "US0378331005",
+            name: "Apple Inc.",
+            symbol: "AAPL",
+            securityType: "STOCK",
+            currentQuote: { midPrice: "190.5", currency: "USD", timestampUtc: "2026-10-30T12:00:00Z", isOutdated: true },
+          },
           { isin: "us0378331005", name: "Duplicate" },
         ],
       },
