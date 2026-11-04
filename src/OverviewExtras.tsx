@@ -273,10 +273,10 @@ function ActivityCards({
 }
 
 function OvernightTransactionsCard({ common, currency }: { common: Common; currency: string }) {
-  const [search, setSearch] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [type, setType] = useState<OvernightType>("all");
-  const [period, setPeriod] = useState<OvernightPeriod>("all");
+  const [search, setSearch] = useStoredState("overnight-transactions.search", "");
+  const [searchTerm, setSearchTerm] = useState(search.trim());
+  const [type, setType] = useStoredState<OvernightType>("overnight-transactions.type", "all", oneOf(OVERNIGHT_TYPES.map(({ value }) => value)));
+  const [period, setPeriod] = useStoredState<OvernightPeriod>("overnight-transactions.period", "all", oneOf(OVERNIGHT_PERIODS.map(({ value }) => value)));
   const [openError, setOpenError] = useState<string | null>(null);
   const history = useOvernightTransactions(common, { searchTerm, type, period });
   useEffect(() => {

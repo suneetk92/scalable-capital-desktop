@@ -110,7 +110,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   Filters menu for type and status, and Copy CSV. Filters apply to every stored transaction.
   Any form with a portfolio id field (Discover, tool runner, savings plan) shows a portfolio
   drop-down with the main portfolio preselected.
-- Search text and filters on Portfolio, Watchlist, Transactions, Activity, Price alerts, Savings plans and Scalable tools are saved separately and restored after switching pages or restarting. Discover remembers its selected tab and the last successful search arguments for each search tool.
+- Search text and filters on Portfolio, Watchlist, Transactions, Activity, Price alerts, Savings plans and Scalable tools are saved separately and restored after switching pages or restarting. Trailing stop loss and buy-stop tables also remember search, status filters and sorting; the Overview's Overnight transactions card remembers search, type and period. Discover remembers its selected tab and the last successful search arguments for each search tool.
 - **Trailing stops**: buy stops can spend a cash amount or buy whole shares; changing between those modes clears
   the old size. The sell and buy tables show Scalable-reported execution time and price when available. Details
   separates those fill values from the order-placement time and the quote recorded by the app; missing execution

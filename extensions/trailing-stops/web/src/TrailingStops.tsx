@@ -31,7 +31,8 @@ import { Section } from "../../../../src/pages/shared";
 import { matchesText } from "../../../../src/textSearch";
 import { executionPriceNote, isFilled, orderStateLabel, useOrderStates, type OrderInfo } from "./orderState";
 import { paginate } from "../../../../src/paging";
-import { nextSort, sortItems, type SortState } from "../../../../src/sorting";
+import { oneOf, useStoredState } from "../../../../src/hooks/useStoredState";
+import { nextSort, parseSortState, sortItems, type SortState } from "../../../../src/sorting";
 
 const TONE: Record<TrailingStatus, "green" | "yellow" | "gray" | "red"> = { active: "green", selling: "yellow", sold: "gray", attention: "red" };
 
@@ -268,9 +269,9 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
   const resized = resizedTable(layout.widths);
   const logos = useExtensionIsinLogos({ invoke, isins: stops.map((stop) => stop.isin), enabled: Boolean(extension.logos?.useIsinLogos) });
   const active = stops.filter((stop) => stop.status === "active").length;
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<TrailingStatusFilter>("all");
-  const [sort, setSort] = useState<SortState>(null);
+  const [search, setSearch] = useStoredState(`${copy.layout}.search`, "");
+  const [statusFilter, setStatusFilter] = useStoredState<TrailingStatusFilter>(`${copy.layout}.statusFilter`, "all", oneOf(["all", "active", "selling", "sold", "attention"] as const));
+  const [sort, setSort] = useStoredState<SortState>(`${copy.layout}.sort`, null, parseSortState);
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [common.pageSize, search, statusFilter, sort]);
   const filtered = filterTrailingStops(stops, statusFilter).filter((stop) => {

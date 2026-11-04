@@ -146,6 +146,35 @@ describe("trailing stop tables", () => {
     expect(within(screen.getByRole("table")).getByText("Alpha")).toBeTruthy();
   });
 
+  it("restores search and status filters after the panel is remounted", () => {
+    const records = [
+      { ...stored, id: "alpha", name: "Alpha", status: "attention" },
+      { ...stored, id: "beta", name: "Beta", status: "active" },
+      { ...stored, id: "gamma", name: "Gamma", status: "attention" },
+    ];
+    const first = renderStops(records);
+    const table = screen.getByRole("table");
+    const search = screen.getByRole("textbox", { name: "Search trailing stop losses by symbol or name" });
+    fireEvent.change(search, { target: { value: "Alpha" } });
+    const toolbar = screen.getByRole("search", { name: "Search and filter trailing stop losses" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: /Filters/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Needs you" }));
+    expect(within(table).getByText("Alpha")).toBeTruthy();
+    expect(within(table).queryByText("Beta")).toBeNull();
+    first.unmount();
+
+    renderStops(records);
+    const restoredTable = screen.getByRole("table");
+    const restoredSearch = screen.getByRole("textbox", { name: "Search trailing stop losses by symbol or name" });
+    expect((restoredSearch as HTMLInputElement).value).toBe("Alpha");
+    expect(within(restoredTable).getByText("Alpha")).toBeTruthy();
+    expect(within(restoredTable).queryByText("Beta")).toBeNull();
+
+    fireEvent.change(restoredSearch, { target: { value: "" } });
+    expect(within(restoredTable).getByText("Gamma")).toBeTruthy();
+    expect(within(restoredTable).queryByText("Beta")).toBeNull();
+  });
+
   it("announces a removed stop and reports a failed removal", async () => {
     const { common } = renderStops([stored]);
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
