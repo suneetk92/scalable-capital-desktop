@@ -35,6 +35,7 @@ const stored = {
 };
 
 const buy = { ...stored, id: "buy", isin: "US5949181045", name: "Microsoft", side: "buy", shares: 0, amount: 250, soldPrice: 105.75, executedAt: 1_700_000_400, receipt: { orderId: "buy-order" } };
+const buyShares = { ...buy, id: "buy-shares", name: "Nvidia", shares: 3, amount: undefined, receipt: undefined };
 
 const details: Record<string, unknown> = {
   "sell-order": {
@@ -131,6 +132,15 @@ describe("trailing stop tables", () => {
       sell: { executionPrice: 93.75, executionTime: "2026-10-28T15:15:00Z", currency: "EUR", executionChecked: true },
       buy: { executionPrice: 106.25, executionTime: "2026-10-29T10:00:00Z", currency: "USD", executionChecked: true },
     });
+  });
+
+  it("shows a share-based buy size in the table and transaction details", () => {
+    renderStops([buyShares]);
+    const table = screen.getByRole("table");
+    expect(cell(table, "Nvidia", "Amount / shares").textContent).toBe("3 shares");
+    fireEvent.click(within(within(table).getByText("Nvidia").closest("tr")!).getByRole("button", { name: "Details" }));
+    expect(screen.getByText("Shares bought")).toBeTruthy();
+    expect(screen.getByText("3", { selector: "dd" })).toBeTruthy();
   });
 
   it("shows dashes for active stops and independently missing Scalable execution fields", async () => {

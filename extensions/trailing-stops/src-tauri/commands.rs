@@ -35,15 +35,45 @@ fn valid_trail(side: Side, trail: Trail, price: f64) -> Result<(), String> {
     }
 }
 
-/// The size of a stop: the shares to sell, or the money to spend on a purchase.
-fn valid_size(side: Side, size: f64) -> Result<(), String> {
-    if size.is_finite() && size > 0.0 {
-        return Ok(());
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum StopSize {
+    Amount(f64),
+    Shares(f64),
+}
+
+fn valid_size(side: Side, size: StopSize) -> Result<(), String> {
+    let (value, label) = match size {
+        StopSize::Amount(value) => (value, "amount to spend"),
+        StopSize::Shares(value) => (value, "number of shares"),
+    };
+    if !value.is_finite() || value <= 0.0 {
+        return Err(format!("The {label} must be greater than zero"));
     }
-    Err(match side {
-        Side::Sell => "The number of shares must be greater than zero".to_owned(),
-        Side::Buy => "The amount to spend must be greater than zero".to_owned(),
-    })
+    if side == Side::Buy && matches!(size, StopSize::Shares(value) if value.fract() != 0.0) {
+        return Err("A buy stop needs a whole number of shares".to_owned());
+    }
+    Ok(())
+}
+
+fn requested_size(
+    side: Side,
+    amount: Option<f64>,
+    shares: Option<f64>,
+) -> Result<StopSize, String> {
+    let size = match (side, amount, shares) {
+        (Side::Sell, None, Some(shares)) => StopSize::Shares(shares),
+        (Side::Buy, Some(amount), None) => StopSize::Amount(amount),
+        (Side::Buy, None, Some(shares)) => StopSize::Shares(shares),
+        (_, Some(_), Some(_)) => {
+            return Err("Choose either an amount or a number of shares, not both".to_owned())
+        }
+        (Side::Sell, Some(_), None) => {
+            return Err("A trailing stop loss can only use a number of shares".to_owned())
+        }
+        (_, None, None) => return Err("Choose an amount or a number of shares".to_owned()),
+    };
+    valid_size(side, size)?;
+    Ok(size)
 }
 
 /// Sets the seconds between price checks (the app's setting), within the allowed bounds.
@@ -94,21 +124,18 @@ pub struct NewTrailingStop {
     pub name: String,
     #[serde(default)]
     pub portfolio_id: Option<String>,
-    /// The shares to sell (a stop loss).
+    /// The shares to sell, or the shares to buy.
     #[serde(default)]
-    pub shares: f64,
-    /// The money to spend (a buy stop).
+    pub shares: Option<f64>,
+    /// The money to spend on a buy stop.
     #[serde(default)]
-    pub amount: f64,
+    pub amount: Option<f64>,
     pub trail: Trail,
 }
 
 impl NewTrailingStop {
-    fn size(&self) -> f64 {
-        match self.side {
-            Side::Sell => self.shares,
-            Side::Buy => self.amount,
-        }
+    fn size(&self) -> Result<StopSize, String> {
+        requested_size(self.side, self.amount, self.shares)
     }
 }
 
@@ -140,7 +167,7 @@ fn admit_new_stop(
     if !is_isin(&request.isin) {
         return Err("A valid 12-character ISIN is required".to_owned());
     }
-    valid_size(request.side, request.size())?;
+    request.size()?;
     let portfolio_id = request.portfolio_id.clone().filter(|id| !id.is_empty());
     let (count, exists) = state.mutate(|stops| {
         (
@@ -167,6 +194,7 @@ pub async fn add_trailing_stop(
     request: NewTrailingStop,
 ) -> Result<TrailingStop, String> {
     let portfolio_id = admit_new_stop(&gate, &state, &request)?;
+    let size = request.size()?;
     let prices = quote_prices(&app, vec![(request.isin.clone(), portfolio_id.clone())]).await?;
     let price = prices
         .first()
@@ -184,12 +212,14 @@ pub async fn add_trailing_stop(
             name
         },
         portfolio_id: portfolio_id.clone(),
-        shares: if request.side == Side::Sell {
-            request.shares
-        } else {
-            0.0
+        shares: match size {
+            StopSize::Shares(shares) => shares,
+            StopSize::Amount(_) => 0.0,
         },
-        amount: (request.side == Side::Buy).then_some(request.amount),
+        amount: match size {
+            StopSize::Amount(amount) => Some(amount),
+            StopSize::Shares(_) => None,
+        },
         trail: request.trail,
         start_price: price,
         high: price,
@@ -229,9 +259,41 @@ pub async fn add_trailing_stop(
 #[derive(Deserialize)]
 pub struct TrailingStopChange {
     pub id: String,
-    /// The shares of a stop loss, or the money of a buy stop.
-    pub size: f64,
+    /// The old edit field. When present without explicit fields, a buy stop keeps its existing mode.
+    #[serde(default)]
+    pub size: Option<f64>,
+    /// An explicit amount, for a buy stop.
+    #[serde(default)]
+    pub amount: Option<f64>,
+    /// An explicit number of shares, for either side.
+    #[serde(default)]
+    pub shares: Option<f64>,
     pub trail: Trail,
+}
+
+fn changed_size(request: &TrailingStopChange, stop: &TrailingStop) -> Result<StopSize, String> {
+    if request.size.is_some() && (request.amount.is_some() || request.shares.is_some()) {
+        return Err(
+            "Use the legacy size field or an explicit amount or shares field, not both".to_owned(),
+        );
+    }
+    if let Some(size) = request.size {
+        return match stop.side {
+            Side::Sell => {
+                valid_size(stop.side, StopSize::Shares(size))?;
+                Ok(StopSize::Shares(size))
+            }
+            Side::Buy if stop.amount.is_some() => {
+                valid_size(stop.side, StopSize::Amount(size))?;
+                Ok(StopSize::Amount(size))
+            }
+            Side::Buy => {
+                valid_size(stop.side, StopSize::Shares(size))?;
+                Ok(StopSize::Shares(size))
+            }
+        };
+    }
+    requested_size(stop.side, request.amount, request.shares)
 }
 
 /// Changes the size (shares or money) and the distance of a stop that is watching, or one that needs the user, which then
@@ -255,7 +317,7 @@ pub fn update_trailing_stop(
         if !matches!(stop.status, Status::Active | Status::Attention) {
             return Err("Only a stop that is watching or needs you can be changed.".to_owned());
         }
-        valid_size(stop.side, request.size)?;
+        let size = changed_size(&request, stop)?;
         let high = if stop.status == Status::Attention {
             stop.last_price
                 .filter(|price| *price > 0.0)
@@ -267,9 +329,15 @@ pub fn update_trailing_stop(
         let previous = stop.clone();
         stop.high = high;
         stop.status = Status::Active;
-        match stop.side {
-            Side::Sell => stop.shares = request.size,
-            Side::Buy => stop.amount = Some(request.size),
+        match size {
+            StopSize::Shares(shares) => {
+                stop.shares = shares;
+                stop.amount = None;
+            }
+            StopSize::Amount(amount) => {
+                stop.shares = 0.0;
+                stop.amount = Some(amount);
+            }
         }
         stop.trail = request.trail;
         stop.message = None;
@@ -323,8 +391,8 @@ mod tests {
             isin: isin.to_owned(),
             name: "Test".to_owned(),
             portfolio_id: Some("p-1".to_owned()),
-            shares: 2.0,
-            amount: 0.0,
+            shares: Some(2.0),
+            amount: None,
             trail: Trail::Percent(5.0),
         }
     }
@@ -347,18 +415,104 @@ mod tests {
         );
         assert!(admit_new_stop(&gate, &state, &new_stop("nope")).is_err());
         let mut none = new_stop("US0378331005");
-        none.shares = 0.0;
+        none.shares = Some(0.0);
         assert!(admit_new_stop(&gate, &state, &none).is_err());
         let mut buy = new_stop("US0378331005");
         buy.side = Side::Buy;
+        buy.shares = None;
         assert!(admit_new_stop(&gate, &state, &buy).is_err());
-        buy.amount = 100.0;
+        buy.amount = Some(100.0);
         assert!(admit_new_stop(&gate, &state, &buy).is_ok());
         gate.set_for_test(false);
         assert_eq!(
             admit_new_stop(&gate, &state, &request).unwrap_err(),
             MANAGE_OFF
         );
+    }
+
+    #[test]
+    fn buy_stop_sizes_are_exclusive_and_share_counts_are_whole() {
+        let mut buy = new_stop("US0378331005");
+        buy.side = Side::Buy;
+        buy.shares = Some(3.0);
+        assert_eq!(buy.size(), Ok(StopSize::Shares(3.0)));
+        buy.shares = Some(2.5);
+        assert!(buy.size().unwrap_err().contains("whole number"));
+        buy.shares = Some(3.0);
+        buy.amount = Some(100.0);
+        assert!(buy.size().unwrap_err().contains("not both"));
+        buy.amount = None;
+        buy.shares = None;
+        assert!(buy.size().is_err());
+    }
+
+    #[test]
+    fn legacy_add_and_edit_requests_still_deserialize() {
+        let legacy_add: NewTrailingStop = serde_json::from_value(serde_json::json!({
+            "side": "buy",
+            "isin": "US0378331005",
+            "name": "Test",
+            "portfolioId": "p-1",
+            "amount": 250.0,
+            "trail": { "kind": "percent", "value": 5.0 }
+        }))
+        .unwrap();
+        assert_eq!(legacy_add.size(), Ok(StopSize::Amount(250.0)));
+
+        let mut stop = crate::ext_trailing_stops::sample_stop(Trail::Percent(5.0), 100.0);
+        stop.side = Side::Buy;
+        stop.shares = 0.0;
+        stop.amount = Some(250.0);
+        let legacy_edit: TrailingStopChange = serde_json::from_value(serde_json::json!({
+            "id": stop.id.clone(),
+            "size": 300.0,
+            "trail": { "kind": "percent", "value": 5.0 }
+        }))
+        .unwrap();
+        assert_eq!(
+            changed_size(&legacy_edit, &stop),
+            Ok(StopSize::Amount(300.0))
+        );
+    }
+
+    #[test]
+    fn edits_keep_legacy_mode_and_can_explicitly_change_buy_mode() {
+        let mut stop = crate::ext_trailing_stops::sample_stop(Trail::Percent(5.0), 100.0);
+        stop.side = Side::Buy;
+        stop.shares = 0.0;
+        stop.amount = Some(250.0);
+        let legacy = TrailingStopChange {
+            id: stop.id.clone(),
+            size: Some(300.0),
+            amount: None,
+            shares: None,
+            trail: Trail::Percent(5.0),
+        };
+        assert_eq!(changed_size(&legacy, &stop), Ok(StopSize::Amount(300.0)));
+        let shares = TrailingStopChange {
+            size: None,
+            amount: None,
+            shares: Some(3.0),
+            ..legacy
+        };
+        assert_eq!(changed_size(&shares, &stop), Ok(StopSize::Shares(3.0)));
+        let back_to_amount = TrailingStopChange {
+            size: None,
+            amount: Some(150.0),
+            shares: None,
+            ..shares
+        };
+        assert_eq!(
+            changed_size(&back_to_amount, &stop),
+            Ok(StopSize::Amount(150.0))
+        );
+        let fractional = TrailingStopChange {
+            size: None,
+            amount: None,
+            shares: Some(1.5),
+            ..back_to_amount
+        };
+        assert!(changed_size(&fractional, &stop).is_err());
     }
 
     #[test]

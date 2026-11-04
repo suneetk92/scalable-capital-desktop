@@ -4,7 +4,7 @@ import { useTableLayout } from "../../../../src/hooks/useTableLayout";
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { invokeCommand } from "./commands";
-import { formatMoney } from "../../../../src/screener";
+import { formatMoney, formatNumber } from "../../../../src/screener";
 import { formatDateTime } from "../../../../src/format";
 import { TrailingStopDialog } from "./TrailingStopDialog";
 import { TrailingTransactionDialog } from "./TrailingTransactionDialog";
@@ -37,7 +37,7 @@ const HEADS: Record<TrailSide, Record<string, { label: string; className?: strin
   buy: {
     name: { label: "ISIN / name", className: NAME_COLUMN },
     status: { label: "Status" },
-    quantity: { label: "Amount", className: TH_NUM },
+    quantity: { label: "Amount / shares", className: TH_NUM },
     trail: { label: "Trails", className: TH_NUM },
     high: { label: "Low", className: TH_NUM },
     trigger: { label: "Buys at or above", className: TH_NUM },
@@ -128,7 +128,7 @@ function Row({
               )}
             </td>
           ),
-          quantity: <td className={TD_NUM}>{stop.side === "buy" ? money(stop.amount ?? 0) : stop.quantity}</td>,
+          quantity: <td className={TD_NUM}>{stop.side === "buy" ? stop.amount !== null ? money(stop.amount) : `${formatNumber(stop.quantity)} shares` : stop.quantity}</td>,
           trail: <td className={TD_NUM}>{trailLabel(stop.trail, money)}</td>,
           high: <td className={TD_NUM}>{money(stop.high)}</td>,
           trigger: <td className={TD_NUM}>{watching ? money(triggerPrice(stop.high, stop.trail, stop.side)) : "—"}</td>,
@@ -166,7 +166,7 @@ function Row({
                     type="button"
                     onClick={onEdit}
                     disabled={!manageEnabled}
-                    title={manageEnabled ? (watching ? "Change the shares and the distance" : "Change it and watch again") : "Read-only mode: switch to Restricted or Full access to edit"}
+                    title={manageEnabled ? (watching ? "Change the size and the distance" : "Change it and watch again") : "Read-only mode: switch to Restricted or Full access to edit"}
                   >
                     Edit
                   </button>
@@ -202,7 +202,7 @@ const PANELS = {
     icon: ArrowTrendingUpIcon,
     layout: "trailing-buy-stops",
     intro:
-      "Scalable has no trailing buy stop, so the app watches the price itself and buys at market, for the amount you set, when it rises by your distance above its low. It only works while the app runs and is signed in. The low follows the price at any access level; the purchase needs Full access while the exchange is open, and enough cash.",
+      "Scalable has no trailing buy stop, so the app watches the price itself and buys at market, for the amount or whole shares you choose, when it rises by your distance above its low. It only works while the app runs and is signed in. The low follows the price at any access level; the purchase needs Full access while the exchange is open, and enough cash when you choose an amount.",
     emptyTitle: "No trailing buy stops",
     empty: "Start one here to buy into a recovery without picking the bottom: the app follows the price down and buys when it turns up by your distance.",
   },

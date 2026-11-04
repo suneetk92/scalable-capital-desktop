@@ -32,6 +32,23 @@ fn done(side: Side) -> &'static str {
     }
 }
 
+fn done_text(stop: &TrailingStop) -> String {
+    match (stop.side, stop.amount) {
+        (Side::Sell, _) => format!(
+            "{}: the price fell to your trailing stop, so {} shares were sold at market.",
+            stop.name, stop.shares
+        ),
+        (Side::Buy, Some(amount)) => format!(
+            "{}: the price rose to your trailing buy stop, so {:.2} EUR was spent at market.",
+            stop.name, amount
+        ),
+        (Side::Buy, None) => format!(
+            "{}: the price rose to your trailing buy stop, so {} shares were bought at market.",
+            stop.name, stop.shares
+        ),
+    }
+}
+
 /// `last_price` is the watched price that hit the stop, for a preview that has no price of its own.
 fn assess(
     preview: &Value,
@@ -90,6 +107,26 @@ fn assess(
 /// Failed attempts after which a stop is no longer retried and needs the user.
 const MAX_ATTEMPTS: u32 = 3;
 
+fn order_request(stop: &TrailingStop) -> OrderRequest {
+    let amount = stop.amount.filter(|_| stop.side == Side::Buy);
+    let shares = if stop.side == Side::Sell || (stop.side == Side::Buy && amount.is_none()) {
+        Some(stop.shares)
+    } else {
+        None
+    };
+    OrderRequest {
+        side: stop.side.word().to_owned(),
+        isin: stop.isin.clone(),
+        portfolio_id: stop.portfolio_id.clone(),
+        amount,
+        shares,
+        order_type: "market".to_owned(),
+        limit_price: None,
+        stop_price: None,
+        venue: None,
+    }
+}
+
 enum Outcome {
     Done(f64, serde_json::Value),
     /// Nothing was placed; the stop stays active.
@@ -103,17 +140,7 @@ async fn try_trade(app: &AppHandle, stop: &TrailingStop) -> Outcome {
     if !gate.is_on() {
         return Outcome::Retry(TRADING_OFF.to_owned());
     }
-    let request = OrderRequest {
-        side: stop.side.word().to_owned(),
-        isin: stop.isin.clone(),
-        portfolio_id: stop.portfolio_id.clone(),
-        amount: stop.amount.filter(|_| stop.side == Side::Buy),
-        shares: (stop.side == Side::Sell).then_some(stop.shares),
-        order_type: "market".to_owned(),
-        limit_price: None,
-        stop_price: None,
-        venue: None,
-    };
+    let request = order_request(stop);
     let (preview_tool, submit_tool) = match stop.side {
         Side::Sell => ("preview_sell_order", "submit_sell_order"),
         Side::Buy => ("preview_buy_order", "submit_buy_order"),
@@ -240,30 +267,22 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
     let _ = state.persist(app);
     announce_change(app);
     let name = &stop.name;
-    let (done_title, needs_title, wait_title, hit, done_text) = match stop.side {
+    let (done_title, needs_title, wait_title, hit) = match stop.side {
         Side::Sell => (
             "Trailing stop sold",
             "Trailing stop needs you",
             "Trailing stop could not sell yet",
             "its trailing stop",
-            format!(
-                "{name}: the price fell to your trailing stop, so {} shares were sold at market.",
-                stop.shares
-            ),
         ),
         Side::Buy => (
             "Trailing buy stop bought",
             "Trailing buy stop needs you",
             "Trailing buy stop could not buy yet",
             "its trailing buy stop",
-            format!(
-                "{name}: the price rose to your trailing buy stop, so {:.2} EUR was spent at market.",
-                stop.amount.unwrap_or_default()
-            ),
         ),
     };
     match outcome {
-        Outcome::Done(..) => notify::send(app, done_title, &done_text),
+        Outcome::Done(..) => notify::send(app, done_title, &done_text(&stop)),
         Outcome::Attention(message) => {
             notify::send(app, needs_title, &format!("{name}: {message}"))
         }
@@ -479,6 +498,43 @@ mod tests {
             "preview_buy_order",
             &preview_arguments(&request),
         );
+    }
+
+    #[test]
+    fn buy_stops_send_only_the_selected_size_in_the_published_preview_schema() {
+        let schemas = input_schemas();
+        let mut amount_stop = crate::ext_trailing_stops::sample_stop(Trail::Percent(5.0), 100.0);
+        amount_stop.side = Side::Buy;
+        amount_stop.shares = 0.0;
+        amount_stop.amount = Some(250.0);
+        let amount_arguments = preview_arguments(&order_request(&amount_stop));
+        assert_matches(&schemas, "preview_buy_order", &amount_arguments);
+        assert_eq!(
+            amount_arguments["quantity"],
+            json!({ "mode": "amount", "amount": 250 })
+        );
+
+        amount_stop.amount = None;
+        amount_stop.shares = 3.0;
+        let shares_arguments = preview_arguments(&order_request(&amount_stop));
+        assert_matches(&schemas, "preview_buy_order", &shares_arguments);
+        assert_eq!(
+            shares_arguments["quantity"],
+            json!({ "mode": "shares", "shares": 3 })
+        );
+    }
+
+    #[test]
+    fn completion_notices_describe_the_selected_buy_size() {
+        let mut stop = crate::ext_trailing_stops::sample_stop(Trail::Percent(5.0), 100.0);
+        stop.side = Side::Buy;
+        stop.name = "Apple".to_owned();
+        stop.shares = 0.0;
+        stop.amount = Some(250.0);
+        assert!(done_text(&stop).contains("250.00 EUR was spent"));
+        stop.amount = None;
+        stop.shares = 3.0;
+        assert!(done_text(&stop).contains("3 shares were bought"));
     }
 
     #[test]

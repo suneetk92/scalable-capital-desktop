@@ -4,7 +4,7 @@
 //! app does it itself. A trailing stop loss remembers the highest price seen since it was set and,
 //! when the price falls by the chosen percentage or amount below that high, sells the shares at
 //! market. A trailing buy stop is the mirror image: it remembers the lowest price, and when the
-//! price rises by the distance above that low, it buys for the chosen amount of money at market.
+//! price rises by the distance above that low, it buys at market for the chosen amount or number of whole shares.
 //!
 //! This only works while the app runs (the tray keeps it running with the window closed) and is
 //! signed in. The high (or low) follows the price at any access level, but an order is only placed
@@ -89,10 +89,10 @@ pub struct TrailingStop {
     pub name: String,
     #[serde(default)]
     pub portfolio_id: Option<String>,
-    /// The shares to sell; 0 for a buy stop.
+    /// The shares to sell, or the whole shares to buy; 0 for amount-based buy stops.
     #[serde(default)]
     pub shares: f64,
-    /// The money to spend; only for a buy stop.
+    /// The money to spend on an amount-based buy stop; absent for share-based stops.
     #[serde(default)]
     pub amount: Option<f64>,
     pub trail: Trail,
@@ -302,5 +302,25 @@ mod tests {
         assert!(!has_sale_in_progress(std::slice::from_ref(&stop)));
         stop.status = Status::Selling;
         assert!(has_sale_in_progress(&[stop]));
+    }
+
+    #[test]
+    fn saved_amount_and_share_buy_stops_keep_their_size_mode() {
+        let mut amount_stop = sample_stop(Trail::Percent(5.0), 100.0);
+        amount_stop.side = Side::Buy;
+        amount_stop.shares = 0.0;
+        amount_stop.amount = Some(250.0);
+        let saved_amount = serde_json::to_value(&amount_stop).unwrap();
+        let loaded_amount: TrailingStop = serde_json::from_value(saved_amount).unwrap();
+        assert_eq!(loaded_amount.amount, Some(250.0));
+        assert_eq!(loaded_amount.shares, 0.0);
+
+        let mut shares_stop = amount_stop;
+        shares_stop.amount = None;
+        shares_stop.shares = 3.0;
+        let saved_shares = serde_json::to_value(&shares_stop).unwrap();
+        let loaded_shares: TrailingStop = serde_json::from_value(saved_shares).unwrap();
+        assert_eq!(loaded_shares.amount, None);
+        assert_eq!(loaded_shares.shares, 3.0);
     }
 }

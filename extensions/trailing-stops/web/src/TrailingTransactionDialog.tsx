@@ -17,7 +17,9 @@ export function TrailingTransactionDialog({ stop, order, onClose }: { stop: Trai
         <DescriptionRow label="Order placed">{stop.executedAt === null ? "Not recorded" : formatDateTime(stop.executedAt * 1000)}</DescriptionRow>
         <DescriptionRow label="Execution time">{order?.executionTime ? formatDateTime(order.executionTime) : "Not reported"}</DescriptionRow>
         <DescriptionRow label="Execution price">{order?.executionPrice == null ? "Not reported" : formatMoney(order.executionPrice, order.currency ?? "EUR")}</DescriptionRow>
-        <DescriptionRow label={buying ? "Spent" : "Shares sold"}>{buying ? formatMoney(stop.amount ?? 0) : formatNumber(stop.quantity)}</DescriptionRow>
+        <DescriptionRow label={buying ? (stop.amount === null ? "Shares bought" : "Spent") : "Shares sold"}>
+          {buying ? (stop.amount === null ? formatNumber(stop.quantity) : formatMoney(stop.amount)) : formatNumber(stop.quantity)}
+        </DescriptionRow>
         {order && <DescriptionRow label="Order status">{orderStateLabel(order.state)}</DescriptionRow>}
         <DescriptionRow label="Order type">Market</DescriptionRow>
         <DescriptionRow label="Quote when order was placed">{stop.soldPrice === null ? "Not recorded" : formatMoney(stop.soldPrice)}</DescriptionRow>

@@ -12,7 +12,7 @@ export type TrailingStop = {
   isin: string;
   name: string;
   portfolioId: string | null;
-  /** The shares to sell; 0 for a buy stop. */
+  /** The shares to sell or buy; 0 when a buy stop spends a cash amount. */
   quantity: number;
   /** The money to spend; only for a buy stop. */
   amount: number | null;
@@ -94,7 +94,7 @@ function toStop(value: unknown): TrailingStop | null {
     isin: value.isin,
     name: typeof value.name === "string" ? value.name : value.isin,
     portfolioId: typeof value.portfolioId === "string" ? value.portfolioId : null,
-    quantity: value.shares, // the backend stores the amount as `shares`
+    quantity: value.shares,
     amount: typeof value.amount === "number" ? value.amount : null,
     trail: { kind: value.trail.kind === "amount" ? "amount" : "percent", value: value.trail.value },
     startPrice: typeof value.startPrice === "number" ? value.startPrice : value.high,
