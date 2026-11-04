@@ -1,5 +1,5 @@
 import { BellAlertIcon } from "@heroicons/react/24/outline";
-import { useDeferredValue, useMemo, useState, type Ref } from "react";
+import { useDeferredValue, useMemo, type Ref } from "react";
 import { useToolQuery } from "../toolActions";
 import { type Common } from "../types";
 import { btn, PanelFooter } from "../ui";
@@ -11,8 +11,19 @@ import { pickString, type Rec } from "../response";
 import { CopyCsvButton, QueryPanel, collect, perPortfolio, Section } from "./shared";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
+import { oneOf, useStoredState } from "../hooks/useStoredState";
 
 const ALERT_ID_KEYS = ["alertId", "priceAlertId", "id"];
+const alertDirection = oneOf(["", "up", "down"] as const);
+const alertStatus = oneOf(["", "active", "triggered"] as const);
+
+function parseAlertFilter(value: unknown): AlertFilter | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const filter = value as Record<string, unknown>;
+  const direction = alertDirection(filter.direction);
+  const status = alertStatus(filter.status);
+  return typeof filter.text === "string" && direction !== null && status !== null ? { text: filter.text, direction, status } : null;
+}
 
 /** Names the removed alert by its security and price, for the notification center. */
 function removedNotice(record: Rec) {
@@ -24,7 +35,7 @@ export function AlertsPage({ common, searchInput, onOpenSecurity }: { common: Co
   const { actions, portfolios } = common;
   const query = useToolQuery(common.invoke, common.defs, TOOL.listPriceAlerts, actions.has(TOOL.listPriceAlerts) ? perPortfolio(portfolios) : null, common.reloadKey);
   const { records, portfolioOf } = useMemo(() => collect(query.entries), [query.entries]);
-  const [filter, setFilter] = useState<AlertFilter>(NO_ALERT_FILTER);
+  const [filter, setFilter] = useStoredState<AlertFilter>("alerts.filter", NO_ALERT_FILTER, parseAlertFilter);
   const shownFilter = useDeferredValue(filter);
   const filtering = isAlertFiltering(shownFilter);
   const visible = useMemo(() => (filtering ? records.filter((record) => matchesAlert(record, shownFilter)) : records), [filtering, records, shownFilter]);

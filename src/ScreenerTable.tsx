@@ -138,7 +138,7 @@ export function ScreenerTable({
   const rowKeys = tableItems.map((item) => (item.kind === "header" ? `group:${item.section.key}` : item.kind === "pager" ? `pager:${item.section.key}` : `row:${item.row.rowId}`));
   const { bodyRef, window: rowWindow } = useRowWindow(rowKeys, tableScroll);
   // The search text whose security results were closed (Escape, a click elsewhere or a pick); typing more shows them again.
-  const [dismissed, setDismissed] = useState("");
+  const [dismissed, setDismissed] = useState(query);
   const latestHandlers = useRef({
     toggleRow,
     onOpenSecurity,
@@ -255,7 +255,7 @@ export function ScreenerTable({
       <div
         className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start"
         role="search"
-        aria-label="Search and filter holdings and watchlist"
+        aria-label={view === "portfolio" ? "Search and filter portfolio" : "Search and filter watchlist"}
       >
         <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5">
           <div
@@ -263,7 +263,7 @@ export function ScreenerTable({
             onKeyDown={(event) => event.key === "Escape" && setDismissed(query)}
             onBlur={(event) => !event.currentTarget.contains(event.relatedTarget) && setDismissed(query)}
           >
-            <SearchBox inputRef={searchInput} value={query} onChange={setQuery} placeholder="Search symbol or name" label="Search holdings and watchlist" shortcut />
+            <SearchBox inputRef={searchInput} value={query} onChange={setQuery} placeholder="Search symbol or name" label={view === "portfolio" ? "Search portfolio" : "Search watchlist"} shortcut />
             {dismissed !== query && (
               <SecuritySearchResults
                 text={query}

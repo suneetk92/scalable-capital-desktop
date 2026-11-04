@@ -155,6 +155,7 @@ function PortfolioRoute() {
   };
   return (
     <ScreenerTable
+      key={view}
       view={view}
       table={data.table}
       columns={view === "watchlist" ? data.settings.watchlistColumns : data.settings.tableColumns}

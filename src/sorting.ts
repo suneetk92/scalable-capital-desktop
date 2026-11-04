@@ -1,6 +1,14 @@
 type SortDirection = "ascending" | "descending";
 export type SortState = { key: string; direction: SortDirection } | null;
 
+export function parseSortState(value: unknown): SortState {
+  if (value === null) return null;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const sort = value as Record<string, unknown>;
+  if (Object.keys(sort).length !== 2 || typeof sort.key !== "string" || sort.key === "" || (sort.direction !== "ascending" && sort.direction !== "descending")) return null;
+  return { key: sort.key, direction: sort.direction };
+}
+
 /** Click on a header: a new column sorts ascending, the same column then descending, then the original order again. */
 export function nextSort(current: SortState, key: string): SortState {
   if (current === null || current.key !== key) return { key, direction: "ascending" };

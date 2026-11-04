@@ -35,7 +35,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
 - **Sign-in** with Scalable Capital's OAuth server (`https://mcp.scalable.capital`): Dynamic Client
   Registration, PKCE (S256) and a loopback redirect (`http://127.0.0.1:43127/`). Tokens are kept in
   the OS keyring and the session is restored on the next start.
-- **Portfolio and Watchlist tables** (two pages of the sidebar, each with its own columns, widths and column order, remembered separately): sorting, search (Ctrl+K or Alt+K; from three characters it also lists matching Scalable securities under the box, with Details and Add to watchlist, and a **See all results in Discover** link that opens the Discover page with that search already run), a Filters menu (gainers or
+- **Portfolio and Watchlist tables** (two pages of the sidebar, each with its own columns, widths and column order, and with its search, filters, sorting, selection and page state remembered separately): sorting, search (Ctrl+K or Alt+K; from three characters it also lists matching Scalable securities under the box, with Details and Add to watchlist, and a **See all results in Discover** link that opens the Discover page with that search already run), a Filters menu (gainers or
   losers only, "Also held in portfolio" on the Watchlist, a group filter, and "Divide rows into groups" on
   the Portfolio), row selection with bulk actions (add to a group, add to or remove from the watchlist,
   Copy CSV), Copy CSV for the rows shown, and an "Updated" time. The Refresh button next to the page title
@@ -105,11 +105,12 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   (table, details and cancel open orders) has no New order header action. The list is the history stored on this computer (the same one the Overview uses, newest first), so
   the pages cover every transaction at once and the count is the real total. It is brought up to date in the
   background, and while the first full load runs the page shows its progress. Switching to another page and back keeps
-  the filters and the page you were on. The table shows one page of rows at a time (the "Rows per page" setting), a long history is turned into rows in slices (`src/chunked.ts`) so the page stays responsive, and Copy CSV still covers every row the filters match.
+  the filters and the page you were on. Search, filters and sorting are remembered after switching pages and restarting the app. The table shows one page of rows at a time (the "Rows per page" setting), a long history is turned into rows in slices (`src/chunked.ts`) so the page stays responsive, and Copy CSV still covers every row the filters match.
   The toolbar matches the Portfolio table: a search box (Ctrl+K) for symbol or name, a
   Filters menu for type and status, and Copy CSV. Filters apply to every stored transaction.
   Any form with a portfolio id field (Discover, tool runner, savings plan) shows a portfolio
   drop-down with the main portfolio preselected.
+- Search text and filters on Portfolio, Watchlist, Transactions, Activity, Price alerts, Savings plans and Scalable tools are saved separately and restored after switching pages or restarting. Discover remembers its selected tab and the last successful search arguments for each search tool.
 - **Trailing stops**: buy stops can spend a cash amount or buy whole shares; changing between those modes clears
   the old size. The sell and buy tables show Scalable-reported execution time and price when available. Details
   separates those fill values from the order-placement time and the quote recorded by the app; missing execution

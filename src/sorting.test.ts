@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { nextSort, sortItems } from "./sorting";
+import { nextSort, parseSortState, sortItems } from "./sorting";
 
 type Row = { name?: string | null; value?: number | null };
 const valueOf = (row: Row, key: string) => row[key as keyof Row];
@@ -15,6 +15,20 @@ describe("nextSort", () => {
 
   it("starts ascending when another column is clicked", () => {
     expect(nextSort({ key: "value", direction: "descending" }, "name")).toEqual({ key: "name", direction: "ascending" });
+  });
+});
+
+describe("parseSortState", () => {
+  it("accepts null and well-formed sort states", () => {
+    expect(parseSortState(null)).toBeNull();
+    expect(parseSortState({ key: "amount", direction: "descending" })).toEqual({ key: "amount", direction: "descending" });
+  });
+
+  it("rejects malformed or unknown directions", () => {
+    expect(parseSortState({ key: "amount", direction: "sideways" })).toBeNull();
+    expect(parseSortState({ key: "", direction: "ascending" })).toBeNull();
+    expect(parseSortState({ key: "amount" })).toBeNull();
+    expect(parseSortState("amount")).toBeNull();
   });
 });
 

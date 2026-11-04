@@ -15,6 +15,7 @@ import { matchesText } from "../textSearch";
 import { ToolSchemaModal } from "./ToolSchema";
 import { pluralize } from "../format";
 import { useAsyncQuery } from "../hooks/useAsyncQuery";
+import { oneOf, useStoredState } from "../hooks/useStoredState";
 import { paginate } from "../paging";
 
 const COLUMN_IDS = ["tool", "usedFor", "actions"];
@@ -45,8 +46,8 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
   const [, force] = useState(0);
   const { order, layout } = useTableLayout("tools", COLUMN_IDS);
   const resized = resizedTable(layout.widths);
-  const [usageFilter, setUsageFilter] = useState<UsageFilter>("all");
-  const [search, setSearch] = useState("");
+  const [usageFilter, setUsageFilter] = useStoredState<UsageFilter>("tools.usageFilter", "all", oneOf(["all", "used", "unused", "not-offered"] as const));
+  const [search, setSearch] = useStoredState("tools.search", "");
   const [ping, setPing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [page, setPage] = useState(1);

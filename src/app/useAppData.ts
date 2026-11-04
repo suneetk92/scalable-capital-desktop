@@ -506,7 +506,25 @@ export function useAppData() {
   const providersBusy = syncing || extensionRuntime.loading === true || updater.state.status === "checking";
   const logos = extensionRuntime.logos ?? new Map<string, string>();
   const isinLogos = extensionRuntime.isinLogos ?? new Map<string, string>();
-  const table = useScreenerTable({ view, portfolioRows, watchlistRows, groups: allGroups, pageSize: settings.pageSize, columns: tableColumns, marketRecords: market.records });
+  const portfolioTable = useScreenerTable({
+    view: "portfolio",
+    portfolioRows,
+    watchlistRows,
+    groups: allGroups,
+    pageSize: settings.pageSize,
+    columns: settings.tableColumns,
+    marketRecords: market.records,
+  });
+  const watchlistTable = useScreenerTable({
+    view: "watchlist",
+    portfolioRows,
+    watchlistRows,
+    groups: allGroups,
+    pageSize: settings.pageSize,
+    columns: settings.watchlistColumns,
+    marketRecords: market.records,
+  });
+  const table = view === "watchlist" ? watchlistTable : portfolioTable;
 
   // When the watchlist failed to load, an empty list means "unknown", not "nothing watched".
   const watchlistUnknown = Boolean(dashboard?.watchlistError);

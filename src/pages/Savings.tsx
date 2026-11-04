@@ -11,6 +11,7 @@ import { CopyCsvButton, QueryPanel, collect, perPortfolio, Section, DetailsModal
 import { SavingsPlanDialog } from "./SavingsPlanDialog";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
+import { useStoredState } from "../hooks/useStoredState";
 
 const frequencyLabel = (value: string) => {
   const text = value.replace(/_/g, " ").toLowerCase();
@@ -34,7 +35,7 @@ export function SavingsPage({
   const query = useToolQuery(common.invoke, common.defs, TOOL.listSavingsPlans, actions.has(TOOL.listSavingsPlans) ? perPortfolio(portfolios) : null, common.reloadKey);
   const { records, portfolioOf } = useMemo(() => collect(query.entries), [query.entries]);
   const [config, setConfig] = useState(false);
-  const [filter, setFilter] = useState<PlanFilter>(NO_PLAN_FILTER);
+  const [filter, setFilter] = useStoredState<PlanFilter>("savings.filter", NO_PLAN_FILTER);
   const shownFilter = useDeferredValue(filter);
   const filtering = isPlanFiltering(shownFilter);
   const visible = useMemo(() => (filtering ? records.filter((record) => matchesPlan(record, shownFilter)) : records), [filtering, records, shownFilter]);

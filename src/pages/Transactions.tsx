@@ -4,9 +4,10 @@ import { ColumnHead, inOrder, resizedTable } from "../ColumnHead";
 import { EmptyState, FILTER_TITLE, FiltersPopover, Pagination, RadioList, SearchBox, SortHeader } from "../controls";
 import { useTableLayout } from "../hooks/useTableLayout";
 import { useChunkedMap } from "../hooks/useChunkedMap";
+import { useStoredState } from "../hooks/useStoredState";
 import { useExtensionIsinLogos } from "../extensions";
 import { useTransactionHistory } from "../hooks/useTransactionHistory";
-import { nextSort, sortItems, type SortState } from "../sorting";
+import { nextSort, parseSortState, sortItems, type SortState } from "../sorting";
 import { dedupeRows, distinctValues, isFiltering, isOpenOrder, matchesFilter, newestFirst, NO_FILTER, type TransactionFilter, type TransactionRow } from "../transactions";
 import { type Common } from "../types";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL, PANEL_BODY, PanelFooter, PanelHeader, RECORD_TABLE, SCROLL_X, SecurityCell, SignGlyph, signClass, TD_NUM } from "../ui";
@@ -152,7 +153,7 @@ export function TransactionsPage({
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [pageSize]);
 
-  const [filter, setFilter] = useState<TransactionFilter>(NO_FILTER);
+  const [filter, setFilter] = useStoredState<TransactionFilter>("transactions.filter", NO_FILTER);
   // Typing in the search and changing the sort are urgent; filtering and sorting the whole history follows when the browser is free.
   const shownFilter = useDeferredValue(filter);
   const filtering = isFiltering(shownFilter);
@@ -218,7 +219,7 @@ export function TransactionsPage({
   };
 
   // Sorting covers every page and the whole history, not only the rows shown.
-  const [sort, setSort] = useState<SortState>(null);
+  const [sort, setSort] = useStoredState<SortState>("transactions.sort", null, parseSortState);
   const { order, layout } = useTableLayout("transactions", COLUMNS);
   const resized = resizedTable(layout.widths);
   const sortColumn = (column: string) => {

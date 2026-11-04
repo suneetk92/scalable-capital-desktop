@@ -6,11 +6,12 @@ import { matchesText } from "./textSearch";
 import { useExtensionIsinLogos } from "./extensions";
 import { ColumnHead, inOrder, resizedTable } from "./ColumnHead";
 import { useTableLayout } from "./hooks/useTableLayout";
+import { oneOf, useStoredState } from "./hooks/useStoredState";
 import { useOvernightTransactions } from "./hooks/useOvernightTransactions";
 import { useTransactionHistory } from "./hooks/useTransactionHistory";
 import { FILTER_TITLE, FiltersPopover, Pagination, RadioList, SearchBox, SortHeader } from "./controls";
 import { paginate } from "./paging";
-import { nextSort, sortItems, type SortState } from "./sorting";
+import { nextSort, parseSortState, sortItems, type SortState } from "./sorting";
 import { DetailsModal, Loading, QueryPanel, collect, perPortfolio } from "./pages/shared";
 import { formatMoney, formatNumber } from "./screener";
 import { formatDateTime } from "./format";
@@ -78,9 +79,9 @@ function ActivityCards({
   const summary = useMemo(() => summarizeActivity(history.rows, currency), [history.rows, currency]);
   const { pageSize } = common;
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<SortState>(null);
-  const [search, setSearch] = useState("");
-  const [securityFilter, setSecurityFilter] = useState<SecurityFilter>("all");
+  const [sort, setSort] = useStoredState<SortState>("activity-securities.sort", null, parseSortState);
+  const [search, setSearch] = useStoredState("activity-securities.search", "");
+  const [securityFilter, setSecurityFilter] = useStoredState<SecurityFilter>("activity-securities.filter", "all", oneOf(SECURITY_FILTERS.map(({ value }) => value)));
   useEffect(() => setPage(1), [pageSize]);
   const filteredSecurities = useMemo(
     () =>

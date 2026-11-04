@@ -1,11 +1,11 @@
 import { createSortedRowModel, rowSelectionFeature, rowSortingFeature, tableFeatures, useTable, type RowSelectionState, type SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UNGROUPED_ID, type SecurityGroup } from "../groups";
-import type { View } from "../nav";
 import { columnById, marketSortValue, type MarketRecord } from "../marketColumns";
 import { extension } from "../extensions";
 import { paginate } from "../paging";
 import { groupHas, type ChangeFilter, type ScreenerRow, type SortKey } from "../screener";
+import { oneOf, useStoredState } from "./useStoredState";
 
 type RowSortKey = "symbol" | "exchange" | "lastPrice" | "change" | "quantity" | "value" | "avgPrice" | "cost" | "sinceBuy" | "sinceBuyPct" | "weight" | "today" | "bid" | "ask" | "spreadPct";
 
@@ -35,7 +35,7 @@ function compareValues(a: unknown, b: unknown) {
 
 const NO_ROWS: ScreenerRow[] = [];
 
-/** Everything the Portfolio/Watchlist table remembers (search, filters, sort, selection, page) and the rows derived from it. */
+/** Everything one Portfolio or Watchlist table remembers (search, filters, sort, selection, page) and the rows derived from it. */
 export function useScreenerTable({
   view,
   portfolioRows,
@@ -45,7 +45,7 @@ export function useScreenerTable({
   columns,
   marketRecords,
 }: {
-  view: View;
+  view: "portfolio" | "watchlist";
   /** Column ids shown after the symbol; only these can be sorted by. */
   columns: readonly string[];
   marketRecords: Map<string, MarketRecord>;
@@ -58,14 +58,14 @@ export function useScreenerTable({
   const [sectionPages, setSectionPages] = useState<Record<string, number>>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const tableScroll = useRef<HTMLDivElement>(null);
-  const [groupFilter, setGroupFilter] = useState("all");
-  const [query, setQuery] = useState("");
-  const [sorting, setSorting] = useState<SortingState>([{ id: "symbol", desc: false }]);
+  const [groupFilter, setGroupFilter] = useStoredState(`${view}-table.groupFilter`, "all");
+  const [query, setQuery] = useStoredState(`${view}-table.query`, "");
+  const [sorting, setSorting] = useStoredState<SortingState>(`${view}-table.sorting`, [{ id: "symbol", desc: false }]);
   const sortKey: SortKey = sorting[0]?.id ?? "symbol";
   const sortDirection: "ascending" | "descending" = sorting[0]?.desc ? "descending" : "ascending";
-  const [changeFilter, setChangeFilter] = useState<ChangeFilter>("all");
-  const [heldOnly, setHeldOnly] = useState(false);
-  const [groupRows, setGroupRows] = useState(true);
+  const [changeFilter, setChangeFilter] = useStoredState(`${view}-table.changeFilter`, "all" as ChangeFilter, oneOf(["all", "gainers", "losers"] as const));
+  const [heldOnly, setHeldOnly] = useStoredState(`${view}-table.heldOnly`, false);
+  const [groupRows, setGroupRows] = useStoredState(`${view}-table.groupRows`, true);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
 
   const activeGroup = groups.find((group) => group.id === groupFilter) ?? null;
@@ -162,8 +162,7 @@ export function useScreenerTable({
   useEffect(() => {
     setPage(1);
     setSectionPages({});
-  }, [view, query, changeFilter, heldOnly, groupFilter, groupRows, pageSize]);
-  useEffect(() => setRowSelection({}), [view]);
+  }, [query, changeFilter, heldOnly, groupFilter, groupRows, pageSize]);
 
   const activeFilters = (changeFilter !== "all" ? 1 : 0) + (view === "watchlist" && heldOnly ? 1 : 0) + (activeGroup ? 1 : 0);
 

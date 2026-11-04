@@ -1,5 +1,8 @@
 import { Tab, TabGroup, TabList } from "@headlessui/react";
 import { useMemo, useState } from "react";
+import { oneOf, useStoredState } from "../hooks/useStoredState";
+import { readStoredJson, writeStoredJson } from "../storage";
+import { isRec, type Rec } from "../response";
 import { extension, useExtensionIsinLogos } from "../extensions";
 import { formatDateTime, formatMoney } from "../format";
 import { type Common } from "../types";
@@ -11,6 +14,13 @@ import { Section } from "./shared";
 import { TOOL } from "../commands";
 
 export type { FoundSecurity } from "../discover";
+
+type DiscoverTool = "search_securities" | "search_derivatives";
+
+function savedSearch(tool: DiscoverTool): Rec | null {
+  const value = readStoredJson(`discover.last-search.${tool}`);
+  return isRec(value) ? value : null;
+}
 
 function SecurityResults({
   result,
@@ -238,12 +248,21 @@ export function DiscoverPage({
   onTrade: (security: FoundSecurity) => void;
 }) {
   const { defs } = common;
-  const [tool, setTool] = useState("search_securities");
+  const tabs: DiscoverTool[] = ["search_securities", "search_derivatives"].filter((name) => defs.some((item) => item.name === name)) as DiscoverTool[];
+  const [storedTool, setStoredTool] = useStoredState<DiscoverTool>("discover.tab", "search_securities", oneOf(["search_securities", "search_derivatives"] as const));
+  const [tool, setTool] = useState<DiscoverTool>(() => {
+    const preferred = initialQuery ? "search_securities" : storedTool;
+    return tabs.includes(preferred) ? preferred : (tabs[0] ?? preferred);
+  });
+  const selectTool = (next: DiscoverTool) => {
+    setTool(next);
+    setStoredTool(next);
+  };
   const def = defs.find((item) => item.name === tool);
-  const tabs = ["search_securities", "search_derivatives"].filter((name) => defs.some((item) => item.name === name));
+  const lastSearch = savedSearch(tool);
   return (
     <Section title="Discover" hint="Search Scalable’s securities and derivatives">
-      <TabGroup selectedIndex={Math.max(0, tabs.indexOf(tool))} onChange={(index) => setTool(tabs[index] ?? tool)}>
+      <TabGroup selectedIndex={Math.max(0, tabs.indexOf(tool))} onChange={(index) => selectTool(tabs[index] ?? tool)}>
         <TabList className={`${TABS} -mt-1 mb-3 min-h-10 border-b border-line`}>
           {tabs.map((name) => (
             <Tab key={name} className={({ selected }) => cx(tabClass(selected, "px-1"), "outline-none data-focus:outline-2 data-focus:outline-accent")}>
@@ -256,8 +275,8 @@ export function DiscoverPage({
         <ToolRunnerPanel
           key={def.name}
           tool={def}
-          prefill={initialQuery && def.name === "search_securities" ? { query: initialQuery } : {}}
-          autoRun={Boolean(initialQuery) && def.name === "search_securities"}
+          prefill={initialQuery && def.name === "search_securities" ? { query: initialQuery } : (lastSearch ?? {})}
+          autoRun={(Boolean(initialQuery) && def.name === "search_securities") || lastSearch !== null}
           portfolios={common.portfolios}
           hideHeader
           runLabel="Search"
@@ -265,6 +284,9 @@ export function DiscoverPage({
           tradingEnabled={common.tradingEnabled}
           manageEnabled={common.manageEnabled}
           showRaw={false}
+          onResult={(outcome, args) => {
+            if (outcome.ok) writeStoredJson(`discover.last-search.${def.name}`, args);
+          }}
           renderResult={(result) =>
             def.name === "search_securities" ? (
               <SecurityResults result={result} common={common} watched={watched} held={held} onOpen={onOpen} onTrade={onTrade} />
