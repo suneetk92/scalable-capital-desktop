@@ -474,6 +474,8 @@ shapes, or change access rules. The app is not an official integration.
 
 ```bash
 npm ci                                   # install exactly what package-lock.json pins
+npm run check                            # frontend CI checks and production build; run before every commit or tag
+npm run check:rust                       # Rust formatting, clippy and tests
 npm run typecheck                        # tsc --noEmit
 npm run lint                             # Oxlint through Vite+ (React hooks rules): src, scripts, e2e and the bundled extension
 npm run format:check                     # Oxfmt through Vite+ (Prettier-compatible)

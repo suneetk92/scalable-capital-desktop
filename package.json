@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vp dev",
     "build": "tsc && vp build",
+    "check": "npm run check:tauri && npm run check:exports && npm run lint && npm run format:check && npm run typecheck && npm test && vp build",
+    "check:rust": "cd src-tauri && cargo fmt --check && cargo clippy --offline --all-targets -- -D warnings && cargo test --offline",
     "typecheck": "tsc --noEmit",
     "check:tauri": "node scripts/check-tauri-versions.mjs",
     "check:exports": "node scripts/check-exports.mjs",

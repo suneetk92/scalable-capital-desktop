@@ -33,17 +33,18 @@ and `chore:`, `ci:`, `build:`, `test:`, `docs:`, `style:` and `refactor:` commit
 
 ## Checks to run before finishing
 
+Run the complete frontend CI checks with `npm run check` before every commit and release tag. A release tag
+starts publishing independently of whether CI has passed, so do not tag until this check succeeds. Use
+`npm run format` to fix formatting issues reported by the check.
+
 ```bash
-npm run typecheck                                                       # tsc --noEmit
-npm test                                                                # Vitest
-(cd src-tauri && cargo test --offline)                                  # use --locked in CI
-(cd src-tauri && cargo fmt --check && cargo clippy --offline --all-targets -- -D warnings)
+npm run check                                                            # frontend checks and production build, in CI order
+npm run check:rust                                                       # Rust formatting, clippy and tests; use --locked in CI
 (cd src-tauri && rustfmt --check --edition 2021 --config-path rustfmt.toml ../extensions/*/src-tauri/*.rs)
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same checks plus `vp build` and installer builds for Windows,
-macOS and Linux. Run only the checks that match what you changed, but run all of them if you touched
-shared code.
+CI (`.github/workflows/ci.yml`) runs the same checks plus installer builds for Windows, macOS and Linux.
+Run only the checks that match what you changed, but run all of them if you touched shared code.
 
 ## Safety rules
 
