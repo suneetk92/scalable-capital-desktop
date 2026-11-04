@@ -143,7 +143,10 @@ export function SavingsPage({
           parseSearch={parseSearch}
           tradingEnabled={common.tradingEnabled}
           onClose={() => onDialog(null)}
-          onSaved={() => query.reload()}
+          onSaved={(notice) => {
+            actions.notify(notice);
+            void query.reload();
+          }}
         />
       )}
       {config && <DetailsModal title="Savings plan options" tool={TOOL.getSavingsPlanConfig} semantic={{ portfolioId: portfolios[0]?.portfolioId }} common={common} onClose={() => setConfig(false)} />}

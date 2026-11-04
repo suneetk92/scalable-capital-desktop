@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { addNotification, removeNotification, type Notice, type NotificationItem } from "../notifications";
+import { isTauri } from "@tauri-apps/api/core";
+import { addNotification, parseBackendNotice, removeNotification, type Notice, type NotificationItem } from "../notifications";
 import { invokeCommand } from "../commands";
 import type { Invoke } from "../tools";
 
@@ -84,6 +85,29 @@ export function useNotifications(invoke: Invoke, inApp: boolean) {
     const pending = timers.current;
     return () => pending.forEach((timer) => window.clearTimeout(timer));
   }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    void import("@tauri-apps/api/event")
+      .then(({ listen }) => listen<unknown>("app-notice", (event) => {
+        if (!active) return;
+        const backendNotice = parseBackendNotice(event.payload);
+        if (!backendNotice) return;
+        const { shown, ...notice } = backendNotice;
+        notify(notice, { desktop: false, toast: latest.current.inApp || !shown });
+      }))
+      .then((stopListening) => {
+        if (active) unlisten = stopListening;
+        else stopListening();
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, [notify]);
 
   const toasts = useMemo(() => toastIds.flatMap((id) => items.find((item) => item.id === id) ?? []), [toastIds, items]);
   return { items, toasts, notify, dismissToast, remove, clear };

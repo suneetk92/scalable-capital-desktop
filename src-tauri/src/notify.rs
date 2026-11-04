@@ -3,10 +3,11 @@
 //! The webview cannot use the notification plugin itself: only this command is reachable, and it
 //! only shows a title and a short text.
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
 
 const MAX_TITLE: usize = 80;
+pub const NOTICE_EVENT: &str = "app-notice";
 #[cfg(windows)]
 const APP_NAME: &str = "Scalable Capital Desktop";
 const MAX_BODY: usize = 400;
@@ -44,9 +45,21 @@ pub fn register_app_id(app: &AppHandle) {
 #[cfg(not(windows))]
 pub fn register_app_id(_app: &AppHandle) {}
 
-/// For events the backend notices itself (a trailing stop), where nobody can fall back to a toast.
+/// For tray hints that should not be added to the notification center.
 pub fn send(app: &AppHandle, title: &str, body: &str) {
     let _ = show_notification(app.clone(), title.to_owned(), body.to_owned());
+}
+
+/// Shows a backend notice on the desktop and mirrors it to the notification center.
+pub fn announce(app: &AppHandle, kind: &str, title: &str, body: &str) {
+    let title = clip(title, MAX_TITLE);
+    let body = clip(body, MAX_BODY);
+    let shown = show_notification(app.clone(), title.clone(), body.clone()).is_ok();
+    let _ = app.emit(NOTICE_EVENT, notice_payload(kind, &title, &body, shown));
+}
+
+fn notice_payload(kind: &str, title: &str, text: &str, shown: bool) -> serde_json::Value {
+    serde_json::json!({ "kind": kind, "title": title, "text": text, "shown": shown })
 }
 
 #[tauri::command]
@@ -62,6 +75,7 @@ pub fn show_notification(app: AppHandle, title: String, body: String) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn short_text_is_kept_and_trimmed() {
@@ -73,5 +87,23 @@ mod tests {
         let clipped = clip(&"ä".repeat(500), MAX_BODY);
         assert_eq!(clipped.chars().count(), MAX_BODY);
         assert!(clipped.ends_with('…'));
+    }
+
+    #[test]
+    fn backend_notice_payload_includes_the_display_result() {
+        assert_eq!(
+            notice_payload(
+                "info",
+                "Trailing stop reached",
+                "Apple reached its trigger.",
+                false
+            ),
+            json!({
+                "kind": "info",
+                "title": "Trailing stop reached",
+                "text": "Apple reached its trigger.",
+                "shown": false
+            })
+        );
     }
 }

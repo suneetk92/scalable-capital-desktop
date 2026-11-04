@@ -4,6 +4,7 @@ use crate::mcp::{
     session::SessionPool,
     trading::{self, TradeState, TradingGate},
 };
+use crate::notify;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use rand::distr::Alphanumeric;
 use rand::RngExt;
@@ -352,6 +353,12 @@ async fn refresh_and_save(app: &AppHandle, force: bool) -> Result<Option<OAuthTo
     let (tokens, signed_out) = refresh_locked(force).await?;
     if signed_out {
         end_session(app).await;
+        notify::announce(
+            app,
+            "error",
+            "Signed out",
+            "Scalable did not accept the saved sign-in. Sign in to Scalable Capital again.",
+        );
     }
     Ok(tokens)
 }

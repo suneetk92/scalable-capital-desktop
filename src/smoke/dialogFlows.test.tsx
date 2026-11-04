@@ -58,7 +58,7 @@ describe("mocked-invoke smoke flows", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Confirm and place buy order" }));
 
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("submit_order", expect.objectContaining({ previewId: "preview-id-1" })));
-    expect(onPlaced).toHaveBeenCalledOnce();
+    expect(onPlaced).toHaveBeenCalledWith({ kind: "ok", title: "Order submitted", text: "Buy Apple Inc. · 100 EUR" });
   });
 
   it("keeps the review and submits the previewed order when the portfolios reload", async () => {
@@ -179,7 +179,7 @@ describe("mocked-invoke smoke flows", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Confirm and save plan" }));
 
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("submit_savings_plan", expect.objectContaining({ previewId: "preview-id-1" })));
-    expect(onSaved).toHaveBeenCalledOnce();
+    expect(onSaved).toHaveBeenCalledWith({ kind: "ok", title: "Savings plan updated", text: "50 EUR for Apple Inc." });
   });
 
   it("installs or dismisses the updater notice and confirms sign-out", () => {

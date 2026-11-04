@@ -38,7 +38,10 @@ export function GlobalDialogs() {
           parseSearch={parseSearch}
           formatMoney={formatMoney}
           onClose={() => setOrderTarget(null)}
-          onPlaced={() => void loadDashboard(false)}
+          onPlaced={(notice) => {
+            data.toolActions.notify(notice);
+            void loadDashboard(false);
+          }}
         />
       )}
       {paletteOpen && <CommandPalette items={paletteItems()} onClose={() => setPaletteOpen(false)} />}

@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Manager};
 
 use crate::files;
+use crate::notify;
 
 const FILE: &str = "trailing_stops.json";
 const UNREADABLE: &str = "The saved trailing stops could not be read, so nothing is changed until they can be. Try again in a moment.";
@@ -116,9 +117,11 @@ pub(super) fn load(app: &AppHandle) {
         None => {
             // Kept aside, so the next save does not overwrite what could not be read.
             let _ = std::fs::rename(&path, path.with_extension("json.bad"));
-            state.set_problem(Some(format!(
+            let message = format!(
                 "The saved trailing stops could not be read. The file was kept as {FILE}.bad."
-            )));
+            );
+            state.set_problem(Some(message.clone()));
+            notify::announce(app, "error", "Trailing stops not loaded", &message);
         }
     }
 }

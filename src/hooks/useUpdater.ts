@@ -3,7 +3,8 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invokeCommand } from "../commands";
 import type { Invoke } from "../tools";
-import { checked, IDLE, isReinstall, pendingInfo, withProgress, type UpdateInfo, type UpdateProgress, type UpdateState } from "../updates";
+import type { Notice } from "../notifications";
+import { checked, IDLE, isReinstall, pendingInfo, updateNotice, withProgress, type UpdateInfo, type UpdateProgress, type UpdateState } from "../updates";
 
 type Args = {
   invoke: Invoke;
@@ -11,6 +12,8 @@ type Args = {
   launchCheck: boolean;
   /** Reports a failure of "Open download page". */
   onError: (text: string) => void;
+  /** Reports a newly found version during the silent launch check. */
+  onAvailable: (notice: Notice) => void;
 };
 
 /** A reinstall is the user's own request, so it needs no notice. */
@@ -27,7 +30,7 @@ function message(error: unknown) {
  * when the setting is on (silently, and never in a dev build), and whenever the user asks. The
  * install streams its download progress and restarts the app. Only Rust talks to the update server.
  */
-export function useUpdater({ invoke, launchCheck, onError }: Args) {
+export function useUpdater({ invoke, launchCheck, onError, onAvailable }: Args) {
   const [state, setState] = useState<UpdateState>(IDLE);
   const [dismissed, setDismissed] = useState(false);
   const busy = useRef(false);
@@ -42,13 +45,14 @@ export function useUpdater({ invoke, launchCheck, onError }: Args) {
         const next = checked(await invokeCommand(invoke, "check_for_update", { reinstall }));
         setDismissed(false);
         setState(next);
+        if (silent && !reinstall && next.status === "available" && !isReinstall(next.info)) onAvailable(updateNotice(next.info));
       } catch (error) {
         setState(silent ? IDLE : { status: "error", message: message(error) });
       } finally {
         busy.current = false;
       }
     },
-    [invoke],
+    [invoke, onAvailable],
   );
 
   useEffect(() => {

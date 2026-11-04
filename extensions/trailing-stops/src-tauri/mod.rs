@@ -170,15 +170,17 @@ impl TrailingState {
         self.mutate(|stops| watcher::should_watch(stops))
     }
 
-    /// Says whether the problem line changed.
-    fn set_problem(&self, problem: Option<String>) -> bool {
+    fn replace_problem(&self, problem: Option<String>) -> Option<String> {
         let mut current = self
             .problem
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        let changed = *current != problem;
-        *current = problem;
-        changed
+        std::mem::replace(&mut *current, problem)
+    }
+
+    /// Says whether the problem line changed.
+    fn set_problem(&self, problem: Option<String>) -> bool {
+        self.replace_problem(problem.clone()) != problem
     }
 
     fn problem(&self) -> Option<String> {

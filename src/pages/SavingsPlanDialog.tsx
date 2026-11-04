@@ -14,6 +14,7 @@ import { Alert, btn, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } f
 import { useAsyncQuery } from "../hooks/useAsyncQuery";
 import { ambiguousThousands, ambiguousThousandsMessage } from "../format";
 import { usePreviewFlow } from "../hooks/usePreviewFlow";
+import { savingsPlanSavedNotice, type Notice } from "../notifications";
 
 type Props = {
   /** The plan being changed, or null for a new one. */
@@ -24,7 +25,7 @@ type Props = {
   parseSearch: (payload: unknown) => SecurityHit[];
   tradingEnabled: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (notice: Notice) => void;
 };
 
 const EMPTY_FORM: PlanForm = { amount: "", frequency: "", dayOfMonth: "", yearMonth: "", dynamizationRate: "", paymentMethod: "" };
@@ -93,8 +94,11 @@ export function SavingsPlanDialog({ existing, portfolios, portfolioId: initialPo
   }
 
   async function savePlan() {
-    if (typeof request === "string" || !preview) return;
-    await flow.runSubmit((previewId) => invokeCommand(invoke, "submit_savings_plan", { previewId, request }), onSaved);
+    if (typeof request === "string" || !preview || !security) return;
+    await flow.runSubmit(
+      (previewId) => invokeCommand(invoke, "submit_savings_plan", { previewId, request }),
+      () => onSaved(savingsPlanSavedNotice(request.amount, security.name, Boolean(existing))),
+    );
   }
 
   const requestClose = () => {

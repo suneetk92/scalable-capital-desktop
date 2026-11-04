@@ -1,3 +1,5 @@
+import type { Notice } from "./notifications";
+
 /** What `check_for_update` returns when a newer signed version exists (see src-tauri/src/updates.rs). */
 export type UpdateInfo = {
   version: string;
@@ -61,6 +63,11 @@ export function withProgress(state: UpdateState, event: UpdateProgress): UpdateS
 /** The check found the running version again: installing it is a reinstall. */
 export function isReinstall(info: UpdateInfo): boolean {
   return info.version === info.currentVersion;
+}
+
+/** Notice for a newly available version found by the silent launch check. */
+export function updateNotice(info: UpdateInfo): Notice {
+  return { kind: "info", title: "Update available", text: `Version ${info.version} is available.` };
 }
 
 /** The version a notice or an install failure is about, if any. */

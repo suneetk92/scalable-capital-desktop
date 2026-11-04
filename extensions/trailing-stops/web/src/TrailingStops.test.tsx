@@ -57,7 +57,7 @@ const details: Record<string, unknown> = {
   },
 };
 
-function renderStops(records: unknown[], responses = details, reloadKey = 0, failFirstQuery = false) {
+function renderStops(records: unknown[], responses = details, reloadKey = 0, failFirstQuery = false, failRemove = false) {
   let firstFailed = false;
   const invoke = vi.fn(async <T = unknown,>(command: string, args?: Record<string, unknown>) => {
     if (command === "call_tools") {
@@ -68,6 +68,7 @@ function renderStops(records: unknown[], responses = details, reloadKey = 0, fai
       }
       return calls.map((call) => ({ name: call.name, ok: true, result: responses[String(call.arguments.transactionId)] })) as T;
     }
+    if (command === "remove_trailing_stop" && failRemove) throw new Error("offline");
     return undefined as T;
   }) as Invoke;
   const common: Common = {
@@ -95,6 +96,7 @@ function renderStops(records: unknown[], responses = details, reloadKey = 0, fai
   return {
     ...view,
     invoke,
+    common,
     refresh: (nextReloadKey: number) => view.rerender(<TrailingStops common={{ ...common, reloadKey: nextReloadKey }} trailing={trailing} onOpenSecurity={vi.fn()} />),
   };
 }
@@ -109,6 +111,16 @@ function cell(table: HTMLElement, name: string, label: string) {
 }
 
 describe("trailing stop tables", () => {
+  it("announces a removed stop and reports a failed removal", async () => {
+    const { common } = renderStops([stored]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(common.actions.notify).toHaveBeenCalledWith({ kind: "ok", title: "Trailing stop removed", text: "Apple Inc." }));
+
+    cleanup();
+    const { common: failedCommon } = renderStops([stored], details, 0, false, true);
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(failedCommon.actions.notify).toHaveBeenCalledWith({ kind: "error", title: "Could not remove trailing stop", text: "Apple Inc.: offline" }));
+  });
   it("shows Scalable's execution time and price for both sides, matching Details", async () => {
     renderStops([stored, buy]);
     const tables = screen.getAllByRole("table");

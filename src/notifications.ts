@@ -8,9 +8,36 @@ type NoticeKind = "ok" | "error" | "info";
 /** What a caller reports. `title` replaces the generic one of the kind, `detail` is a second, smaller line. */
 export type Notice = { kind: NoticeKind; text: string; title?: string; detail?: string };
 
+export type BackendNotice = Notice & { shown: boolean };
+
 export type NotificationItem = Notice & { id: number; at: number };
 
+type SubmittedOrder = { side: "buy" | "sell"; amount: number | null; shares: number | null };
+
+/** Notice after an order was submitted successfully. */
+export function orderSubmittedNotice(request: SubmittedOrder, name: string, currency: string): Notice {
+  const size = request.amount !== null ? `${request.amount} ${currency}` : `${request.shares} shares`;
+  return { kind: "ok", title: "Order submitted", text: `${request.side === "buy" ? "Buy" : "Sell"} ${name} · ${size}` };
+}
+
+/** Notice after a savings plan was saved successfully. */
+export function savingsPlanSavedNotice(amount: number, name: string, changed: boolean): Notice {
+  return {
+    kind: "ok",
+    title: changed ? "Savings plan updated" : "Savings plan saved",
+    text: `${amount} EUR for ${name}`,
+  };
+}
+
 export const NOTIFICATION_LIMIT = 50;
+
+/** Reads notices emitted by Rust; malformed event payloads are ignored. */
+export function parseBackendNotice(payload: unknown): BackendNotice | null {
+  if (!isRec(payload)) return null;
+  const { kind, title, text, shown } = payload;
+  if ((kind !== "ok" && kind !== "error" && kind !== "info") || typeof title !== "string" || typeof text !== "string" || typeof shown !== "boolean") return null;
+  return { kind, title, text, shown };
+}
 
 /** Adds a notice as the newest item and drops the oldest beyond the limit. */
 export function addNotification(items: NotificationItem[], notice: Notice, id: number, at: number): NotificationItem[] {

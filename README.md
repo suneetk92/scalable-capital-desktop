@@ -90,8 +90,9 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   answered within the last minute.
 - **Notification center**: the bell at the top right of every page keeps the notices of the session,
   newest first, with a count on the bell. It lists what you did and what happened: price alerts added (with
-  the security and price), removed, triggered, tool results and errors. Every new notice is
-  sent as a Windows notification. It also appears as a stacked toast at the bottom right only when
+  the security and price), removed and triggered; orders submitted; savings plans saved; trailing-stop
+  results and changes; automatic sign-outs; watcher problems; available updates; tool results and errors.
+  Every new notice is sent as a Windows notification. It also appears as a stacked toast at the bottom right only when
   Settings, Background, "Also show in the app" is on, or when Windows cannot show the notification (toasts
   go away after a few seconds; errors stay until dismissed). Clear all or remove
   single entries from the panel. The history is not saved between launches.

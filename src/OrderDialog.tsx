@@ -14,6 +14,7 @@ import { ambiguousThousands, ambiguousThousandsMessage, formatNumber, parseDecim
 import { amountExceedsBuyingPower, amountIssue, limitPriceHint, previewFailureHint, priceIssue, quantityExceedsHolding, stopPriceIssue } from "./order";
 import { usePreviewFlow } from "./hooks/usePreviewFlow";
 import { extension } from "./extensions";
+import { orderSubmittedNotice, type Notice } from "./notifications";
 
 const SIDE_BUTTON = "h-9 cursor-pointer font-semibold";
 const NOTE = `mb-4 ${MODAL_TEXT}`;
@@ -73,7 +74,7 @@ type Props = {
   parseSearch: (payload: unknown) => SecurityHit[];
   formatMoney: (value: number | null, currency?: string) => string;
   onClose: () => void;
-  onPlaced: () => void;
+  onPlaced: (notice: Notice) => void;
 };
 
 function payloadLines(value: unknown, path = "", depth = 0, out: Line[] = []): Line[] {
@@ -242,7 +243,13 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
         } else if (protect) {
           setPlacedLegs((legs) => [...legs, protect]);
         }
-        onPlaced();
+        onPlaced(
+          orderSubmittedNotice(
+            request,
+            reviewed.security.name,
+            portfolios.find((item) => item.portfolioId === request.portfolioId)?.currency ?? "EUR",
+          ),
+        );
       },
     );
   }

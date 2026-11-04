@@ -1,10 +1,21 @@
 import { isRec } from "../../../../src/response";
 import { parseDecimal } from "../../../../src/format";
+import type { Notice } from "../../../../src/notifications";
 
 /** A trailing stop loss (sells when the price falls) or trailing buy stop (buys when it rises) the app watches itself: Scalable's MCP has no such order. See `src-tauri/src/mcp/trailing/`. */
 export type TrailKind = "percent" | "amount";
 export type TrailSide = "sell" | "buy";
 export type TrailingStatus = "active" | "selling" | "sold" | "attention";
+
+/** Notice after a trailing stop is added or changed. */
+export function trailingStopNotice(change: "added" | "changed", side: TrailSide, name: string): Notice {
+  const noun = side === "buy" ? "trailing buy stop" : "trailing stop";
+  return {
+    kind: "ok",
+    title: `Trailing ${side === "buy" ? "buy " : ""}stop ${change}`,
+    text: `${name} · ${noun} ${change}`,
+  };
+}
 
 export type TrailingStop = {
   side: TrailSide;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { checked, IDLE, isReinstall, parseUpdateInfo, pendingInfo, progressPercent, statusMessage, withProgress, type UpdateInfo, type UpdateState } from "./updates";
+import { checked, IDLE, isReinstall, parseUpdateInfo, pendingInfo, progressPercent, statusMessage, updateNotice, withProgress, type UpdateInfo, type UpdateState } from "./updates";
 
 const INFO: UpdateInfo = { version: "1.2.0", currentVersion: "1.1.0", notes: "Fixes", date: "2026-10-15", canInstall: true, releaseUrl: "https://updates.example.com/app/index.html" };
 
@@ -82,5 +82,11 @@ describe("reinstall", () => {
     expect(isReinstall(same)).toBe(true);
     expect(isReinstall(INFO)).toBe(false);
     expect(statusMessage({ status: "available", info: same })).toBe("Version 1.1.0 is ready to reinstall.");
+  });
+});
+
+describe("update notice", () => {
+  it("names the newly available version", () => {
+    expect(updateNotice(INFO)).toEqual({ kind: "info", title: "Update available", text: "Version 1.2.0 is available." });
   });
 });

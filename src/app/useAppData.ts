@@ -316,7 +316,12 @@ export function useAppData() {
     toast: settings.alertToasts,
     onTriggered: toolActions.notify,
   });
-  const updater = useUpdater({ invoke, launchCheck: settings.checkUpdates, onError: (text) => toolActions.notify({ kind: "error", text }) });
+  const updater = useUpdater({
+    invoke,
+    launchCheck: settings.checkUpdates,
+    onError: (text) => toolActions.notify({ kind: "error", text }),
+    onAvailable: toolActions.notify,
+  });
   const background = useBackground({ invoke, onError: (text) => toolActions.notify({ kind: "error", text }) });
   const reloadKey = lastUpdated?.getTime() ?? 0;
   // The same question as the Overview's profile card, so both share one answer per reload.

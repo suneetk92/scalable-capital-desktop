@@ -10,7 +10,7 @@ import { TrailingStopDialog } from "./TrailingStopDialog";
 import { TrailingTransactionDialog } from "./TrailingTransactionDialog";
 import { errorText } from "../../../../src/tools";
 import type { useTrailingStops } from "./useTrailingStops";
-import { statusLabel, trailLabel, triggerBarShare, triggerPrice, waitingNote, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
+import { statusLabel, trailLabel, trailingStopNotice, triggerBarShare, triggerPrice, waitingNote, type TrailingStatus, type TrailingStop, type TrailSide } from "./trailing";
 import { type Common } from "../../../../src/types";
 import { EmptyState, ShareBar } from "../../../../src/controls";
 import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
@@ -307,10 +307,16 @@ export function TrailingStops({
 
   async function remove(id: string) {
     setCheckError(null);
+    const stop = stops.find((item) => item.id === id);
+    const name = stop?.name ?? id;
+    const title = stop?.side === "buy" ? "Trailing buy stop removed" : "Trailing stop removed";
     try {
       await invokeCommand(invoke, "remove_trailing_stop", { id });
+      common.actions.notify({ kind: "ok", title, text: name });
     } catch (removeError) {
-      setCheckError(errorText(removeError));
+      const message = errorText(removeError);
+      setCheckError(message);
+      common.actions.notify({ kind: "error", title: "Could not remove trailing stop", text: `${name}: ${message}` });
     }
     void reload();
   }
@@ -327,7 +333,10 @@ export function TrailingStops({
       manageEnabled={manageEnabled}
       editing={stop ?? undefined}
       onClose={onClose}
-      onAdded={() => void reload()}
+      onAdded={(name) => {
+        common.actions.notify(trailingStopNotice(stop ? "changed" : "added", side, name));
+        void reload();
+      }}
     />
   );
 

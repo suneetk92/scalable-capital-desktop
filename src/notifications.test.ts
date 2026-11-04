@@ -1,5 +1,31 @@
 import { describe, expect, it } from "vite-plus/test";
-import { addNotification, alertAddedNotice, alertRemovedNotice, formatAge, NOTIFICATION_LIMIT, removeNotification, toolSuccessNotice } from "./notifications";
+import { addNotification, alertAddedNotice, alertRemovedNotice, formatAge, NOTIFICATION_LIMIT, orderSubmittedNotice, parseBackendNotice, removeNotification, savingsPlanSavedNotice, toolSuccessNotice } from "./notifications";
+
+describe("action notices", () => {
+  it("describes submitted orders in cash or shares", () => {
+    expect(orderSubmittedNotice({ side: "buy", amount: 250, shares: null }, "Apple", "EUR")).toEqual({ kind: "ok", title: "Order submitted", text: "Buy Apple · 250 EUR" });
+    expect(orderSubmittedNotice({ side: "sell", amount: null, shares: 3 }, "Microsoft", "EUR")).toEqual({ kind: "ok", title: "Order submitted", text: "Sell Microsoft · 3 shares" });
+  });
+
+  it("distinguishes a new savings plan from an update", () => {
+    expect(savingsPlanSavedNotice(50, "Apple", false)).toEqual({ kind: "ok", title: "Savings plan saved", text: "50 EUR for Apple" });
+    expect(savingsPlanSavedNotice(75, "Apple", true)).toEqual({ kind: "ok", title: "Savings plan updated", text: "75 EUR for Apple" });
+  });
+});
+
+describe("backend notification events", () => {
+  it("parses a valid notice and rejects malformed payloads", () => {
+    expect(parseBackendNotice({ kind: "info", title: "Trailing stop reached", text: "Apple reached its trigger.", shown: false })).toEqual({
+      kind: "info",
+      title: "Trailing stop reached",
+      text: "Apple reached its trigger.",
+      shown: false,
+    });
+    expect(parseBackendNotice(null)).toBeNull();
+    expect(parseBackendNotice({ kind: "warning", title: "Notice", text: "Text", shown: true })).toBeNull();
+    expect(parseBackendNotice({ kind: "ok", title: "Notice", text: "Text", shown: "true" })).toBeNull();
+  });
+});
 
 describe("notification list", () => {
   it("puts the newest first and keeps at most the limit", () => {

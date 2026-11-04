@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseTrailingList, statusLabel, trailIssue, trailLabel, triggerBarShare, triggerPrice, waitingNote } from "./trailing";
+import { parseTrailingList, statusLabel, trailIssue, trailLabel, trailingStopNotice, triggerBarShare, triggerPrice, waitingNote } from "./trailing";
 
 const stop = {
   id: "a",
@@ -20,6 +20,13 @@ describe("triggerPrice", () => {
   it("sits below the high by the percentage or the amount", () => {
     expect(triggerPrice(200, { kind: "percent", value: 10 })).toBe(180);
     expect(triggerPrice(200, { kind: "amount", value: 15 })).toBe(185);
+  });
+});
+
+describe("trailing-stop notices", () => {
+  it("names added and changed stops", () => {
+    expect(trailingStopNotice("added", "sell", "Apple")).toEqual({ kind: "ok", title: "Trailing stop added", text: "Apple · trailing stop added" });
+    expect(trailingStopNotice("changed", "buy", "Microsoft")).toEqual({ kind: "ok", title: "Trailing buy stop changed", text: "Microsoft · trailing buy stop changed" });
   });
 });
 

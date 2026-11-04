@@ -282,14 +282,17 @@ pub(super) async fn execute(app: &AppHandle, stop: TrailingStop) {
         ),
     };
     match outcome {
-        Outcome::Done(..) => notify::send(app, done_title, &done_text(&stop)),
+        Outcome::Done(..) => notify::announce(app, "ok", done_title, &done_text(&stop)),
         Outcome::Attention(message) => {
-            notify::send(app, needs_title, &format!("{name}: {message}"))
+            notify::announce(app, "error", needs_title, &format!("{name}: {message}"))
         }
         // One notice per stop, not one per check.
-        Outcome::Retry(message) if earlier.is_none() => {
-            notify::send(app, wait_title, &format!("{name} hit {hit}. {message}"))
-        }
+        Outcome::Retry(message) if earlier.is_none() => notify::announce(
+            app,
+            "info",
+            wait_title,
+            &format!("{name} hit {hit}. {message}"),
+        ),
         Outcome::Retry(_) => {}
     }
 }

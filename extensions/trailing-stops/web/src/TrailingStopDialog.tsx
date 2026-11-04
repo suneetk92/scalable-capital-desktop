@@ -26,7 +26,7 @@ type Props = {
   /** Restricted access or more: starting or changing a stop places no order, the watcher needs Full access to act. */
   manageEnabled: boolean;
   onClose: () => void;
-  onAdded?: () => void;
+  onAdded?: (name: string) => void;
   /** A stop that is watching: the dialog changes its shares and distance instead of starting a new one. */
   editing?: TrailingStop;
 };
@@ -107,7 +107,7 @@ export function TrailingStopDialog({
         return invokeCommand(invoke, "add_trailing_stop", { request: { side, isin: security.isin, name: security.name, portfolioId, ...size, trail } });
       },
       () => {
-        onAdded?.();
+        onAdded?.(security.name);
         onClose();
       },
     );

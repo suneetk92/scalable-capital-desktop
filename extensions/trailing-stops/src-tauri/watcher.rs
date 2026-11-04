@@ -58,7 +58,12 @@ fn missing_prices<'a>(stops: &[TrailingStop], prices: &'a [(String, Quote)]) -> 
 }
 
 /// After a failed save, only the stops this pass hit are held back; a sale another pass started is left to finish.
-fn hold_unsaved(stops: &mut [TrailingStop], hits: &[TrailingStop], error: &str) {
+fn hold_unsaved(
+    stops: &mut [TrailingStop],
+    hits: &[TrailingStop],
+    error: &str,
+) -> Vec<TrailingStop> {
+    let mut held = Vec::new();
     for stop in stops
         .iter_mut()
         .filter(|stop| stop.status == Status::Selling && hits.iter().any(|hit| hit.id == stop.id))
@@ -67,13 +72,28 @@ fn hold_unsaved(stops: &mut [TrailingStop], hits: &[TrailingStop], error: &str) 
         stop.message = Some(format!(
             "Nothing was sent, because the stop could not be saved: {error}"
         ));
+        held.push(stop.clone());
     }
+    held
+}
+
+fn problem_started(previous: Option<&str>, problem: Option<&str>) -> bool {
+    previous.is_none() && problem.is_some()
 }
 
 /// Sets the problem line and tells the webview when it changed.
 fn report(app: &AppHandle, state: &TrailingState, problem: Option<String>) {
-    if state.set_problem(problem) {
+    let previous = state.replace_problem(problem.clone());
+    if previous != problem {
         announce_change(app);
+    }
+    if problem_started(previous.as_deref(), problem.as_deref()) {
+        notify::announce(
+            app,
+            "error",
+            "Trailing stops need attention",
+            problem.as_deref().unwrap_or_default(),
+        );
     }
 }
 
@@ -130,8 +150,9 @@ fn notify_reached(app: &AppHandle, stop: &TrailingStop) {
         Side::Sell => ("Trailing stop reached", "Trailing stop"),
         Side::Buy => ("Trailing buy stop reached", "Trailing buy stop"),
     };
-    notify::send(
+    notify::announce(
         app,
+        "info",
         title,
         &format!(
             "{kind} for {}: the price {price:.2} EUR reached the trigger {trigger:.2} EUR. Switch to Full access while the exchange is open to {}.",
@@ -188,11 +209,26 @@ async fn run_check(app: &AppHandle) {
         // A stop must be saved as selling before anything is sent, so a crash cannot repeat the sale.
         if let Err(error) = state.persist(app) {
             if !hits.is_empty() {
-                state.mutate(|stops| hold_unsaved(stops, &hits, &error));
+                let held = state.mutate(|stops| hold_unsaved(stops, &hits, &error));
+                for stop in held {
+                    let title = match stop.side {
+                        Side::Sell => "Trailing stop needs you",
+                        Side::Buy => "Trailing buy stop needs you",
+                    };
+                    notify::announce(
+                        app,
+                        "error",
+                        title,
+                        &format!(
+                            "{}: Nothing was sent, because the stop could not be saved: {error}",
+                            stop.name
+                        ),
+                    );
+                }
                 announce_change(app);
                 return;
             }
-            state.set_problem(Some(error));
+            report(app, &state, Some(error));
         }
         announce_change(app);
     }
@@ -233,6 +269,15 @@ pub(super) fn spawn(app: &AppHandle) {
 mod tests {
     use super::*;
     use crate::ext_trailing_stops::sample_stop;
+
+    #[test]
+    fn a_problem_is_announced_only_when_it_first_appears() {
+        assert!(problem_started(None, Some("offline")));
+        assert!(!problem_started(Some("offline"), Some("offline")));
+        assert!(!problem_started(Some("offline"), Some("still offline")));
+        assert!(!problem_started(Some("offline"), None));
+        assert!(!problem_started(None, None));
+    }
 
     #[test]
     fn the_trigger_is_below_the_high_by_the_trail() {
@@ -364,7 +409,8 @@ mod tests {
         stops[0].status = Status::Selling;
         stops[1].status = Status::Selling;
         let hits = vec![stops[0].clone()];
-        hold_unsaved(&mut stops, &hits, "disk full");
+        let held = hold_unsaved(&mut stops, &hits, "disk full");
+        assert_eq!(held.len(), 1);
         assert_eq!(stops[0].status, Status::Attention);
         assert!(stops[0].message.as_deref().unwrap().contains("disk full"));
         assert_eq!(stops[1].status, Status::Selling);
