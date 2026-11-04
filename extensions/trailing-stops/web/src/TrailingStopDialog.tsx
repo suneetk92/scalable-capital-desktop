@@ -166,24 +166,28 @@ export function TrailingStopDialog({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 items-start gap-3">
         <Field className={field.label}>
-          {buying && (
-            <Select
-              label="Size unit"
-              value={buySizeMode}
-              onChange={(mode) => {
-                setBuySizeMode(mode);
-                setQuantity("");
-              }}
-              options={[
-                { value: "amount" as const, label: "Amount" },
-                { value: "shares" as const, label: "Shares" },
-              ]}
-            />
+          <Label>{buying ? (buyingShares ? "Shares to buy" : "Amount to spend") : "Shares to sell"}</Label>
+          {buying ? (
+            <div className="grid grid-cols-[minmax(0,1fr)_7.3333rem] gap-2">
+              <GroupInput inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.currentTarget.value)} placeholder="0" invalid={shownQuantityProblem !== null} />
+              <Select
+                label="Size unit"
+                value={buySizeMode}
+                onChange={(mode) => {
+                  setBuySizeMode(mode);
+                  setQuantity("");
+                }}
+                options={[
+                  { value: "amount" as const, label: currency },
+                  { value: "shares" as const, label: "Shares" },
+                ]}
+              />
+            </div>
+          ) : (
+            <GroupInput inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.currentTarget.value)} placeholder="0" invalid={shownQuantityProblem !== null} />
           )}
-          <Label>{buying ? (buyingShares ? "Shares to buy" : `Amount to spend (${currency})`) : "Shares to sell"}</Label>
-          <GroupInput inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.currentTarget.value)} placeholder="0" invalid={shownQuantityProblem !== null} />
           {shownQuantityProblem && (
             <Description className={field.error} role="alert">
               {shownQuantityProblem}
@@ -192,7 +196,7 @@ export function TrailingStopDialog({
         </Field>
         <Field className={field.label}>
           <Label>{buying ? "Distance above the low" : "Distance below the high"}</Label>
-          <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_7.3333rem] gap-2">
             <GroupInput inputMode="decimal" value={distance} onChange={(event) => setDistance(event.currentTarget.value)} placeholder="0" invalid={shownDistanceProblem !== null} />
             <Select
               label="Distance unit"

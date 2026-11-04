@@ -58,6 +58,9 @@ describe("trailing stop dialog", () => {
     const invoke = mockInvoke((command) => (command === "add_trailing_stop" ? { id: "stop-2" } : undefined));
     render(<TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} manageEnabled onClose={vi.fn()} />);
 
+    // The size unit sits beside the input, under the label, like the distance unit.
+    const unit = screen.getByText("EUR", { exact: true });
+    expect(screen.getByText("Amount to spend", { exact: true }).compareDocumentPosition(unit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.change(screen.getByRole("textbox", { name: /amount to spend/i }), { target: { value: "250" } });
     fireEvent.change(screen.getByRole("textbox", { name: /distance above the low/i }), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /i understand/i }));
@@ -70,7 +73,7 @@ describe("trailing stop dialog", () => {
     const invoke = mockInvoke((command) => (command === "add_trailing_stop" ? { id: "stop-3" } : undefined));
     render(<TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} manageEnabled onClose={vi.fn()} />);
 
-    fireEvent.click(screen.getByText("Amount", { exact: true }));
+    fireEvent.click(screen.getByText("EUR", { exact: true }));
     fireEvent.click(screen.getByRole("option", { name: "Shares" }));
     fireEvent.change(screen.getByRole("textbox", { name: /shares to buy/i }), { target: { value: "3" } });
     fireEvent.change(screen.getByRole("textbox", { name: /distance above the low/i }), { target: { value: "5" } });
@@ -108,7 +111,7 @@ describe("trailing stop dialog", () => {
       <TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} manageEnabled onClose={vi.fn()} editing={editing} />,
     );
 
-    fireEvent.click(screen.getByText("Amount", { exact: true }));
+    fireEvent.click(screen.getByText("EUR", { exact: true }));
     fireEvent.click(screen.getByRole("option", { name: "Shares" }));
     const size = screen.getByRole("textbox", { name: /shares to buy/i });
     expect((size as HTMLInputElement).value).toBe("");
