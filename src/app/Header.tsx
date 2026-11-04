@@ -28,7 +28,7 @@ export function AccountHeader() {
   );
 }
 
-const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "watchlist", "discover", "transactions"]);
+const ORDER_VIEWS: ReadonlySet<View> = new Set<View>(["overview", "portfolio", "discover"]);
 
 /** The buttons next to the page title: the Trading switch, New order and Refresh. Each only appears where it does something. */
 export function pageActions(data: AppData, commands: AppCommands) {
@@ -42,7 +42,7 @@ export function pageActions(data: AppData, commands: AppCommands) {
   const cycle = ACCESS_MODES.filter((item) => item.mode !== "full" || marketOpen);
   const next = cycle[(cycle.indexOf(current) + 1) % cycle.length] ?? ACCESS_MODES[0];
   const showTrading = view !== "settings" && (!extensionView || ownView.trading === true);
-  // New order belongs to the pages about securities and orders; Groups and Savings have their own "New …" action in the panel; New alert and New plan sit here.
+  // New order belongs to the securities pages; Watchlist has its own add action, while Groups and Savings have their own "New …" action in the panel.
   const showNewOrder = showTrading && tradingEnabled && ORDER_VIEWS.has(view);
   const showRefresh = view !== "settings";
   const headerAuto = ownRefresh ? ownRefresh.auto : refreshExtension ? (extensionRuntime.autoRefresh ?? false) : autoRefresh;
@@ -67,6 +67,11 @@ export function pageActions(data: AppData, commands: AppCommands) {
       {showNewOrder && (
         <button className={btn.primary} type="button" onClick={() => openOrder("buy", null)}>
           New order
+        </button>
+      )}
+      {view === "watchlist" && data.watchedIsins && data.toolActions.has(TOOL.addWatchlistItem) && (
+        <button className={btn.primary} type="button" onClick={() => data.setWatchlistDialog(true)}>
+          Add to watchlist
         </button>
       )}
       {view === "alerts" && data.toolActions.has(TOOL.createPriceAlert) && (

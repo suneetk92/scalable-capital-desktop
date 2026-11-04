@@ -1,6 +1,7 @@
 import { CommandPalette } from "../CommandPalette";
 import { OrderDialog } from "../OrderDialog";
 import { SecurityDrawer } from "../SecurityDrawer";
+import { WatchlistAddDialog } from "../WatchlistAddDialog";
 import { extension } from "../extensions";
 import { formatMoney, parseSearch } from "../screener";
 import { ConfirmDialog, Dock, DockSplit } from "../ui";
@@ -43,6 +44,9 @@ export function GlobalDialogs() {
             void loadDashboard(false);
           }}
         />
+      )}
+      {data.watchlistDialog && data.watchedIsins && (
+        <WatchlistAddDialog common={data.common} watched={data.watchedIsins} held={data.heldIsins} onClose={() => data.setWatchlistDialog(false)} />
       )}
       {paletteOpen && <CommandPalette items={paletteItems()} onClose={() => setPaletteOpen(false)} />}
       {confirmingTrading && (

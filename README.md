@@ -50,7 +50,8 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   remembered, and Copy CSV exports the columns shown. Each security is shown with its two-letter monogram
   initials. The tables render only rows in or near the viewport; selection and CSV still cover every row.
   Scalable's watchlist is a single flat list: its MCP offers list, add and remove only, so the app cannot
-  group watchlist entries (portfolio groups hold holdings only).
+  group watchlist entries (portfolio groups hold holdings only). The Watchlist page header offers **Add to watchlist** when
+  the list is loaded and Scalable offers the add tool; it does not offer **New order**.
 - **Overview**: returns by timeframe as reported by Scalable, cash and buying power, a plain **Top movers** card (one list in descending order: the biggest gainer first, the biggest loser last), a **Holdings** card (market value, cost, gain since buy, price change today, the share of the five largest positions, best and worst position; the per-position figures are columns of the Portfolio table, including **Share** and **Today**; they are worked out from the holdings already loaded, in `src/holdings.ts`, and cost and gain cover only the holdings for which Scalable reports a since-buy figure, which the card says; mixed-currency totals are not converted), your groups, **Trading**, **Income and cash** and **By security** cards worked out from all your
   transactions (bought, sold and net invested, fees and taxes, dividends and interest, deposits and withdrawals, and per security the
   average buy price and **Realised (avg. cost)**; this is not a tax-lot calculation. The By security table is split into pages by the "Rows per page" setting; By security shows each security the way the Portfolio table and Transactions do, as monogram initials with the ISIN in bold (a link that opens the security) and the name below, with a search box and a Show filter (sold, realised gain or loss, paid dividends); every paged table, also Transactions and the record tables, sorts by a clicked column header across all pages, and a third click restores the original order), the account profile, the overnight summary and fixed-term
@@ -96,9 +97,12 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   Settings, Background, "Also show in the app" is on, or when Windows cannot show the notification (toasts
   go away after a few seconds; errors stay until dismissed). Clear all or remove
   single entries from the panel. The history is not saved between launches.
-- **Discover** (securities and derivatives), **Price alerts** (search and Direction and Status filters, Copy CSV, and a New alert button in the page header), **Trailing stops**, **Savings plans** (search and a Frequency filter, Copy CSV, and a New plan button in the page header) (list, options,
-  guided create and edit with Scalable's preview, removal) and **Transactions** (table, details, cancel open
-  orders). The list is the history stored on this computer (the same one the Overview uses, newest first), so
+- **Discover** (securities and derivatives): search results use tables with security type, quote price and time, and
+  watchlist or portfolio status; selecting a row opens the security details panel. Request and response JSON are not
+  shown on this page. **Price alerts** (search and Direction and Status filters, Copy CSV, and a New alert button in
+  the page header), **Trailing stops**, and **Savings plans** (search and a Frequency filter, Copy CSV, list, options,
+  guided create and edit with Scalable's preview, removal, and a New plan button in the page header). **Transactions**
+  (table, details and cancel open orders) has no New order header action. The list is the history stored on this computer (the same one the Overview uses, newest first), so
   the pages cover every transaction at once and the count is the real total. It is brought up to date in the
   background, and while the first full load runs the page shows its progress. Switching to another page and back keeps
   the filters and the page you were on. The table shows one page of rows at a time (the "Rows per page" setting), a long history is turned into rows in slices (`src/chunked.ts`) so the page stays responsive, and Copy CSV still covers every row the filters match.

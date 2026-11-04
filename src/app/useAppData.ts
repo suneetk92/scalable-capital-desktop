@@ -75,6 +75,7 @@ export function useAppData() {
   const [confirmingTrading, setConfirmingTrading] = useState(false);
   const [confirmingStartupTrading, setConfirmingStartupTrading] = useState(false);
   const [orderTarget, setOrderTarget] = useState<OrderTarget | null>(null);
+  const [watchlistDialog, setWatchlistDialog] = useState(false);
   const nav = useNavOrder();
   const { groupOrder, moveGroup: moveGroupIn } = useGroupOrder();
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -550,6 +551,8 @@ export function useAppData() {
     setConfirmingStartupTrading,
     orderTarget,
     setOrderTarget,
+    watchlistDialog,
+    setWatchlistDialog,
     nav,
     lastUpdated,
     settings,

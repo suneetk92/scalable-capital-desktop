@@ -216,7 +216,7 @@ export function useAppCommands(data: AppData) {
     });
   }
 
-  function openFound(found: { isin: string; name: string }) {
+  function openFound(found: { isin: string; name: string; currency?: string; lastPrice?: number | null }) {
     const held = portfolioRows.find((row) => row.isin === found.isin);
     const watched = watchlistRows.find((row) => row.isin === found.isin);
     const known = held ?? watched;
@@ -224,8 +224,8 @@ export function useAppCommands(data: AppData) {
       isin: found.isin,
       name: found.name,
       symbol: known?.symbol ?? found.name,
-      currency: known?.currency ?? "EUR",
-      lastPrice: known?.lastPrice ?? null,
+      currency: found.currency ?? known?.currency ?? "EUR",
+      lastPrice: found.lastPrice ?? known?.lastPrice ?? null,
       change: known?.change ?? null,
       portfolioId: held?.portfolioId ?? "",
       quantity: held?.quantity ?? null,

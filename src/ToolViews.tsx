@@ -480,12 +480,13 @@ type PanelProps = {
   manageEnabled: boolean;
   runLabel?: string;
   hideHeader?: boolean;
+  showRaw?: boolean;
   renderResult?: (result: unknown) => ReactNode;
   onResult?: (outcome: ToolOutcome, args: Rec) => void;
 };
 
 /** Form generated from a tool's input schema, with a Run button and the result below. */
-export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolios, invoke, tradingEnabled, manageEnabled, runLabel, hideHeader = false, renderResult, onResult }: PanelProps) {
+export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolios, invoke, tradingEnabled, manageEnabled, runLabel, hideHeader = false, showRaw = true, renderResult, onResult }: PanelProps) {
   const [values, setValues] = useState<FormValues>(() => initialValues(tool, prefill, portfolios));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -549,8 +550,8 @@ export function ToolRunnerPanel({ tool, prefill = {}, autoRun = false, portfolio
       {outcome && (
         <div className="mt-3.5 border-t border-line pt-3">
           {outcome.ok && (renderResult ? renderResult(outcome.result) : <KeyValues value={outcome.result} limit={20} />)}
-          {request && <JsonBlock label="Request" value={request} />}
-          <JsonBlock label="Response" value={outcome.ok ? outcome.result : { error: outcome.error }} />
+          {showRaw && request && <JsonBlock label="Request" value={request} />}
+          {showRaw && <JsonBlock label="Response" value={outcome.ok ? outcome.result : { error: outcome.error }} />}
         </div>
       )}
     </div>
