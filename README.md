@@ -480,7 +480,7 @@ npm audit signatures
 (cd src-tauri && cargo test --offline)   # trading gate, order validation, argument mapping, session cache
 (cd src-tauri && cargo fmt --check && cargo clippy --offline --all-targets -- -D warnings)
 (cd src-tauri && rustfmt --check --edition 2021 --config-path rustfmt.toml ../extensions/*/src-tauri/*.rs)   # cargo fmt does not reach the extensions
-(cd src-tauri && cargo audit --file Cargo.lock --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369)   # the same ignores as CI, explained in deny.toml
+(cd src-tauri && cargo audit --file Cargo.lock)
 (cd src-tauri && cargo deny check)       # licences, duplicate versions, sources (deny.toml)
 ```
 
