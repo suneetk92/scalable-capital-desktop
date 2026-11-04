@@ -37,6 +37,19 @@ export type OrderInfo = {
   executionChecked: boolean;
 };
 
+/** Whether Scalable has reported a fill, rather than only accepting the order. */
+export function isFilled(order?: Pick<OrderInfo, "state" | "history" | "executionPrice" | "executionTime"> | null): boolean {
+  if (!order) return false;
+  const filled = (state: string) => /fill|executed|settled/i.test(state);
+  return order.executionPrice !== null || order.executionTime !== null || filled(order.state) || order.history.some((step) => filled(step.state));
+}
+
+/** Note explaining that execution prices use the order currency while other prices use EUR. */
+export function executionPriceNote(order?: Pick<OrderInfo, "currency"> | null): string | null {
+  const currency = order?.currency;
+  return currency && currency !== "EUR" ? `Execution price is in ${currency}; other prices are in EUR.` : null;
+}
+
 function dateTime(value: string | undefined): string | null {
   return value && Number.isFinite(Date.parse(value)) ? value : null;
 }

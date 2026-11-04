@@ -243,13 +243,7 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
         } else if (protect) {
           setPlacedLegs((legs) => [...legs, protect]);
         }
-        onPlaced(
-          orderSubmittedNotice(
-            request,
-            reviewed.security.name,
-            portfolios.find((item) => item.portfolioId === request.portfolioId)?.currency ?? "EUR",
-          ),
-        );
+        onPlaced(orderSubmittedNotice(request, reviewed.security.name, portfolios.find((item) => item.portfolioId === request.portfolioId)?.currency ?? "EUR"));
       },
     );
   }

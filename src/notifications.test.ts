@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vite-plus/test";
-import { addNotification, alertAddedNotice, alertRemovedNotice, formatAge, NOTIFICATION_LIMIT, orderSubmittedNotice, parseBackendNotice, removeNotification, savingsPlanSavedNotice, toolSuccessNotice } from "./notifications";
+import {
+  addNotification,
+  alertAddedNotice,
+  alertRemovedNotice,
+  formatAge,
+  NOTIFICATION_LIMIT,
+  orderSubmittedNotice,
+  parseBackendNotice,
+  removeNotification,
+  savingsPlanSavedNotice,
+  toolSuccessNotice,
+} from "./notifications";
 
 describe("action notices", () => {
   it("describes submitted orders in cash or shares", () => {

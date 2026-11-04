@@ -87,9 +87,9 @@ export function TrailingStopDialog({
         : "Enter a number of shares greater than zero."
       : buyingShares && !Number.isInteger(quantityNumber)
         ? "Enter a whole number of shares."
-      : !buying && heldQuantity !== null && quantityNumber > heldQuantity
-        ? `You hold only ${formatNumber(heldQuantity)} shares.`
-        : null;
+        : !buying && heldQuantity !== null && quantityNumber > heldQuantity
+          ? `You hold only ${formatNumber(heldQuantity)} shares.`
+          : null;
   const distanceProblem = ambiguousThousands(distance) ? ambiguousThousandsMessage(distance) : trailIssue(kind, distanceNumber);
   const missingSecurity = buying ? !security : !security || !holding;
   const issue = missingSecurity ? (buying ? "Choose a security." : "Choose a security you hold.") : (quantityProblem ?? distanceProblem);

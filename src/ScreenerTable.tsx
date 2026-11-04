@@ -113,6 +113,7 @@ export function ScreenerTable({
     setQuery,
     clearFilters,
     visibleRows,
+    totalRows,
     selectedRows,
     selected,
     setSelected,
@@ -190,7 +191,7 @@ export function ScreenerTable({
   const actionsWidth = view === "watchlist" && tradingEnabled && toolActions.has(TOOL.removeWatchlistItem) ? 11.5 : 8.6667;
   const resized = resizedTable(widths, 5.75 + (hasRowActions ? actionsWidth : 0));
   const columnCount = 3 + shownColumns.length + (hasRowActions ? 1 : 0);
-  const filtered = query !== "" || activeFilters > 0;
+  const filtered = query.trim() !== "" || activeFilters > 0;
 
   // Drag and drop in the table divided into groups: a group header reorders the groups, a holding row moves to another group.
   const groupKeys = tableSections.flatMap((section) => (section.group && !section.group.isDefault ? [section.key] : []));
@@ -251,7 +252,11 @@ export function ScreenerTable({
 
   return (
     <section className={PANEL} aria-label="Market screener">
-      <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
+      <div
+        className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start"
+        role="search"
+        aria-label="Search and filter holdings and watchlist"
+      >
         <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5">
           <div
             className="relative max-[900px]:flex-1"
@@ -321,7 +326,7 @@ export function ScreenerTable({
         </div>
       </div>
       <PanelHeader title={view === "portfolio" ? "Portfolio holdings" : "Saved watchlist"}>
-        {pluralize(visibleRows.length, "result")}
+        {filtered ? `${pluralize(visibleRows.length, "result")} match (of ${pluralize(totalRows, "result")})` : pluralize(visibleRows.length, "result")}
         {lastUpdated ? ` \u00b7 Updated ${formatDate(lastUpdated, { hour: "2-digit", minute: "2-digit" })}` : ""}
         {usesExtensionData && extensionLoading ? " \u00b7 Loading additional data…" : ""}
       </PanelHeader>

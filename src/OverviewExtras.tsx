@@ -193,8 +193,8 @@ function ActivityCards({
         {accountCards}
         {summary.securities.length > 0 && (
           <Card title="By security" hint={hint} wide>
-            <div className="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Search securities">
-              <SearchBox className="min-w-48 flex-1" value={search} onChange={changeSearch} placeholder="Search securities" label="Search securities" />
+            <div className="mb-3 flex flex-wrap items-center justify-end gap-2" role="search" aria-label="Search and filter securities">
+              <SearchBox value={search} onChange={changeSearch} placeholder="Search symbol or name" label="Search securities by symbol or name" />
               <FiltersPopover count={Number(securityFilter !== "all")} onClear={() => changeSecurityFilter("all")}>
                 <div>
                   <p className={FILTER_TITLE}>Show</p>
@@ -294,8 +294,8 @@ function OvernightTransactionsCard({ common, currency }: { common: Common; curre
   return (
     <Card title="Overnight transactions" hint={hint} wide>
       {history.account && <p className="mb-3 text-ink-muted">{history.account.displayName}</p>}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <SearchBox className="min-w-48 flex-1" value={search} onChange={setSearch} placeholder="Search transactions" label="Search overnight transactions" />
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2" role="search" aria-label="Search and filter overnight transactions">
+        <SearchBox value={search} onChange={setSearch} placeholder="Search transactions" label="Search overnight transactions" />
         <FiltersPopover count={activeFilters} onClear={clearFilters}>
           <div className="grid gap-3">
             <div>

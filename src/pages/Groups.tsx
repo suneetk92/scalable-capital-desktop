@@ -78,7 +78,7 @@ function AddHoldingsModal({ group, candidates, onSubmit, onClose }: { group: Sec
           <div className="-ml-1.5 grid max-h-80 gap-1 overflow-y-auto pr-1 pl-1.5">
             {candidates.map((holding) => (
               <CheckboxField key={holding.isin} checked={chosen.has(holding.isin)} onChange={() => toggle(holding.isin)}>
-                <SecurityCell initials={holding.name.slice(0, 2).toUpperCase()} title={holding.isin} subtitle={holding.name} />
+                <SecurityCell initials={holding.name.slice(0, 2).toUpperCase()} title={holding.name} subtitle={holding.isin} />
               </CheckboxField>
             ))}
           </div>

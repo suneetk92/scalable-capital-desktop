@@ -6,6 +6,7 @@ import type { Notice } from "../../../../src/notifications";
 export type TrailKind = "percent" | "amount";
 export type TrailSide = "sell" | "buy";
 export type TrailingStatus = "active" | "selling" | "sold" | "attention";
+export type TrailingStatusFilter = "all" | TrailingStatus;
 
 /** Notice after a trailing stop is added or changed. */
 export function trailingStopNotice(change: "added" | "changed", side: TrailSide, name: string): Notice {
@@ -36,8 +37,8 @@ export type TrailingStop = {
   message: string | null;
   /** The price reached the trigger while no order could be placed (no Full access, or the exchange closed); the user was told once. */
   triggerReached: boolean;
-  /** The price at which the stop was executed (only when status is 'sold'). */
-  soldPrice: number | null;
+  /** The quote when the app placed the order (only when status is 'sold'). */
+  quotePrice: number | null;
   /** When the order was placed, in seconds since the epoch (only when status is 'sold'). */
   executedAt: number | null;
   /** What Scalable answered when the order was submitted. */
@@ -52,8 +53,36 @@ const STATUS_LABEL: Record<TrailSide, Record<TrailingStatus, string>> = {
   buy: { active: "Watching", selling: "Buying", sold: "Bought", attention: "Needs you" },
 };
 
-export function statusLabel(side: TrailSide, status: TrailingStatus): string {
+export function statusLabel(side: TrailSide, status: TrailingStatus, filled = false): string {
+  if (status === "sold" && !filled) return "Order placed";
   return STATUS_LABEL[side][status];
+}
+
+export function filterTrailingStops(stops: TrailingStop[], filter: TrailingStatusFilter): TrailingStop[] {
+  return filter === "all" ? stops : stops.filter((stop) => stop.status === filter);
+}
+
+type TrailingCsvDetails = { status: string; executionTime: string | null; executionPrice: string | null };
+
+export function trailingCsvRows(stops: TrailingStop[], details: ReadonlyMap<string, TrailingCsvDetails>): (string | number | null)[][] {
+  return [
+    ["Symbol / name", "ISIN", "Status", "Amount / shares", "Distance", "Highest / lowest price", "Trigger price", "Now", "Execution time", "Execution price"],
+    ...stops.map((stop) => {
+      const detail = details.get(stop.id);
+      return [
+        stop.name,
+        stop.isin,
+        detail?.status ?? statusLabel(stop.side, stop.status),
+        stop.side === "buy" ? (stop.amount ?? (stop.quantity > 0 ? `${stop.quantity} shares` : null)) : stop.quantity,
+        trailLabel(stop.trail, String),
+        stop.high,
+        triggerPrice(stop.high, stop.trail, stop.side),
+        stop.status === "active" ? stop.lastPrice : null,
+        detail?.executionTime ?? null,
+        detail?.executionPrice ?? null,
+      ];
+    }),
+  ];
 }
 
 /** The note on a watching row that cannot trade yet: the trigger was reached, or Full access is off. Null when it can trade. */
@@ -114,7 +143,7 @@ function toStop(value: unknown): TrailingStop | null {
     status,
     message: typeof value.message === "string" ? value.message : null,
     triggerReached: value.triggerReached === true,
-    soldPrice: typeof value.soldPrice === "number" ? value.soldPrice : null,
+    quotePrice: typeof value.soldPrice === "number" ? value.soldPrice : null,
     executedAt: typeof value.executedAt === "number" ? value.executedAt : null,
     receipt: value.receipt ?? null,
     createdAt: typeof value.createdAt === "number" ? value.createdAt : 0,

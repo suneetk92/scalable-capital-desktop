@@ -109,7 +109,8 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
 - **Trailing stops**: buy stops can spend a cash amount or buy whole shares; changing between those modes clears
   the old size. The sell and buy tables show Scalable-reported execution time and price when available. Details
   separates those fill values from the order-placement time and the quote recorded by the app; missing execution
-  values show a dash or "Not reported" rather than substituting the quote.
+  values show a dash or "Not reported" rather than substituting the quote. The status says "Order placed" until
+  Scalable reports a fill.
 - **Switching pages does not reload data.** Opening a page from the sidebar shows what it already loaded: the
   Overview, Price alerts and Savings plans are asked for again only after Refresh, the auto-refresh timer, or a
   change of filters.

@@ -83,8 +83,30 @@ describe("trailing stop dialog", () => {
 
   it("requires whole shares and allows switching size when editing", async () => {
     const invoke = mockInvoke((command) => (command === "update_trailing_stop" ? { id: "buy-stop" } : undefined));
-    const editing = { id: "buy-stop", side: "buy" as const, isin: security.isin, name: security.name, portfolioId: "portfolio-1", quantity: 0, amount: 250, trail: { kind: "percent" as const, value: 5 }, startPrice: 100, high: 100, lastPrice: 100, status: "active" as const, message: null, triggerReached: false, soldPrice: null, executedAt: null, receipt: null, createdAt: 1 };
-    render(<TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} manageEnabled onClose={vi.fn()} editing={editing} />);
+    const editing = {
+      id: "buy-stop",
+      side: "buy" as const,
+      isin: security.isin,
+      name: security.name,
+      portfolioId: "portfolio-1",
+      quantity: 0,
+      amount: 250,
+      trail: { kind: "percent" as const, value: 5 },
+      startPrice: 100,
+      high: 100,
+      lastPrice: 100,
+      status: "active" as const,
+      message: null,
+      triggerReached: false,
+      soldPrice: null,
+      quotePrice: null,
+      executedAt: null,
+      receipt: null,
+      createdAt: 1,
+    };
+    render(
+      <TrailingStopDialog side="buy" security={security} portfolioId="portfolio-1" quantity="" portfolios={portfolios} held={[]} invoke={invoke} manageEnabled onClose={vi.fn()} editing={editing} />,
+    );
 
     fireEvent.click(screen.getByText("Amount", { exact: true }));
     fireEvent.click(screen.getByRole("option", { name: "Shares" }));

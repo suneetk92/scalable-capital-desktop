@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseTrailingList, statusLabel, trailIssue, trailLabel, trailingStopNotice, triggerBarShare, triggerPrice, waitingNote } from "./trailing";
+import { filterTrailingStops, parseTrailingList, statusLabel, trailIssue, trailLabel, trailingCsvRows, trailingStopNotice, triggerBarShare, triggerPrice, waitingNote } from "./trailing";
 
 const stop = {
   id: "a",
@@ -30,6 +30,33 @@ describe("trailing-stop notices", () => {
   });
 });
 
+describe("trailing-stop table helpers", () => {
+  it("filters by status without changing the source list", () => {
+    const stops = parseTrailingList({ stops: [stop, { ...stop, id: "b", status: "attention" }, { ...stop, id: "c", status: "sold" }] }).stops;
+
+    expect(filterTrailingStops(stops, "all")).toBe(stops);
+    expect(filterTrailingStops(stops, "attention").map((item) => item.id)).toEqual(["b"]);
+    expect(filterTrailingStops(stops, "sold").map((item) => item.id)).toEqual(["c"]);
+    expect(stops.map((item) => item.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("builds CSV rows for the displayed stop data and Scalable execution details", () => {
+    const stops = parseTrailingList({
+      stops: [stop, { ...stop, id: "b", name: "Microsoft", isin: "US5949181045", side: "buy", shares: 0, amount: 250, high: 100, status: "sold", lastPrice: null }],
+    }).stops;
+    const details = new Map([
+      ["a", { status: "Watching", executionTime: null, executionPrice: null }],
+      ["b", { status: "Order placed · Submitted", executionTime: "2026-11-04T04:41:00Z", executionPrice: "€ 101.00" }],
+    ]);
+
+    expect(trailingCsvRows(stops, details)).toEqual([
+      ["Symbol / name", "ISIN", "Status", "Amount / shares", "Distance", "Highest / lowest price", "Trigger price", "Now", "Execution time", "Execution price"],
+      ["Apple", "US0378331005", "Watching", 2, "5 %", 120, 114, 118, null, null],
+      ["Microsoft", "US5949181045", "Order placed · Submitted", 250, "5 %", 100, 105, null, "2026-11-04T04:41:00Z", "€ 101.00"],
+    ]);
+  });
+});
+
 describe("buy stops", () => {
   it.each(["percent", "amount"] as const)("trigger above the low and fill the %s bar as the price rises", (kind) => {
     const trail = { kind, value: 10 };
@@ -45,8 +72,10 @@ describe("buy stops", () => {
   });
 
   it("read as bought, not sold", () => {
-    expect(statusLabel("buy", "sold")).toBe("Bought");
-    expect(statusLabel("sell", "sold")).toBe("Sold");
+    expect(statusLabel("buy", "sold")).toBe("Order placed");
+    expect(statusLabel("sell", "sold")).toBe("Order placed");
+    expect(statusLabel("buy", "sold", true)).toBe("Bought");
+    expect(statusLabel("sell", "sold", true)).toBe("Sold");
     expect(parseTrailingList({ stops: [{ ...stop, side: "buy", shares: 0, amount: 250 }] }).stops[0]).toMatchObject({ side: "buy", amount: 250 });
     expect(parseTrailingList({ stops: [stop] }).stops[0].side).toBe("sell");
   });

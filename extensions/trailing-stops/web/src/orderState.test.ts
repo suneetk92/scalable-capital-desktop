@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isFinalState, orderIdOf, orderStateLabel, orderStateOf } from "./orderState";
+import { executionPriceNote, isFilled, isFinalState, orderIdOf, orderStateLabel, orderStateOf } from "./orderState";
 
 describe("order state", () => {
   it("reads the order id from the receipt", () => {
@@ -77,5 +77,20 @@ describe("order state", () => {
     expect(isFinalState("FILLED")).toBe(false);
     expect(isFinalState("submitted")).toBe(false);
     expect(orderStateLabel("SETTLED")).toBe("Settled");
+  });
+
+  it("distinguishes a placed order from one with a reported fill", () => {
+    expect(isFilled()).toBe(false);
+    expect(isFilled({ state: "SUBMITTED", history: [], executionPrice: null, executionTime: null })).toBe(false);
+    expect(isFilled({ state: "EXECUTING", history: [], executionPrice: null, executionTime: null })).toBe(false);
+    expect(isFilled({ state: "SUBMITTED", history: [{ state: "FILLED", timestamp: null }], executionPrice: null, executionTime: null })).toBe(true);
+    expect(isFilled({ state: "SETTLED", history: [], executionPrice: null, executionTime: null })).toBe(true);
+    expect(isFilled({ state: "unknown", history: [], executionPrice: 10, executionTime: null })).toBe(true);
+  });
+
+  it("notes when the execution price uses a currency other than EUR", () => {
+    expect(executionPriceNote({ currency: "USD" })).toBe("Execution price is in USD; other prices are in EUR.");
+    expect(executionPriceNote({ currency: "EUR" })).toBeNull();
+    expect(executionPriceNote()).toBeNull();
   });
 });

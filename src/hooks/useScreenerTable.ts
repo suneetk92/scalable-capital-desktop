@@ -207,6 +207,7 @@ export function useScreenerTable({
     page,
     setPage,
     setSectionPage,
+    totalRows: view === "portfolio" ? portfolioRows.length : watchlistRows.length,
     selected,
     setSelected,
     tableScroll,

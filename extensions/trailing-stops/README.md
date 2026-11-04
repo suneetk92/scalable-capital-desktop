@@ -10,6 +10,8 @@ with Full access while the exchange is open (before that, one notification says 
 - `web/index.ts`: the extension for `src/extensions.ts`: the Trailing stops page, its settings section
   (check frequency, stored under `scalable-capital-desktop.trailing-stops`) and the "Set trailing stop loss"
   button of the order dialog. `web/src/` has the page, the dialog, the hook and the pure logic with tests.
+  `orderState.ts` keeps Scalable-reported execution details under the `scalable-capital-desktop.trailing-order-states`
+  localStorage key; the stop's recorded quote and placement time remain in the Rust-owned stop file.
 - `src-tauri/`: the saved file, quotes, the sale, the watcher and the commands. `mod.rs` exports
   `handler`, `handles`, `setup` and `busy`, which `src-tauri/build.rs` combines for `lib.rs`. A sale always goes
   through the Trading gate in `src-tauri/src/mcp/trading.rs`; nothing here can bypass it.

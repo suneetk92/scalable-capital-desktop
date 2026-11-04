@@ -28,11 +28,12 @@ const stored = {
 };
 
 describe("trailing transaction dialog", () => {
-  it("shows what was bought and what Scalable answered", () => {
+  it("labels an order as placed until Scalable reports a fill", () => {
     const [stop] = parseTrailingList({ stops: [stored] }).stops;
     render(<TrailingTransactionDialog stop={stop} onClose={() => {}} />);
-    expect(screen.getByText("Bought: Apple Inc.")).toBeTruthy();
-    expect(screen.getByText("Lowest price seen")).toBeTruthy();
+    expect(screen.getByText("Buy order placed: Apple Inc.")).toBeTruthy();
+    expect(screen.getByText("Lowest price")).toBeTruthy();
+    expect(screen.getByText("Buys at or above")).toBeTruthy();
     expect(screen.getByText("o-1")).toBeTruthy();
   });
 
@@ -49,6 +50,7 @@ describe("trailing transaction dialog", () => {
         onClose={() => {}}
       />,
     );
+    expect(screen.getByText("Bought: Apple Inc.")).toBeTruthy();
     expect(screen.getByText("Order history at Scalable")).toBeTruthy();
     expect(screen.getByText("Submitted")).toBeTruthy();
     expect(screen.getByText("Settled")).toBeTruthy();
@@ -65,13 +67,14 @@ describe("trailing transaction dialog", () => {
     const order: OrderInfo = { state: "SETTLED", final: true, history: [], executionPrice: null, executionTime: null, currency: null, executionChecked: true };
     render(<TrailingTransactionDialog stop={stop} order={order} onClose={() => {}} />);
     expect(screen.getAllByText("Not reported")).toHaveLength(2);
-    expect(screen.getByText("Quote when order was placed")).toBeTruthy();
+    expect(screen.getByText("Quote when placed")).toBeTruthy();
     expect(screen.getAllByText(formatMoney(stored.soldPrice))).toHaveLength(2);
   });
 
   it("copes with a stop sold before the transaction was recorded", () => {
     const [stop] = parseTrailingList({ stops: [{ ...stored, side: "sell", shares: 2, executedAt: undefined, receipt: undefined }] }).stops;
     render(<TrailingTransactionDialog stop={stop} onClose={() => {}} />);
+    expect(screen.getByText("Sell order placed: Apple Inc.")).toBeTruthy();
     expect(screen.getByText("Not recorded")).toBeTruthy();
     expect(screen.queryByText("Scalable's answer when the order was placed")).toBeNull();
   });

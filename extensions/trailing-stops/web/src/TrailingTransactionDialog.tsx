@@ -2,13 +2,15 @@ import { DescriptionList, DescriptionRow, DialogFooter, ModalFrame, ModalHeader,
 import { KeyValues } from "../../../../src/ToolViews";
 import { formatDateTime, formatNumber } from "../../../../src/format";
 import { formatMoney } from "../../../../src/screener";
-import { orderStateLabel, type OrderInfo } from "./orderState";
+import { executionPriceNote, isFilled, orderStateLabel, type OrderInfo } from "./orderState";
 import { trailLabel, triggerPrice, type TrailingStop } from "./trailing";
 
 /** What the app did when a trailing stop fired: the rule, the price and what Scalable answered. */
 export function TrailingTransactionDialog({ stop, order, onClose }: { stop: TrailingStop; order?: OrderInfo; onClose: () => void }) {
   const buying = stop.side === "buy";
-  const verb = buying ? "Bought" : "Sold";
+  const filled = isFilled(order);
+  const verb = buying ? (filled ? "Bought" : "Buy order placed") : filled ? "Sold" : "Sell order placed";
+  const executionNote = executionPriceNote(order);
   return (
     <ModalFrame onClose={onClose}>
       <ModalHeader title={`${verb}: ${stop.name}`} closeLabel="Close details" onClose={onClose} />
@@ -16,16 +18,18 @@ export function TrailingTransactionDialog({ stop, order, onClose }: { stop: Trai
       <DescriptionList>
         <DescriptionRow label="Order placed">{stop.executedAt === null ? "Not recorded" : formatDateTime(stop.executedAt * 1000)}</DescriptionRow>
         <DescriptionRow label="Execution time">{order?.executionTime ? formatDateTime(order.executionTime) : "Not reported"}</DescriptionRow>
-        <DescriptionRow label="Execution price">{order?.executionPrice == null ? "Not reported" : formatMoney(order.executionPrice, order.currency ?? "EUR")}</DescriptionRow>
+        <DescriptionRow label="Execution price">
+          {order?.executionPrice == null ? "Not reported" : <span title={executionNote ?? undefined}>{formatMoney(order.executionPrice, order.currency ?? "EUR")}</span>}
+        </DescriptionRow>
         <DescriptionRow label={buying ? (stop.amount === null ? "Shares bought" : "Spent") : "Shares sold"}>
           {buying ? (stop.amount === null ? formatNumber(stop.quantity) : formatMoney(stop.amount)) : formatNumber(stop.quantity)}
         </DescriptionRow>
         {order && <DescriptionRow label="Order status">{orderStateLabel(order.state)}</DescriptionRow>}
         <DescriptionRow label="Order type">Market</DescriptionRow>
-        <DescriptionRow label="Quote when order was placed">{stop.soldPrice === null ? "Not recorded" : formatMoney(stop.soldPrice)}</DescriptionRow>
+        <DescriptionRow label="Quote when placed">{stop.quotePrice === null ? "Not recorded" : formatMoney(stop.quotePrice)}</DescriptionRow>
         <DescriptionRow label="Distance">{trailLabel(stop.trail, formatMoney)}</DescriptionRow>
-        <DescriptionRow label={buying ? "Lowest price seen" : "Highest price seen"}>{formatMoney(stop.high)}</DescriptionRow>
-        <DescriptionRow label="Trigger price">{formatMoney(triggerPrice(stop.high, stop.trail, stop.side))}</DescriptionRow>
+        <DescriptionRow label={buying ? "Lowest price" : "Highest price"}>{formatMoney(stop.high)}</DescriptionRow>
+        <DescriptionRow label={buying ? "Buys at or above" : "Sells at or below"}>{formatMoney(triggerPrice(stop.high, stop.trail, stop.side))}</DescriptionRow>
         <DescriptionRow label="Price when set">{formatMoney(stop.startPrice)}</DescriptionRow>
         {stop.lastPrice !== null && <DescriptionRow label="Last price checked">{formatMoney(stop.lastPrice)}</DescriptionRow>}
       </DescriptionList>

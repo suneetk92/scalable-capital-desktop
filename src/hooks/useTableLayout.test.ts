@@ -2,7 +2,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { readStoredJson, writeStoredJson } from "../storage";
-import { mergeOrder, moveColumn, useColumnWidths, useTableLayout } from "./useTableLayout";
+import { mergeOrder, moveColumn, renameStoredColumns, useColumnWidths, useTableLayout } from "./useTableLayout";
 
 describe("mergeOrder", () => {
   it("keeps the stored order, drops unknown columns and places new ones after their default predecessor", () => {
@@ -24,6 +24,37 @@ describe("moveColumn", () => {
 
   it("leaves the order alone for unknown columns", () => {
     expect(moveColumn(["a", "b"], "a", "z", true)).toEqual(["a", "b"]);
+  });
+});
+
+describe("renameStoredColumns", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("renames legacy ids in stored order and widths once", () => {
+    writeStoredJson("table.trailing-stops", {
+      order: ["actions", "placed", "atAbout", "name"],
+      widths: { placed: 12, atAbout: 14, actions: 9 },
+    });
+
+    renameStoredColumns("trailing-stops", { placed: "executedAt", atAbout: "executionPrice" });
+    const migrated = readStoredJson("table.trailing-stops");
+    expect(migrated).toEqual({
+      order: ["actions", "executedAt", "executionPrice", "name"],
+      widths: { executedAt: 12, executionPrice: 14, actions: 9 },
+    });
+
+    renameStoredColumns("trailing-stops", { placed: "executedAt", atAbout: "executionPrice" });
+    expect(readStoredJson("table.trailing-stops")).toEqual(migrated);
+  });
+
+  it("leaves missing layouts and layouts with conflicting old and new ids alone", () => {
+    renameStoredColumns("missing", { placed: "executedAt" });
+    expect(readStoredJson("table.missing")).toBeNull();
+
+    const conflict = { order: ["placed", "executedAt"], widths: { placed: 12, executionPrice: 14 } };
+    writeStoredJson("table.trailing-stops", conflict);
+    renameStoredColumns("trailing-stops", { placed: "executedAt", atAbout: "executionPrice" });
+    expect(readStoredJson("table.trailing-stops")).toEqual(conflict);
   });
 });
 

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { formatDateTime } from "../../../../src/format";
-import { formatMoney } from "../../../../src/screener";
+import { formatMoney, formatNumber } from "../../../../src/screener";
 import { storageKey } from "../../../../src/storage";
 import { clearToolQueryCache } from "../../../../src/toolActions";
 import type { Invoke } from "../../../../src/tools";
@@ -57,7 +57,7 @@ const details: Record<string, unknown> = {
   },
 };
 
-function renderStops(records: unknown[], responses = details, reloadKey = 0, failFirstQuery = false, failRemove = false) {
+function renderStops(records: unknown[], responses = details, reloadKey = 0, failFirstQuery = false, failRemove = false, pageSize = 10) {
   let firstFailed = false;
   const invoke = vi.fn(async <T = unknown,>(command: string, args?: Record<string, unknown>) => {
     if (command === "call_tools") {
@@ -79,7 +79,7 @@ function renderStops(records: unknown[], responses = details, reloadKey = 0, fai
     actions: { run: vi.fn(), openRunner: vi.fn(), notify: vi.fn(), has: (name) => name === "get_transaction_details" },
     tradingEnabled: true,
     manageEnabled: true,
-    pageSize: 10,
+    pageSize,
     reloadKey,
   };
   const trailing: ReturnType<typeof useTrailingStops> = {
@@ -111,6 +111,41 @@ function cell(table: HTMLElement, name: string, label: string) {
 }
 
 describe("trailing stop tables", () => {
+  it("searches by name, filters status, sorts by name, and paginates", () => {
+    const records = [
+      { ...stored, id: "z", name: "Zulu", status: "active" },
+      { ...stored, id: "a", name: "Alpha", status: "attention" },
+      { ...stored, id: "m", name: "Middle", status: "active" },
+    ];
+    renderStops(records, details, 0, false, false, 2);
+    const table = screen.getByRole("table");
+    const search = screen.getByRole("textbox", { name: "Search trailing stop losses by symbol or name" });
+
+    expect(within(table).getByText("Zulu")).toBeTruthy();
+    expect(within(table).getByText("Alpha")).toBeTruthy();
+    expect(within(table).queryByText("Middle")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(within(table).getByText("Middle")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort by Symbol / name" }));
+    expect(within(table).getByText("Alpha")).toBeTruthy();
+    expect(within(table).getByText("Middle")).toBeTruthy();
+    expect(within(table).queryByText("Zulu")).toBeNull();
+
+    const toolbar = screen.getByRole("search", { name: "Search and filter trailing stop losses" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: /Filters/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Needs you" }));
+    expect(within(table).getByText("Alpha")).toBeTruthy();
+    expect(within(table).queryByText("Middle")).toBeNull();
+    expect(screen.getByText("1 stop match (of 3 stops)")).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: "no such stop" } });
+    expect(screen.getByText("No matching stops")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Clear search and filters" }));
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(within(screen.getByRole("table")).getByText("Alpha")).toBeTruthy();
+  });
+
   it("announces a removed stop and reports a failed removal", async () => {
     const { common } = renderStops([stored]);
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
@@ -130,14 +165,22 @@ describe("trailing stop tables", () => {
     ] as const) {
       const formattedTime = formatDateTime(time);
       const formattedPrice = formatMoney(price, stop.side === "buy" ? "USD" : "EUR");
+      expect(within(table).getByRole("columnheader", { name: /Sells at or below|Buys at or above/ }).className).toContain("whitespace-nowrap");
       await waitFor(() => expect(cell(table, stop.name, "Execution time").textContent).toBe(formattedTime));
       expect(cell(table, stop.name, priceLabel).textContent).toBe(formattedPrice);
+      expect(cell(table, stop.name, priceLabel).title).toBe(stop.side === "buy" ? "Execution price is in USD; other prices are in EUR." : "");
+      const placed = within(table).getByText(/(?:Sold|Bought) · Filled/);
+      const tooltip = placed.getAttribute("title") ?? "";
+      expect(tooltip).toContain(`${stop.side === "buy" ? "Buy" : "Sell"} order placed`);
+      expect(tooltip).toContain(`at a quote of about ${formatMoney(stop.soldPrice)}`);
+      expect(tooltip.match(/order placed/gi)).toHaveLength(1);
       const row = within(table).getByText(stop.name).closest("tr")!;
       fireEvent.click(within(row).getByRole("button", { name: "Details" }));
       const dialog = screen.getByRole("dialog");
       expect(within(dialog).getAllByText(formattedTime).length).toBeGreaterThan(0);
       expect(within(dialog).getByText(formattedPrice)).toBeTruthy();
       expect(within(dialog).getByText("Order placed")).toBeTruthy();
+      if (stop.side === "buy") expect(within(dialog).getByTitle("Execution price is in USD; other prices are in EUR.")).toBeTruthy();
       fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     }
     expect(JSON.parse(localStorage.getItem("scalable-capital-desktop.trailing-order-states") ?? "{}")).toMatchObject({
@@ -150,6 +193,7 @@ describe("trailing stop tables", () => {
     renderStops([buyShares]);
     const table = screen.getByRole("table");
     expect(cell(table, "Nvidia", "Amount / shares").textContent).toBe("3 shares");
+    expect(within(table).getByText("Order placed")).toBeTruthy();
     fireEvent.click(within(within(table).getByText("Nvidia").closest("tr")!).getByRole("button", { name: "Details" }));
     expect(screen.getByText("Shares bought")).toBeTruthy();
     expect(screen.getByText("3", { selector: "dd" })).toBeTruthy();
@@ -172,6 +216,8 @@ describe("trailing stop tables", () => {
       expect(cell(sellTable, name, "Execution time").textContent).toBe("—");
       expect(cell(sellTable, name, "Execution price").textContent).toBe("—");
     }
+    expect(cell(sellTable, "Legacy", "Execution time").title).toBe("Not reported by Scalable");
+    expect(cell(sellTable, "Active", "Execution price").title).toBe("No completed order to report");
     await waitFor(() => expect(cell(buyTable, "No price", "Execution time").textContent).toBe(formatDateTime("2026-10-29T12:00:00Z")));
     expect(cell(buyTable, "No price", "Execution price").textContent).toBe("—");
     expect(cell(buyTable, "No time", "Execution time").textContent).toBe("—");
@@ -208,9 +254,9 @@ describe("trailing stop tables", () => {
   });
 
   it("merges the columns into saved layouts without misaligning the values", async () => {
-    const order = ["actions", "now", "status", "name", "quantity", "trail", "high", "trigger"];
+    const order = ["actions", "now", "placed", "atAbout", "status", "name", "quantity", "trail", "high", "trigger"];
     for (const name of ["trailing-stops", "trailing-buy-stops"]) {
-      localStorage.setItem(storageKey(`table.${name}`), JSON.stringify({ order, widths: { now: 10, actions: 12 } }));
+      localStorage.setItem(storageKey(`table.${name}`), JSON.stringify({ order, widths: { now: 10, actions: 12, placed: 13, atAbout: 14 } }));
     }
     renderStops([stored, buy]);
     const tables = screen.getAllByRole("table");
@@ -222,9 +268,34 @@ describe("trailing stop tables", () => {
         within(table)
           .getAllByRole("columnheader")
           .map((header) => header.getAttribute("data-col")),
-      ).toEqual(["actions", "now", "placed", "atAbout", "status", "name", "quantity", "trail", "high", "trigger"]);
+      ).toEqual(["actions", "now", "executedAt", "executionPrice", "status", "name", "quantity", "trail", "high", "trigger"]);
+      expect(cell(table, stop.name, "Execution time").className).toContain("whitespace-nowrap");
       await waitFor(() => expect(cell(table, stop.name, "Execution time").textContent).toBe(formatDateTime(time)));
       expect(cell(table, stop.name, "Execution price").textContent).toBe(formatMoney(price, stop.side === "buy" ? "USD" : "EUR"));
     }
+    expect(JSON.parse(localStorage.getItem(storageKey("table.trailing-stops")) ?? "{}").widths).toMatchObject({ executedAt: 13, executionPrice: 14 });
+  });
+
+  it("shows names before ISINs and searches by the displayed order status", async () => {
+    renderStops([stored]);
+    const table = screen.getByRole("table");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .some((header) => header.textContent?.includes("Symbol / name")),
+    ).toBe(true);
+    const name = within(table).getByRole("button", { name: "Apple Inc." });
+    expect(name.title).toContain(stored.isin);
+    expect(within(table).getByText(stored.isin)).toBeTruthy();
+    await waitFor(() => expect(within(table).getByText(/Sold · Filled/)).toBeTruthy());
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Search trailing stop losses by symbol or name" }), { target: { value: "Filled" } });
+    expect(within(table).getByRole("button", { name: "Apple Inc." })).toBeTruthy();
+  });
+
+  it("formats sell share counts with the shared number formatter", () => {
+    const manyShares = { ...stored, shares: 1234.5 };
+    const table = renderStops([manyShares]).container.querySelector("table")!;
+    expect(cell(table, manyShares.name, "Shares").textContent).toBe(formatNumber(manyShares.shares));
   });
 });

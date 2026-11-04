@@ -34,6 +34,48 @@ export function moveColumn(order: readonly string[], from: string, to: string, a
   return rest;
 }
 
+/** Renames stored column ids in a table layout without disturbing its order or widths. */
+export function renameStoredColumns(name: string, renames: Readonly<Record<string, string>>): void {
+  const raw = readStoredJson(`table.${name}`);
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return;
+  const record = raw as Record<string, unknown>;
+  const order = Array.isArray(record.order) ? record.order.filter((id): id is string => typeof id === "string") : null;
+  const widths = record.widths !== null && typeof record.widths === "object" && !Array.isArray(record.widths) ? (record.widths as Record<string, unknown>) : null;
+  const entries = Object.entries(renames);
+  if (
+    entries.some(
+      ([from, to]) => (order?.includes(from) && order.includes(to)) || (widths !== null && Object.prototype.hasOwnProperty.call(widths, from) && Object.prototype.hasOwnProperty.call(widths, to)),
+    )
+  ) {
+    return;
+  }
+
+  let changed = false;
+  const nextOrder = order?.map((id) => {
+    const renamed = renames[id];
+    if (renamed === undefined) return id;
+    changed = true;
+    return renamed;
+  });
+  let nextWidths: Record<string, unknown> | null = widths;
+  if (widths !== null) {
+    nextWidths = Object.fromEntries(
+      Object.entries(widths).map(([id, value]) => {
+        const renamed = renames[id];
+        if (renamed === undefined) return [id, value];
+        changed = true;
+        return [renamed, value];
+      }),
+    );
+  }
+  if (!changed) return;
+  writeStoredJson(`table.${name}`, {
+    ...record,
+    ...(nextOrder !== null ? { order: nextOrder } : {}),
+    ...(nextWidths !== null ? { widths: nextWidths } : {}),
+  });
+}
+
 function readLayout(name: string): Stored {
   const raw = readStoredJson(`table.${name}`);
   const record = raw !== null && typeof raw === "object" ? (raw as Record<string, unknown>) : {};

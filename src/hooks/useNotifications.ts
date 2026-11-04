@@ -91,13 +91,15 @@ export function useNotifications(invoke: Invoke, inApp: boolean) {
     let active = true;
     let unlisten: (() => void) | undefined;
     void import("@tauri-apps/api/event")
-      .then(({ listen }) => listen<unknown>("app-notice", (event) => {
-        if (!active) return;
-        const backendNotice = parseBackendNotice(event.payload);
-        if (!backendNotice) return;
-        const { shown, ...notice } = backendNotice;
-        notify(notice, { desktop: false, toast: latest.current.inApp || !shown });
-      }))
+      .then(({ listen }) =>
+        listen<unknown>("app-notice", (event) => {
+          if (!active) return;
+          const backendNotice = parseBackendNotice(event.payload);
+          if (!backendNotice) return;
+          const { shown, ...notice } = backendNotice;
+          notify(notice, { desktop: false, toast: latest.current.inApp || !shown });
+        }),
+      )
       .then((stopListening) => {
         if (active) unlisten = stopListening;
         else stopListening();

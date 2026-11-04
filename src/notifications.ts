@@ -8,7 +8,7 @@ type NoticeKind = "ok" | "error" | "info";
 /** What a caller reports. `title` replaces the generic one of the kind, `detail` is a second, smaller line. */
 export type Notice = { kind: NoticeKind; text: string; title?: string; detail?: string };
 
-export type BackendNotice = Notice & { shown: boolean };
+type BackendNotice = Notice & { shown: boolean };
 
 export type NotificationItem = Notice & { id: number; at: number };
 
