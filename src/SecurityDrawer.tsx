@@ -16,6 +16,10 @@ import { extractSeries, formatCell, humanize, sortByTimeframe, TIMEFRAMES } from
 import { findRecords, isRec, parseMaybeJson, pick, pickString, recordsOf, type Rec } from "./response";
 import { TOOL } from "./commands";
 
+/**
+ * The security the details panel shows. The identity stays as it was opened; the figures below are read from
+ * the rows the dashboard has now (`refreshSecurityTarget`), so an open panel follows every refresh.
+ */
 export type DrawerTarget = {
   isin: string;
   name: string;

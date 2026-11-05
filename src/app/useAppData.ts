@@ -25,6 +25,7 @@ import { pagePortfolios } from "../portfolios";
 import type { Provider } from "../providerStatus";
 import { profileName } from "../profile";
 import { connectionCheckDue, nextRefreshDelay, wokeFromSleep } from "../refreshSchedule";
+import { refreshSecurityTarget } from "../securityTarget";
 import type { DrawerTarget } from "../SecurityDrawer";
 import { comboOf, pageForCombo, useShortcuts } from "../shortcuts";
 import { intervalLabel } from "../refreshOptions";
@@ -452,6 +453,14 @@ export function useAppData() {
       ),
     [portfolioRows],
   );
+  // When the watchlist failed to load, an empty list means "unknown", not "nothing watched".
+  const watchlistUnknown = Boolean(dashboard?.watchlistError);
+  // The details panel belongs to the account, not to the moment it was opened: while it stays open, its price,
+  // its holding and its watchlist state follow the rows the dashboard has now.
+  const panelTarget = useMemo(
+    () => securityTarget && refreshSecurityTarget(securityTarget, portfolioRows, watchlistRows, watchlistUnknown),
+    [securityTarget, portfolioRows, watchlistRows, watchlistUnknown],
+  );
   const common: Common = {
     invoke,
     defs: toolDefs,
@@ -474,7 +483,7 @@ export function useAppData() {
     invoke,
     common,
     signedIn,
-    securityTarget,
+    securityTarget: panelTarget,
   };
   const extensionData: ExtensionData = extension.useData?.(extensionContext) ?? {};
   const extensionRuntime: ExtensionRuntime = extension.runtime?.(extensionData) ?? {};
@@ -526,8 +535,6 @@ export function useAppData() {
   });
   const table = view === "watchlist" ? watchlistTable : portfolioTable;
 
-  // When the watchlist failed to load, an empty list means "unknown", not "nothing watched".
-  const watchlistUnknown = Boolean(dashboard?.watchlistError);
   const watchedIsins = watchlistUnknown ? null : new Set(watchlistRows.map((row) => row.isin).filter(Boolean));
   const heldIsins = new Set(portfolioRows.map((row) => row.isin).filter(Boolean));
   const knownNames = new Map<string, string>();
@@ -584,7 +591,7 @@ export function useAppData() {
     refreshLabel,
     extensionData,
     extensionRuntime,
-    securityTarget,
+    securityTarget: panelTarget,
     setSecurityTarget,
     planDialog,
     setPlanDialog,

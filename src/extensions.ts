@@ -48,6 +48,7 @@ export type ExtensionDataContext = {
   invoke: Invoke;
   common: Common;
   signedIn: boolean;
+  /** The security the details panel shows. It is a new object after every dashboard refresh, as its figures follow the reloaded rows. */
   securityTarget: DrawerTarget | null;
 };
 

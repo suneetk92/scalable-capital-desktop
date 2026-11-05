@@ -134,7 +134,8 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   shows its details in a right column docked under the top bar, in this order: Scalable's news, the price chart, an
   Overview (bid, ask and the performance by period) and the trading venues, in one scrollable column. Drag the
   column's left edge (or use the arrow keys on it) to change the width; double-click fits all columns to their content. The width is
-  remembered, and the panel closes when you switch to another page. Below 900px the column is hidden until a
+  remembered, and the panel closes when you switch to another page. While it stays open, its price, holding and watchlist
+  state follow every refresh. Below 900px the column is hidden until a
   security is opened, then it covers the page. Its footer has watchlist and price-alert shortcuts, and **Buy** and
   **Sell** while Trading is on. The price chart is drawn with the open-source Lightweight Charts library and is
   interactive: hover, touch or the arrow keys show the value and time of one point and its change since the start
