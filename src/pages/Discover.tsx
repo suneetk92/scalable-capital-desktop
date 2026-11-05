@@ -6,7 +6,7 @@ import { isRec, type Rec } from "../response";
 import { extension, useExtensionIsinLogos } from "../extensions";
 import { formatDateTime, formatMoney } from "../format";
 import { type Common } from "../types";
-import { Badge, btn, cx, EMPTY, field, RECORD_TABLE, SCROLL_X, SecurityCell, securityTypeTone, TABS, TD_NUM, tabClass } from "../ui";
+import { Badge, btn, cx, EMPTY, field, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, securityTypeTone, TABS, TD_NUM, tabClass } from "../ui";
 import { ToolRunnerPanel } from "../ToolViews";
 import { humanize } from "../tools";
 import { parseFoundDerivatives, parseFoundSecurities, type FoundDerivative, type FoundSecurity } from "../discover";
@@ -261,11 +261,11 @@ export function DiscoverPage({
   const def = defs.find((item) => item.name === tool);
   const lastSearch = savedSearch(tool);
   return (
-    <Section title="Discover" hint="Search Scalable’s securities and derivatives">
+    <Section title="Discover" hint="Search Scalable’s securities and derivatives" footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}>
       <TabGroup selectedIndex={Math.max(0, tabs.indexOf(tool))} onChange={(index) => selectTool(tabs[index] ?? tool)}>
         <TabList className={`${TABS} -mt-1 mb-3 min-h-10 border-b border-line`}>
           {tabs.map((name) => (
-            <Tab key={name} className={({ selected }) => cx(tabClass(selected, "px-1"), "outline-none data-focus:outline-2 data-focus:outline-accent")}>
+            <Tab key={name} className={({ selected }) => cx(tabClass(selected, "px-1"), "data-focus:outline-2 data-focus:outline-accent")}>
               {name === "search_securities" ? "Securities" : "Derivatives"}
             </Tab>
           ))}

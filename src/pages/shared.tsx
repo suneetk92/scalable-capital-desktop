@@ -69,7 +69,7 @@ export function perPortfolio(portfolios: PagePortfolio[], extra: Rec = {}): Rec[
 }
 
 /** "Updated 23:32" for the title bar of a table panel; the time of the last account refresh. */
-export function UpdatedAt() {
+function UpdatedAt() {
   const lastUpdated = useLastUpdated();
   return lastUpdated ? <span>Updated {formatDate(lastUpdated, { hour: "2-digit", minute: "2-digit" })}</span> : null;
 }

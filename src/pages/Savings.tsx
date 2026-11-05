@@ -5,7 +5,7 @@ import { FILTER_TITLE, FiltersPopover, RadioList, SearchBox } from "../controls"
 import { parseSearch } from "../screener";
 import { useToolQuery } from "../toolActions";
 import { type Common } from "../types";
-import { btn, EMPTY, PANEL_BODY, PanelFooter } from "../ui";
+import { btn, EMPTY, PANEL_BODY, PANEL_TOOLBAR, PANEL_TOOLBAR_GROUP, PanelFooter } from "../ui";
 import { RecordTable } from "../ToolViews";
 import { CopyCsvButton, QueryPanel, collect, perPortfolio, Section, DetailsModal } from "./shared";
 import { SavingsPlanDialog } from "./SavingsPlanDialog";
@@ -51,8 +51,8 @@ export function SavingsPage({
         footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}
         hint={filtering ? `${pluralize(visible.length, "plan")} match${records.length !== visible.length ? ` (of ${records.length})` : ""}` : pluralize(records.length, "plan")}
         toolbar={
-          <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
-            <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter savings plans">
+          <div className={PANEL_TOOLBAR}>
+            <div className={PANEL_TOOLBAR_GROUP} role="search" aria-label="Filter savings plans">
               <SearchBox
                 inputRef={searchInput}
                 value={filter.text}
@@ -131,8 +131,7 @@ export function SavingsPage({
           />
         )}
         <p className={`${EMPTY} ${PANEL_BODY} border-t border-line`}>
-          Creating, editing or removing a plan needs the Trading switch (top right) and the Full MCP access level. New and changed plans show Scalable's preview with the costs before anything is
-          saved.
+          Creating, editing or removing a plan needs Full access (top right). New and changed plans show Scalable's preview with the costs before anything is saved.
         </p>
       </Section>
       {dialog && (

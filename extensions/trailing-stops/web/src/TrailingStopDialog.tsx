@@ -10,7 +10,7 @@ import { invokeCommand } from "./commands";
 import { type Invoke } from "../../../../src/tools";
 import { decimal, trailIssue, type TrailingStop, type TrailKind, type TrailSide } from "./trailing";
 import type { HeldPosition, PagePortfolio } from "../../../../src/types";
-import { Alert, btn, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "../../../../src/ui";
+import { Alert, btn, field, DialogFooter, ModalFrame, ModalHeader, MODAL_TEXT } from "../../../../src/ui";
 import { useBusyAction } from "../../../../src/hooks/usePreviewFlow";
 
 type Props = {
@@ -113,13 +113,13 @@ export function TrailingStopDialog({
     );
   }
 
+  const requestClose = () => {
+    if (!busy) onClose();
+  };
+
   return (
-    <ModalFrame
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-    >
-      <ModalTitle>{`${editing ? "Edit" : "New"} ${buying ? "trailing buy stop" : "trailing stop loss"}`}</ModalTitle>
+    <ModalFrame onClose={requestClose}>
+      <ModalHeader title={`${editing ? "Edit" : "New"} ${buying ? "trailing buy stop" : "trailing stop loss"}`} closeLabel="Close" onClose={requestClose} closeDisabled={busy} />
       <p className={`mb-4 ${MODAL_TEXT}`}>
         {editing
           ? editing.status === "attention"
@@ -226,7 +226,7 @@ export function TrailingStopDialog({
       </CheckboxField>
 
       <DialogFooter className="mt-4">
-        <button className={btn.secondary} type="button" onClick={onClose} disabled={busy}>
+        <button className={btn.secondary} type="button" onClick={requestClose} disabled={busy}>
           Cancel
         </button>
         <button className={btn.danger} type="button" onClick={() => void start()} disabled={busy || !manageEnabled || !understood || issue !== null}>

@@ -1,5 +1,5 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { btn, cx, IconButton } from "./ui";
+import { btn, IconButton } from "./ui";
 import { progressPercent, statusMessage, type UpdateInfo, type UpdateState } from "./updates";
 
 type Props = {
@@ -28,7 +28,7 @@ export function UpdateNotice({ info, state, onInstall, onOpenReleasePage, onDism
         {!downloading && !info.canInstall && <p className="text-ink-muted">This install cannot update itself. Download the new version from the download page.</p>}
       </div>
       {info.canInstall && (
-        <button className={cx(btn.primary, "h-[2.2rem]")} type="button" onClick={onInstall} disabled={downloading}>
+        <button className={btn.primary} type="button" onClick={onInstall} disabled={downloading}>
           Install and restart
         </button>
       )}

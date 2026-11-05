@@ -138,7 +138,7 @@ export function OverviewPage({
             title="No groups to show"
             text={
               !groupsOffered
-                ? "Scalable’s connection does not offer a groups tool for this account, so your groups cannot be read yet. Sign out and in again after checking the MCP access level in the Scalable app."
+                ? "Scalable’s connection does not offer a groups tool for this sign-in, so your groups cannot be read yet. Sign out and in again after checking the MCP access level in the Scalable app."
                 : groupErrors.length > 0
                   ? `Scalable’s groups tool failed: ${groupErrors[0]}`
                   : "You have no groups yet. Create one to bundle holdings."

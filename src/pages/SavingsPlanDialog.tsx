@@ -10,7 +10,7 @@ import { invokeCommand, TOOL } from "../commands";
 import { callTools, humanize, type Invoke } from "../tools";
 import { isRec } from "../response";
 import type { PagePortfolio } from "../types";
-import { Alert, btn, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "../ui";
+import { Alert, btn, field, DialogFooter, ModalFrame, ModalHeader, MODAL_TEXT } from "../ui";
 import { useAsyncQuery } from "../hooks/useAsyncQuery";
 import { ambiguousThousands, ambiguousThousandsMessage } from "../format";
 import { usePreviewFlow } from "../hooks/usePreviewFlow";
@@ -113,7 +113,12 @@ export function SavingsPlanDialog({ existing, portfolios, portfolioId: initialPo
 
   return (
     <ModalFrame onClose={dialogClose}>
-      <ModalTitle>{stage === "saved" ? "Savings plan saved" : stage === "preview" ? "Review savings plan" : existing ? "Change savings plan" : "New savings plan"}</ModalTitle>
+      <ModalHeader
+        title={stage === "saved" ? "Savings plan saved" : stage === "preview" ? "Review savings plan" : existing ? "Change savings plan" : "New savings plan"}
+        closeLabel={stage === "preview" ? undefined : "Close"}
+        onClose={dialogClose}
+        closeDisabled={busy}
+      />
       {error && <Alert>{error}</Alert>}
 
       {stage === "form" && (
@@ -186,7 +191,7 @@ export function SavingsPlanDialog({ existing, portfolios, portfolioId: initialPo
               )}
             </>
           )}
-          {!tradingEnabled && <div className={`${field.note} mb-3`}>Turn on Trading (top right) to create or change savings plans.</div>}
+          {!tradingEnabled && <div className={`${field.note} mb-3`}>Switch to Full access (top right) to create or change savings plans.</div>}
           <p className={`mb-4 ${MODAL_TEXT}`}>Nothing is saved yet. You will review Scalable's preview with its costs and confirm it in the next step. A plan for the same security is updated.</p>
           <DialogFooter>
             <button className={btn.secondary} type="button" onClick={requestClose} disabled={busy}>

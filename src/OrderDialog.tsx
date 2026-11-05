@@ -9,7 +9,7 @@ import { useShowDiagnostics, VENUE_OPTIONS, type VenueSetting } from "./settings
 import { invokeCommand } from "./commands";
 import { humanize } from "./tools";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Alert, btn, cx, field, DialogFooter, ModalFrame, ModalTitle, MODAL_TEXT } from "./ui";
+import { Alert, btn, cx, field, DialogFooter, ModalFrame, ModalHeader, MODAL_TEXT } from "./ui";
 import { ambiguousThousands, ambiguousThousandsMessage, formatNumber, parseDecimal } from "./format";
 import { amountExceedsBuyingPower, amountIssue, limitPriceHint, previewFailureHint, priceIssue, quantityExceedsHolding, stopPriceIssue } from "./order";
 import { usePreviewFlow } from "./hooks/usePreviewFlow";
@@ -277,7 +277,13 @@ export function OrderDialog({ target, defaultVenue, portfolios, invoke, parseSea
 
   return (
     <ModalFrame onClose={dialogClose}>
-      <ModalTitle titleRef={titleRef}>{stage === "placed" ? "Order submitted" : stage === "preview" ? `Review ${side} order` : "New order"}</ModalTitle>
+      <ModalHeader
+        title={stage === "placed" ? "Order submitted" : stage === "preview" ? `Review ${side} order` : "New order"}
+        titleRef={titleRef}
+        closeLabel={stage === "preview" ? undefined : "Close"}
+        onClose={dialogClose}
+        closeDisabled={busy}
+      />
       <p className="sr-only" role="status" aria-live="polite">
         {stage === "placed" ? "Order submitted" : stage === "preview" ? `Review ${side} order before confirming` : "Enter order details"}
       </p>

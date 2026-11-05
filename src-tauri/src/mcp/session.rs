@@ -77,9 +77,16 @@ async fn establish(access_token: &str) -> Result<(McpClient, Vec<Value>), String
     Ok((client, tools))
 }
 
-/// Whether Trading is switched on, for the diagnostics report.
-pub fn trading_enabled(app: &AppHandle) -> bool {
-    app.state::<TradingGate>().is_on()
+/// The access level currently enforced by the trading gate, for the diagnostics report.
+pub fn access_level(app: &AppHandle) -> &'static str {
+    let gate = app.state::<TradingGate>();
+    if gate.is_on() {
+        "full"
+    } else if gate.manage_on() {
+        "restricted"
+    } else {
+        "read-only"
+    }
 }
 
 const SIGNED_OUT: &str = "You are signed out. Sign in to Scalable Capital again.";

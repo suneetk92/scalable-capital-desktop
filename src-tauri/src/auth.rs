@@ -545,7 +545,7 @@ async fn register_or_load_client(
     let response = client
         .post(&metadata.registration_endpoint)
         .json(&json!({
-            "client_name": "Scalable Capital Desktop Desktop",
+            "client_name": "Scalable Capital Desktop",
             "redirect_uris": [REDIRECT_URI],
             "grant_types": ["authorization_code", "refresh_token"],
             "response_types": ["code"],

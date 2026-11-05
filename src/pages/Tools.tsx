@@ -6,7 +6,7 @@ import { EmptyState, FILTER_TITLE, FiltersPopover, Pagination, RadioList, Search
 import { VIEW_TITLES, type View } from "../nav";
 import { extension } from "../extensions";
 import { type Common } from "../types";
-import { btn, cx, PANEL_BODY, RECORD_TABLE, SCROLL_X } from "../ui";
+import { btn, cx, PANEL_BODY, PANEL_TOOLBAR, PANEL_TOOLBAR_GROUP, PanelFooter, RECORD_TABLE, SCROLL_X } from "../ui";
 import { invokeCommand, TOOL } from "../commands";
 import { isTradingTool, isWriteTool, callTools, BACKEND_TOOLS, DIALOG_ONLY_TOOLS, subscribeToolStats, toolStats, TOOL_USAGE } from "../tools";
 import { type PublishedTool } from "../toolSchema";
@@ -117,8 +117,8 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
     <Section
       title="Scalable MCP tools"
       toolbar={
-        <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
-          <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Search and filter Scalable tools">
+        <div className={PANEL_TOOLBAR}>
+          <div className={PANEL_TOOLBAR_GROUP} role="search" aria-label="Search and filter Scalable tools">
             <SearchBox value={search} onChange={setSearch} placeholder="Search tools" label="Search Scalable tools by name, group or use" />
             <FiltersPopover count={Number(usageFilter !== "all")} onClear={() => setUsageFilter("all")}>
               <div className={FILTER_TITLE}>Usage</div>
@@ -141,6 +141,7 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
         </div>
       }
       flush
+      footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}
       hint={
         filtering
           ? `${used} of ${offeredCount} offered tools used · ${unused} not used · ${pluralize(shown.length, "tool")} match (of ${pluralize(rows.length, "tool")})`
@@ -247,7 +248,11 @@ export function ToolsPage({ common, onSelectView }: { common: Common; onSelectVi
                                   row.name in DIALOG_ONLY_TOOLS
                                     ? `Only sent from ${DIALOG_ONLY_TOOLS[row.name]}, after a preview`
                                     : row.offered && !actions.has(row.name)
-                                      ? "Turn on Trading (top right) to run tools that change data"
+                                      ? isTradingTool(row.name)
+                                        ? "Switch to Full access (top right) to run tools that change data"
+                                        : isWriteTool(row.name)
+                                          ? "Switch to Restricted or Full access (top right) to run tools that change data"
+                                          : undefined
                                       : undefined
                                 }
                                 aria-label={`Run ${row.name}`}

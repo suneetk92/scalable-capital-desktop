@@ -7,7 +7,7 @@ import { extension } from "./extensions";
 import { btn, cx } from "./ui";
 
 const GROUP_TITLE =
-  "mt-1 flex w-full cursor-pointer items-center gap-1.5 rounded-control px-1 py-1.5 text-left font-title tracking-[.1em] text-ink-muted uppercase outline-none hover:text-ink-strong data-focus:outline-2 data-focus:outline-accent";
+  "mt-1 flex w-full cursor-pointer items-center gap-1.5 rounded-control px-1 py-1.5 text-left font-title tracking-[.1em] text-ink-muted uppercase hover:text-ink-strong data-focus:outline-2 data-focus:outline-accent";
 
 /** The "+" in the table header: adds and removes optional columns. The symbol is always shown. */
 export function ColumnPicker({
@@ -70,7 +70,7 @@ export function ColumnPicker({
   return (
     <Popover className="relative inline-block">
       <PopoverButton
-        className="grid size-7 cursor-pointer place-items-center rounded-control border border-line-strong bg-raised text-ink-soft outline-none hover:border-line-hover hover:bg-hover hover:text-ink-strong data-focus:outline-2 data-focus:outline-accent data-open:border-line-hover data-open:bg-hover"
+        className="grid size-7 cursor-pointer place-items-center rounded-control border border-line-strong bg-raised text-ink-soft hover:border-line-hover hover:bg-hover hover:text-ink-strong data-focus:outline-2 data-focus:outline-accent data-open:border-line-hover data-open:bg-hover"
         aria-label="Add or remove columns"
         title="Add or remove columns"
       >

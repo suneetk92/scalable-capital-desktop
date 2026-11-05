@@ -408,7 +408,7 @@ Every log message is redacted first: bearer tokens and authorization headers, `t
 addresses, and the home folder (shown as `~`).
 
 "Copy diagnostics" in the same Settings section copies a text report with the app version, OS and architecture,
-whether Trading is on (Read-only or enabled), whether you are signed in, the background
+the active Trading access level (Read-only, Restricted or Full), whether you are signed in, the background
 options, a count of recent failure categories and the recent redacted log lines. It holds no tokens, account
 ids, securities, balances, portfolio names, orders or user paths. Check it before pasting it into an issue.
 

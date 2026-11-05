@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CheckboxField, DropdownMenu, EmptyState, ShareBar, Select, SelectAllField } from "../controls";
 import { type GroupData, type SecurityGroup } from "../groups";
 import { type Common, type PagePortfolio } from "../types";
-import { Alert, btn, cx, EMPTY, field, LIST, LIST_ITEM, DialogFooter, SecurityCell, SignGlyph, signClass } from "../ui";
+import { Alert, btn, cx, EMPTY, field, LIST, LIST_ITEM, DialogFooter, PanelFooter, SecurityCell, SignGlyph, signClass } from "../ui";
 import { Modal } from "../ToolViews";
 import { Section, DetailsModal } from "./shared";
 import { formatNumber, formatPercent, formatSignedMoney, pluralize } from "../format";
@@ -122,7 +122,7 @@ export function GroupsPage({
 
   if (!offered) {
     return (
-      <Section title="Groups" hint="Not available">
+      <Section title="Groups" hint="Not available" footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}>
         <p className={EMPTY}>Scalable’s connection does not offer the group tools for this sign-in. Check the MCP access level in the Scalable app, then sign out and in again.</p>
       </Section>
     );
@@ -135,6 +135,7 @@ export function GroupsPage({
       <Section
         title="Your Scalable groups"
         hint={`${pluralize(data.groups.length, "group")}${defaultGroup ? " + default" : ""}`}
+        footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}
         actions={
           actions.has(TOOL.createPortfolioGroup) && (
             <button

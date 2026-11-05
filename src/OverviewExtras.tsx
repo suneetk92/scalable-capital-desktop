@@ -313,7 +313,7 @@ function OvernightTransactionsCard({ common, currency }: { common: Common; curre
       {history.error && <Alert>{history.error}</Alert>}
       {openError && <Alert onDismiss={() => setOpenError(null)}>{openError}</Alert>}
       {history.loading && history.rows.length === 0 ? (
-        <p className={EMPTY}>Loading overnight transactions…</p>
+        <Loading show what="overnight transactions" />
       ) : history.rows.length === 0 ? (
         <p className={EMPTY}>No overnight transactions were found.</p>
       ) : (

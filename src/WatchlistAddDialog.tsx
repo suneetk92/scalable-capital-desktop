@@ -4,7 +4,7 @@ import { SecurityPicker } from "./SecurityPicker";
 import type { SecurityHit } from "./OrderDialog";
 import { parseSearch } from "./screener";
 import type { Common } from "./types";
-import { Alert, btn, DialogFooter, field, ModalFrame, ModalTitle, MODAL_TEXT } from "./ui";
+import { Alert, btn, DialogFooter, field, ModalFrame, ModalHeader, MODAL_TEXT } from "./ui";
 
 export function WatchlistAddDialog({ common, watched, held, onClose }: { common: Common; watched: Set<string>; held: ReadonlySet<string>; onClose: () => void }) {
   const [security, setSecurity] = useState<SecurityHit | null>(null);
@@ -13,6 +13,10 @@ export function WatchlistAddDialog({ common, watched, held, onClose }: { common:
   const showError = useCallback((message: string) => setError(message), []);
   const onWatchlist = security !== null && watched.has(security.isin);
   const inPortfolio = security !== null && held.has(security.isin);
+
+  function requestClose() {
+    if (!busy) onClose();
+  }
 
   async function add() {
     if (!security || onWatchlist || inPortfolio || busy) return;
@@ -27,15 +31,15 @@ export function WatchlistAddDialog({ common, watched, held, onClose }: { common:
   }
 
   return (
-    <ModalFrame onClose={onClose}>
-      <ModalTitle>Add to watchlist</ModalTitle>
+    <ModalFrame onClose={requestClose}>
+      <ModalHeader title="Add to watchlist" closeLabel="Close" onClose={requestClose} closeDisabled={busy} />
       <p className={`mb-4 ${MODAL_TEXT}`}>Search for a Scalable security to add to your watchlist.</p>
       <SecurityPicker security={security} onChange={setSecurity} invoke={common.invoke} parseSearch={parseSearch} onError={showError} />
       {error && <Alert>{error}</Alert>}
       {onWatchlist && <p className={`${field.note} mb-3`}>This security is already on your watchlist.</p>}
       {inPortfolio && <p className={`${field.note} mb-3`}>This security is already in your portfolio.</p>}
       <DialogFooter>
-        <button className={btn.secondary} type="button" onClick={onClose} disabled={busy}>
+        <button className={btn.secondary} type="button" onClick={requestClose} disabled={busy}>
           Cancel
         </button>
         <button className={btn.primary} type="button" onClick={() => void add()} disabled={busy || !security || onWatchlist || inPortfolio}>

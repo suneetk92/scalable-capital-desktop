@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { comboOf, pageForCombo, shortcutProblem } from "./shortcuts";
+import { comboOf, displayCombo, pageForCombo, shortcutProblem } from "./shortcuts";
 
 const press = (code: string, mods: Partial<{ ctrlKey: boolean; metaKey: boolean; altKey: boolean; shiftKey: boolean }> = {}) => ({
   code,
@@ -24,6 +24,9 @@ describe("shortcuts", () => {
     expect(shortcutProblem("G", "groups", {})).toContain("Ctrl or Alt");
     expect(shortcutProblem("Ctrl+Alt+G", "groups", {})).toContain("AltGr");
     expect(shortcutProblem("Ctrl+G", "alerts", { groups: "Ctrl+G" })).toContain("another page");
+    expect(shortcutProblem("Alt+ArrowUp", "groups", {})).toContain("Alt+Up");
+    expect(shortcutProblem("Ctrl+Escape", "groups", {})).toContain("Ctrl+Esc");
+    expect(displayCombo("Alt+ArrowDown")).toBe("Alt+Down");
   });
 
   it("allows a free combination, also for the page that already owns it", () => {

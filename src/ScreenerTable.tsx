@@ -12,7 +12,7 @@ import { columnById, DEFAULT_COLUMNS, type MarketRecord } from "./marketColumns"
 import { extension } from "./extensions";
 import { formatChange, formatMoney, type ChangeFilter, type ScreenerRow } from "./screener";
 import type { ToolActions } from "./toolActions";
-import { btn, cx, field, NAME_COLUMN, PANEL, PanelFooter, PanelHeader, SignGlyph, signClass, TABLE, TH_NUM } from "./ui";
+import { btn, cx, field, NAME_COLUMN, PANEL, PANEL_TOOLBAR, PANEL_TOOLBAR_GROUP, PanelFooter, PanelHeader, SignGlyph, signClass, TABLE, TH_NUM } from "./ui";
 import { canMoveHolding, UNGROUPED_ID, type SecurityGroup } from "./groups";
 import { formatDate, pluralize } from "./format";
 import { TOOL } from "./commands";
@@ -252,12 +252,8 @@ export function ScreenerTable({
 
   return (
     <section className={PANEL} aria-label="Market screener">
-      <div
-        className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start"
-        role="search"
-        aria-label={view === "portfolio" ? "Search and filter portfolio" : "Search and filter watchlist"}
-      >
-        <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5">
+      <div className={PANEL_TOOLBAR} role="search" aria-label={view === "portfolio" ? "Search and filter portfolio" : "Search and filter watchlist"}>
+        <div className={PANEL_TOOLBAR_GROUP}>
           <div
             className="relative max-[900px]:flex-1"
             onKeyDown={(event) => event.key === "Escape" && setDismissed(query)}

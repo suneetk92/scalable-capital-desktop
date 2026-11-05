@@ -563,11 +563,16 @@ export function SearchBox({
   className?: string;
 }) {
   return (
-    <label className={cx("flex h-[2.2rem] items-center gap-[0.4667rem] rounded-control border border-line-strong bg-inset px-2 text-ink-muted [&>svg]:size-[1.2rem] [&>svg]:shrink-0", className)}>
+    <label
+      className={cx(
+        "flex h-[2.2rem] items-center gap-[0.4667rem] rounded-control border border-line-strong bg-inset px-2 text-ink-muted focus-within:outline focus-within:outline-accent [&>svg]:size-[1.2rem] [&>svg]:shrink-0",
+        className,
+      )}
+    >
       <MagnifyingGlassIcon aria-hidden="true" />
       <input
         ref={inputRef}
-        className="w-full min-w-0 bg-transparent text-ink-strong outline-0 placeholder:text-ink-faint"
+        className="w-full min-w-0 bg-transparent text-ink-strong outline-none placeholder:text-ink-faint"
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
         placeholder={placeholder}
@@ -592,7 +597,7 @@ export function MenuRowButton({ children, className, type = "button", ...props }
 export function FiltersPopover({ count, onClear, children }: { count: number; onClear: () => void; children: ReactNode }) {
   return (
     <Popover className="relative">
-      <PopoverButton className="flex h-[2.2rem] cursor-pointer items-center gap-[0.4667rem] rounded-control border border-line-strong bg-raised px-2 text-ink-soft outline-none hover:border-line-hover hover:bg-hover data-focus:outline-2 data-focus:outline-accent data-open:border-line-hover data-open:bg-hover">
+      <PopoverButton className="flex h-[2.2rem] cursor-pointer items-center gap-[0.4667rem] rounded-control border border-line-strong bg-raised px-2 text-ink-soft hover:border-line-hover hover:bg-hover data-focus:outline-2 data-focus:outline-accent data-open:border-line-hover data-open:bg-hover">
         <span className="grid w-[0.8667rem] gap-[0.2rem] [&>i]:block [&>i]:h-px [&>i]:bg-ink-soft [&>i:nth-child(2)]:w-[0.6rem] [&>i:nth-child(3)]:w-[0.3333rem]">
           <i />
           <i />

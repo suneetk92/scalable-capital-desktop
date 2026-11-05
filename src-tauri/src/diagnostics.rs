@@ -1,7 +1,7 @@
 //! A sanitised diagnostics bundle for bug reports, and a button to open the log folder.
 //!
-//! The report holds only what is safe to paste into an issue: the app version, the OS, whether
-//! Trading is on, whether the app is signed in, the background options, the recent redacted log
+//! The report holds only what is safe to paste into an issue: the app version, the OS, the current
+//! Trading access level, whether the app is signed in, the background options, the recent redacted log
 //! lines and a count of the failure categories in them. It never reads tokens, account data, tool
 //! results or settings stored in the webview, and the home folder shows as `~`.
 
@@ -41,7 +41,7 @@ fn failure_counts(lines: &[String]) -> BTreeMap<String, u64> {
 
 fn build_report(
     version: &str,
-    trading_on: bool,
+    access_level: &str,
     signed_in: bool,
     background: Value,
     log_folder: Option<String>,
@@ -51,7 +51,7 @@ fn build_report(
         "app": {"name": APP_NAME, "version": version},
         "system": {"os": std::env::consts::OS, "arch": std::env::consts::ARCH},
         "settings": {
-            "trading": if trading_on { "enabled" } else { "read-only" },
+            "trading": access_level,
             "signedIn": signed_in,
             "background": background,
         },
@@ -70,7 +70,7 @@ pub async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
     let log_folder = logging::log_dir().map(|dir| logging::redact(&dir.display().to_string()));
     Ok(build_report(
         env!("CARGO_PKG_VERSION"),
-        mcp::session::trading_enabled(&app),
+        mcp::session::access_level(&app),
         signed_in,
         background,
         log_folder,
@@ -119,7 +119,7 @@ mod tests {
         )];
         let text = build_report(
             "1.2.3",
-            false,
+            "read-only",
             true,
             json!({"closeToTray": true}),
             Some("~/logs".to_owned()),
@@ -138,17 +138,29 @@ mod tests {
     }
 
     #[test]
-    fn trading_shows_only_enabled_or_read_only() {
-        let on = build_report("1", true, false, json!({}), None, &[]);
-        let report: Value = serde_json::from_str(&on).unwrap();
-        assert_eq!(report["settings"]["trading"], "enabled");
-        assert_eq!(report["settings"]["signedIn"], false);
+    fn trading_shows_each_access_level() {
+        for (access_level, signed_in) in
+            [("full", false), ("restricted", true), ("read-only", false)]
+        {
+            let report: Value = serde_json::from_str(&build_report(
+                "1",
+                access_level,
+                signed_in,
+                json!({}),
+                None,
+                &[],
+            ))
+            .unwrap();
+            assert_eq!(report["settings"]["trading"], access_level);
+            assert_eq!(report["settings"]["signedIn"], signed_in);
+        }
     }
 
     #[test]
     fn the_report_names_the_build_variant() {
         let report: Value =
-            serde_json::from_str(&build_report("1", false, false, json!({}), None, &[])).unwrap();
+            serde_json::from_str(&build_report("1", "read-only", false, json!({}), None, &[]))
+                .unwrap();
         assert_eq!(report["app"]["name"], APP_NAME);
         assert!(APP_NAME.starts_with("Scalable Capital Desktop"));
         #[cfg(not(feature = "extension"))]

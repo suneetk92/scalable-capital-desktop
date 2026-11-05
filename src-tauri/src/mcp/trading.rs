@@ -29,7 +29,7 @@ pub(crate) const TRADING_OFF: &str =
     "Trading is switched off. Switch to Full access (top right) while the exchange is open to place orders or change savings plans.";
 
 pub(crate) const MANAGE_OFF: &str =
-    "The app is in Read-only mode. Switch to Restricted or Full access (top right) to change watchlists, price alerts and portfolio groups.";
+    "The app is in Read-only mode. Switch to Restricted or Full access (top right) to change watchlists, price alerts, portfolio groups and trailing stops.";
 
 /// How much the user has allowed: nothing but reading, watchlists, price alerts and portfolio
 /// groups (Scalable's "Limited access"), or everything including orders and savings plans.

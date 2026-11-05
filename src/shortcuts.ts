@@ -29,6 +29,10 @@ function keyOf(code: string): string | null {
   return KEY_LABELS[code] ?? null;
 }
 
+export function displayCombo(combo: string): string {
+  return combo.replace(/Arrow(Up|Down|Left|Right)/g, "$1").replace(/\bEscape\b/g, "Esc");
+}
+
 /** The combination of a key press as text, like "Ctrl+Shift+G"; Ctrl and Cmd count as one. Null for a modifier alone or an unsupported key. */
 export function comboOf(event: Pick<KeyboardEvent, "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">): string | null {
   const key = keyOf(event.code);
@@ -48,12 +52,12 @@ export function shortcutProblem(combo: string, id: string, taken: Record<string,
   const hasAlt = parts.includes("Alt");
   if (!hasCtrl && !hasAlt) return "Use Ctrl or Alt with the key, so typing in a field is not affected.";
   if (hasCtrl && hasAlt) return "Ctrl+Alt is AltGr on many keyboards and types characters. Use Ctrl or Alt alone.";
-  if (key === "Escape") return "Escape closes menus and dialogs.";
+  if (key === "Escape") return `${displayCombo(combo)} closes menus and dialogs.`;
   const builtIn = BUILT_IN_SHORTCUTS.find(([keys]) => keys === combo);
-  if (builtIn) return `${combo} is already used to ${builtIn[1].charAt(0).toLowerCase()}${builtIn[1].slice(1)}.`;
-  if (RESERVED.has(combo)) return `${combo} is reserved by the window or the system.`;
+  if (builtIn) return `${displayCombo(combo)} is already used to ${builtIn[1].charAt(0).toLowerCase()}${builtIn[1].slice(1)}.`;
+  if (RESERVED.has(combo)) return `${displayCombo(combo)} is reserved by the window or the system.`;
   const other = Object.entries(taken).find(([page, existing]) => page !== id && existing === combo);
-  if (other) return `${combo} is already assigned to another page.`;
+  if (other) return `${displayCombo(combo)} is already assigned to another page.`;
   return null;
 }
 

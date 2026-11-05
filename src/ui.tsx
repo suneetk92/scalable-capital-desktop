@@ -387,7 +387,7 @@ const TRADE_BASE = "h-7 cursor-pointer rounded-control bg-raised px-2.5 font-sem
 export const btn = {
   secondary:
     "flex h-[2.2rem] shrink-0 cursor-pointer items-center gap-[0.4667rem] rounded-control border border-line-strong bg-raised px-3 whitespace-nowrap text-ink-body hover:border-line-hover hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:size-[1.2rem]",
-  primary: `${BTN_BASE} h-[2.3333rem] border-buy-edge bg-buy px-3.5 text-on-accent enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`,
+  primary: `${BTN_BASE} h-[2.2rem] border-buy-edge bg-buy px-3.5 text-on-accent enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`,
   danger: `${BTN_BASE} h-[2.2rem] border-danger-edge bg-sell px-3.5 text-on-sell enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`,
   trade: `${TRADE_BASE} border-line-strong`,
   buy: `${TRADE_BASE} border-accent-line-strong text-up`,
@@ -496,13 +496,20 @@ export const NAME_COLUMN = "min-w-72";
 export const PANEL = "overflow-hidden rounded-panel border border-line-strong bg-chrome";
 const PANEL_BAR = "flex min-h-[2.2rem] items-center justify-between border-b border-line px-4 text-ink-muted";
 const LIVE_DOT = "shrink-0 rounded-full bg-accent shadow-[0_0_9px_color-mix(in_srgb,var(--color-accent)_55%,transparent)]";
+const ERROR_DOT = "bg-sell shadow-[0_0_9px_color-mix(in_srgb,var(--color-sell)_55%,transparent)]";
 const PANEL_TITLE = "flex items-center gap-[0.4667rem] text-caption font-title tracking-wider uppercase";
+export const PANEL_TOOLBAR = "flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start";
+export const PANEL_TOOLBAR_GROUP = "flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5";
+
+export function LiveDot({ error = false, muted = false }: { error?: boolean; muted?: boolean }) {
+  return <span aria-hidden="true" className={cx("size-[0.3333rem] shrink-0 rounded-full", error ? ERROR_DOT : muted ? "bg-ink-faint" : LIVE_DOT, muted && "animate-pulse")} />;
+}
 
 export function PanelHeader({ title, children, className }: { title: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <div className={cx(PANEL_BAR, className)}>
       <span className={PANEL_TITLE}>
-        <span className={`size-[0.3333rem] ${LIVE_DOT}`} /> {title}
+        <LiveDot /> {title}
       </span>
       <span className="flex items-center gap-2.5">{children}</span>
     </div>
@@ -610,22 +617,34 @@ export function ModalFrame({ size = "md", alert = false, onClose, children }: { 
   );
 }
 
-export function ModalTitle({ children, titleRef }: { children: ReactNode; titleRef?: Ref<HTMLHeadingElement> }) {
+function ModalTitle({ children }: { children: ReactNode }) {
   return (
-    <DialogTitle as="h2" ref={titleRef} tabIndex={-1} className="mb-2 font-semibold text-ink-heading">
+    <DialogTitle as="h2" tabIndex={-1} className="mb-2 font-semibold text-ink-heading">
       {children}
     </DialogTitle>
   );
 }
 
 /** Title row with a close button. */
-export function ModalHeader({ title, closeLabel, onClose }: { title: string; closeLabel: string; onClose: () => void }) {
+export function ModalHeader({
+  title,
+  closeLabel,
+  onClose,
+  titleRef,
+  closeDisabled = false,
+}: {
+  title: ReactNode;
+  closeLabel?: string;
+  onClose?: () => void;
+  titleRef?: Ref<HTMLHeadingElement>;
+  closeDisabled?: boolean;
+}) {
   return (
     <div className="mb-1.5 flex items-center justify-between">
-      <DialogTitle as="h2" className="font-semibold text-ink-heading">
+      <DialogTitle as="h2" ref={titleRef} tabIndex={titleRef ? -1 : undefined} className="font-semibold text-ink-heading">
         {title}
       </DialogTitle>
-      <IconButton label={closeLabel} icon={XMarkIcon} onClick={onClose} />
+      {closeLabel && onClose && <IconButton label={closeLabel} icon={XMarkIcon} onClick={onClose} disabled={closeDisabled} />}
     </div>
   );
 }

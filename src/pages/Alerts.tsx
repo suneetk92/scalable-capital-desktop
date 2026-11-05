@@ -2,7 +2,7 @@ import { BellAlertIcon } from "@heroicons/react/24/outline";
 import { useDeferredValue, useMemo, type Ref } from "react";
 import { useToolQuery } from "../toolActions";
 import { type Common } from "../types";
-import { btn, PanelFooter } from "../ui";
+import { btn, PANEL_TOOLBAR, PANEL_TOOLBAR_GROUP, PanelFooter } from "../ui";
 import { FILTER_TITLE, FiltersPopover, RadioList, SearchBox } from "../controls";
 import { RecordTable } from "../ToolViews";
 import { alertRemovedNotice } from "../notifications";
@@ -49,8 +49,8 @@ export function AlertsPage({ common, searchInput, onOpenSecurity }: { common: Co
         footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}
         hint={filtering ? `${pluralize(visible.length, "alert")} match${records.length !== visible.length ? ` (of ${records.length})` : ""}` : pluralize(records.length, "alert")}
         toolbar={
-          <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
-            <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter price alerts">
+          <div className={PANEL_TOOLBAR}>
+            <div className={PANEL_TOOLBAR_GROUP} role="search" aria-label="Filter price alerts">
               <SearchBox
                 inputRef={searchInput}
                 value={filter.text}

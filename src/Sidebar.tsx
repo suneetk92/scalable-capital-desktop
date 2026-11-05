@@ -9,7 +9,7 @@ import { extension, type ExtensionView } from "./extensions";
 import { AccessTokenHint } from "./SessionPanel";
 import type { SessionInfo } from "./session";
 import { isRateLimited, type Connection } from "./types";
-import { btn, cx, IconButton } from "./ui";
+import { btn, cx, IconButton, LiveDot } from "./ui";
 
 const NAV_ITEM =
   "flex h-10 w-full cursor-pointer select-none items-center gap-[0.7333rem] rounded-control px-2.5 text-left transition-colors max-[900px]:justify-center max-[900px]:px-0 [&>svg]:size-[1.4rem] [&>svg]:shrink-0 [&>svg]:stroke-[1.65] max-[900px]:[&>svg]:size-[1.2rem] [&>span]:max-[900px]:hidden [&>span:nth-child(2)]:flex-1";
@@ -94,9 +94,7 @@ export function Sidebar({
           aria-label={`Scalable connection: ${connection.state === "connected" ? "connected" : connection.state === "error" ? "problem" : "checking"}`}
           className="mx-0.5 mb-3 flex w-[calc(100%-0.2667rem)] cursor-pointer items-center gap-[0.6rem] rounded-panel border border-line bg-surface px-[0.6rem] py-2.5 text-left font-[inherit] text-[length:inherit] transition hover:bg-hover max-[900px]:justify-center max-[900px]:px-0 max-[900px]:py-[0.6rem]"
         >
-          <span
-            className={`size-[0.4667rem] shrink-0 rounded-full ${connection.state === "connected" ? "bg-accent shadow-[0_0_9px_color-mix(in_srgb,var(--color-accent)_55%,transparent)]" : connection.state === "error" ? "bg-sell shadow-[0_0_9px_color-mix(in_srgb,var(--color-sell)_55%,transparent)]" : "animate-pulse bg-ink-faint"}`}
-          />
+          <LiveDot error={connection.state === "error"} muted={connection.state !== "connected" && connection.state !== "error"} />
           <div className="grid min-w-0 flex-1 gap-[0.2rem] max-[900px]:hidden">
             <strong className="font-semibold text-ink-body">Scalable Capital</strong>
             <small className={`truncate text-[1em] ${connection.state === "error" ? "text-danger-ink" : "text-ink-muted"}`}>

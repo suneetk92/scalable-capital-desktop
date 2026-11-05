@@ -9,7 +9,8 @@ import { describe, expect, it } from "vite-plus/test";
  * text), shadows (`shadow-[0_10px_...]`), CSS variables (`[--anchor-gap:4px]`) and 1px borders (`border`).
  */
 
-const sources = import.meta.glob("./**/*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const allSources = import.meta.glob(["./**/*.ts", "./**/*.tsx", "../extensions/**/web/**/*.tsx"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const sources = Object.fromEntries(Object.entries(allSources).filter(([file]) => file !== "./styleRules.test.ts"));
 
 /** Files that still hold px values; remove an entry when the file is converted. */
 const ALLOWED_FILES: string[] = [];
@@ -27,7 +28,9 @@ function pixelValues(source: string) {
 
 describe("style rules", () => {
   it("scans the component sources", () => {
-    expect(Object.keys(sources).length).toBeGreaterThan(20);
+    const files = Object.keys(sources);
+    expect(files.length).toBeGreaterThan(20);
+    expect(files.some((file) => file.startsWith("../extensions/trailing-stops/web/"))).toBe(true);
   });
 
   it("flags arbitrary px values but not breakpoints, shadows or variables", () => {

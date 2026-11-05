@@ -210,7 +210,7 @@ export function applySettings(settings: Settings) {
   const root = document.documentElement;
   const light = isLightTheme(settings.theme);
   root.dataset.theme = light ? "light" : "dark";
-  document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", light ? "#f3f4f8" : "#101217");
+  document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", getComputedStyle(root).getPropertyValue("--color-canvas").trim());
   root.dataset.density = settings.density;
   root.style.setProperty("--app-font-size", `${settings.fontSize}px`);
   root.style.setProperty("--app-font-family", FONT_FAMILIES[settings.fontFamily].css);

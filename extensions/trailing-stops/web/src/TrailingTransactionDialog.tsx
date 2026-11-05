@@ -54,7 +54,7 @@ export function TrailingTransactionDialog({ stop, order, onClose }: { stop: Trai
         )
       )}
       <DialogFooter className="mt-5">
-        <button className={btn.primary} type="button" onClick={onClose}>
+        <button className={btn.secondary} type="button" onClick={onClose}>
           Close
         </button>
       </DialogFooter>

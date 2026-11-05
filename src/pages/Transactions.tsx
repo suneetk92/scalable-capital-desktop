@@ -10,12 +10,12 @@ import { useTransactionHistory } from "../hooks/useTransactionHistory";
 import { nextSort, parseSortState, sortItems, type SortState } from "../sorting";
 import { dedupeRows, distinctValues, isFiltering, isOpenOrder, matchesFilter, newestFirst, NO_FILTER, type TransactionFilter, type TransactionRow } from "../transactions";
 import { type Common } from "../types";
-import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL, PANEL_BODY, PanelFooter, PanelHeader, RECORD_TABLE, SCROLL_X, SecurityCell, SignGlyph, signClass, TD_NUM } from "../ui";
+import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PANEL_TOOLBAR, PANEL_TOOLBAR_GROUP, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, SignGlyph, signClass, TD_NUM } from "../ui";
 import { csvCell } from "../screener";
 import { formatCell, humanize } from "../tools";
 import { pick, pickString, type Rec } from "../response";
 import type { FoundSecurity } from "./Discover";
-import { Loading, DetailsModal, UpdatedAt } from "./shared";
+import { Loading, DetailsModal, Section } from "./shared";
 import { pluralize } from "../format";
 import { TOOL } from "../commands";
 
@@ -276,39 +276,44 @@ export function TransactionsPage({
   const { progress } = history;
   return (
     <>
-      <section className={cx(PANEL, "mb-4")} aria-label="Transactions">
-        <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
-          <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label="Filter transactions">
-            <SearchBox
-              inputRef={searchInput}
-              value={filter.text}
-              onChange={(text) => changeFilter({ text })}
-              placeholder="Search symbol or name"
-              label="Search transactions by symbol or name"
-              shortcut={searchInput !== undefined}
-            />
-            <FiltersPopover count={activeFilters} onClear={() => changeFilter({ kind: "", status: "" })}>
-              <div className={FILTER_TITLE}>Type</div>
-              <RadioList label="Type" value={filter.kind} onChange={(kind) => changeFilter({ kind })} options={kindOptions} />
-              <div className={FILTER_TITLE}>Status</div>
-              <RadioList label="Status" value={filter.status} onChange={(status) => changeFilter({ status })} options={statusOptions} />
-            </FiltersPopover>
-            <button className={btn.secondary} type="button" onClick={() => void copyCsv()} disabled={visible.length === 0} title="Copy the rows shown as CSV">
-              Copy CSV
-            </button>
-          </div>
-        </div>
-        <PanelHeader title="Transactions">
-          {(loaded || history.loading || preparing) && (
+      <Section
+        title="Transactions"
+        flush
+        footer={<PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />}
+        hint={
+          (loaded || history.loading || preparing) && (
             <span aria-live="polite">
               {history.loading || preparing ? `Loading${progress && progress.loaded > 0 ? ` ${progress.loaded}${progress.total ? ` of ${progress.total}` : ""}` : ""}… ` : ""}
               {pluralize(visible.length, "transaction")}
               {filtering ? " match" : ""}
               {filtering && rows.length !== visible.length ? ` (of ${rows.length})` : ""}
             </span>
-          )}
-          <UpdatedAt />
-        </PanelHeader>
+          )
+        }
+        toolbar={
+          <div className={PANEL_TOOLBAR}>
+            <div className={PANEL_TOOLBAR_GROUP} role="search" aria-label="Filter transactions">
+              <SearchBox
+                inputRef={searchInput}
+                value={filter.text}
+                onChange={(text) => changeFilter({ text })}
+                placeholder="Search symbol or name"
+                label="Search transactions by symbol or name"
+                shortcut={searchInput !== undefined}
+              />
+              <FiltersPopover count={activeFilters} onClear={() => changeFilter({ kind: "", status: "" })}>
+                <div className={FILTER_TITLE}>Type</div>
+                <RadioList label="Type" value={filter.kind} onChange={(kind) => changeFilter({ kind })} options={kindOptions} />
+                <div className={FILTER_TITLE}>Status</div>
+                <RadioList label="Status" value={filter.status} onChange={(status) => changeFilter({ status })} options={statusOptions} />
+              </FiltersPopover>
+              <button className={btn.secondary} type="button" onClick={() => void copyCsv()} disabled={visible.length === 0} title="Copy the rows shown as CSV">
+                Copy CSV
+              </button>
+            </div>
+          </div>
+        }
+      >
         {(((history.loading || preparing) && rows.length === 0) || history.error) && (
           <div className={PANEL_BODY}>
             <Loading show={(history.loading || preparing) && rows.length === 0} what="transactions" />
@@ -423,8 +428,7 @@ export function TransactionsPage({
               )}
             </>
           ))}
-        <PanelFooter tradingEnabled={common.tradingEnabled} manageEnabled={common.manageEnabled} />
-      </section>
+      </Section>
       {detail && (
         <DetailsModal
           title="Transaction details"

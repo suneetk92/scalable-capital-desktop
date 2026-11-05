@@ -50,7 +50,7 @@ export function GlobalDialogs() {
       {confirmingTrading && (
         <ConfirmDialog
           title="Enable full access?"
-          text="Full access lets you place buy and sell orders and change savings plans, besides changing watchlists, price alerts and portfolio groups, and run other tools that change data on your real Scalable Capital account. It only works while the exchange is open; after closing, the app drops to Restricted access. Every order still needs a preview and your confirmation. The app starts read-only again, unless you turn on Trading at start in Settings."
+          text="Full access lets you place buy and sell orders and change savings plans, besides changing watchlists, price alerts, portfolio groups and trailing stops, and run other tools that change data on your real Scalable Capital account. It only works while the exchange is open; after closing, the app drops to Restricted access. Every order still needs a preview and your confirmation. The app starts read-only again, unless you set Start with to Full access in Settings, Trading."
           confirmLabel="Enable full access"
           onConfirm={() => {
             setConfirmingTrading(false);
@@ -62,7 +62,7 @@ export function GlobalDialogs() {
       {confirmingStartupTrading && (
         <ConfirmDialog
           title="Start with full access?"
-          text="Every launch will start with Full access while the exchange is open (Restricted otherwise). You will be able to place buy and sell orders, change savings plans, watchlists, price alerts and portfolio groups, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation."
+          text="Every launch will start with Full access while the exchange is open (Restricted otherwise). You will be able to place buy and sell orders, change savings plans, watchlists, price alerts, portfolio groups and trailing stops, and run other tools that change data on your real Scalable Capital account. Every order still needs a preview and your confirmation."
           confirmLabel="Start with full access"
           onConfirm={() => {
             setConfirmingStartupTrading(false);

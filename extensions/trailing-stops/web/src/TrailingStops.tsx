@@ -26,7 +26,7 @@ import {
 } from "./trailing";
 import { type Common } from "../../../../src/types";
 import { EmptyState, FILTER_TITLE, FiltersPopover, Pagination, RadioList, SearchBox, ShareBar, SortHeader } from "../../../../src/controls";
-import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
+import { Alert, Badge, btn, cx, NAME_COLUMN, PANEL_BODY, PANEL_TOOLBAR, PANEL_TOOLBAR_GROUP, PanelFooter, RECORD_TABLE, SCROLL_X, SecurityCell, TD_NUM, TH_NUM } from "../../../../src/ui";
 import { Section } from "../../../../src/pages/shared";
 import { matchesText } from "../../../../src/textSearch";
 import { executionPriceNote, isFilled, orderStateLabel, useOrderStates, type OrderInfo } from "./orderState";
@@ -341,8 +341,8 @@ function TrailingPanel({ side, common, stops, onAdd, onEdit, onRemove, onOpenSec
     <Section
       title={copy.title}
       toolbar={
-        <div className="flex min-h-[3.6667rem] items-center justify-end gap-3.5 border-b border-line px-4 max-[900px]:flex-col max-[900px]:items-start">
-          <div className="flex items-center gap-2 max-[900px]:w-full max-[900px]:pb-2.5" role="search" aria-label={`Search and filter ${copy.title.toLowerCase()}`}>
+        <div className={PANEL_TOOLBAR}>
+          <div className={PANEL_TOOLBAR_GROUP} role="search" aria-label={`Search and filter ${copy.title.toLowerCase()}`}>
             <SearchBox value={search} onChange={setSearch} placeholder="Search symbol or name" label={`Search ${copy.title.toLowerCase()} by symbol or name`} />
             <FiltersPopover count={Number(statusFilter !== "all")} onClear={() => setStatusFilter("all")}>
               <div className={FILTER_TITLE}>Status</div>

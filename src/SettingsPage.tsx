@@ -14,13 +14,13 @@ import { extension, installedExtensions } from "./extensions";
 import type { useBackground } from "./hooks/useBackground";
 import type { useUpdater } from "./hooks/useUpdater";
 import { NAV_ITEMS, type View } from "./nav";
-import { comboOf, setShortcut, useShortcuts } from "./shortcuts";
+import { comboOf, displayCombo, setShortcut, useShortcuts } from "./shortcuts";
 import { ToolsPage } from "./pages/Tools";
 import { SessionPanel, type SessionState } from "./SessionPanel";
 import type { Common } from "./types";
 import { isReinstall, statusMessage } from "./updates";
 import { formatNumber, pluralize } from "./format";
-import { Alert, btn, cx, PANEL, Pills, PREVIEW_TABLE, SecurityCell, Switch } from "./ui";
+import { Alert, btn, cx, PANEL, PanelHeader, Pills, PREVIEW_TABLE, SecurityCell, Switch } from "./ui";
 import {
   DEFAULT_SETTINGS,
   FONT_FAMILIES,
@@ -91,7 +91,7 @@ function CustomShortcuts() {
         <div key={id} className="flex items-center justify-between gap-4 py-3">
           <dt className="text-ink-body">Open {labelOf(id)}</dt>
           <dd className="flex items-center gap-2">
-            <kbd className="rounded border border-line-strong bg-raised px-1.5 py-0.5 text-ink-strong whitespace-pre">{combo}</kbd>
+            <kbd className="rounded border border-line-strong bg-raised px-1.5 py-0.5 text-ink-strong whitespace-pre">{displayCombo(combo)}</kbd>
             <button type="button" className={btn.secondary} aria-label={`Remove the shortcut to open ${labelOf(id)}`} onClick={() => setShortcut(id, null)}>
               Remove
             </button>
@@ -181,7 +181,7 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
 function SectionCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className={PANEL}>
-      <h2 className="border-b border-line px-[1.2rem] py-3 text-section font-semibold tracking-tight text-ink-strong">{title}</h2>
+      <PanelHeader title={title} />
       <div className="px-[1.2rem]">{children}</div>
     </section>
   );
@@ -233,7 +233,7 @@ function DiagnosticsCard({ onCopyText }: { onCopyText: (text: string, done: stri
     <SectionCard title="Diagnostics">
       <Row
         label="Copy diagnostics"
-        hint="Copies a report for bug reports: app version, system, whether Trading is on and whether you are signed in, background options and the recent log lines. Tokens, account details, securities, balances, orders and file paths are never included"
+        hint="Copies a report for bug reports: app version, system, the active Trading access level and whether you are signed in, background options and the recent log lines. Tokens, account details, securities, balances, orders and file paths are never included"
       >
         <button className={btn.secondary} type="button" onClick={() => void copy()}>
           Copy diagnostics
@@ -256,7 +256,7 @@ function refreshOptions(current: number) {
   ];
 }
 
-const PANEL_NARROW = "grid gap-4 focus:outline-none";
+const PANEL_NARROW = "grid gap-4";
 
 export function SettingsPage({
   settings,
@@ -495,7 +495,7 @@ export function SettingsPage({
           </SectionCard>
         </TabPanel>
 
-        <TabPanel className="min-w-0 focus:outline-none">
+        <TabPanel className="min-w-0">
           <p className="mb-3 text-ink-muted">Every Scalable MCP tool this connection offers, and where the app uses it.</p>
           <ToolsPage common={common} onSelectView={onSelectView} />
         </TabPanel>
