@@ -237,7 +237,7 @@ export function GroupsPage({
                         {isDefault && targets.length > 0 && actions.has(TOOL.addPortfolioGroupHoldings) && (
                           <DropdownMenu
                             buttonLabel={`Add ${holding.name} to a group`}
-                            buttonClassName="grid size-5 shrink-0 cursor-pointer place-items-center rounded-full border border-line-strong bg-inset leading-none text-ink-soft hover:border-line-hover hover:text-ink-heading data-focus:outline data-focus:outline-accent"
+                            buttonClassName="grid size-5 shrink-0 cursor-pointer place-items-center rounded-full border border-line-strong bg-inset leading-none text-ink-soft hover:border-line-hover hover:text-ink-heading data-focus:outline-2 data-focus:outline-accent"
                             button={<PlusIcon aria-hidden="true" className="size-3.5" />}
                             anchor="bottom start"
                             panelClassName="min-w-44"

@@ -51,9 +51,9 @@ export function Switch({ label, checked, onToggle, disabled = false }: { label: 
       onChange={() => onToggle()}
       disabled={disabled}
       aria-label={label}
-      className="group relative inline-flex w-11 shrink-0 cursor-pointer rounded-full bg-ink-heading/10 p-0.5 inset-ring inset-ring-ink-heading/10 transition-colors duration-200 ease-in-out data-checked:bg-accent data-disabled:cursor-not-allowed data-disabled:opacity-50 data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-accent"
+      className="group relative inline-flex w-11 shrink-0 cursor-pointer rounded-full bg-ink-heading/10 p-0.5 inset-ring inset-ring-ink-faint transition-colors duration-200 ease-in-out data-checked:bg-accent data-disabled:cursor-not-allowed data-disabled:opacity-50 data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-accent"
     >
-      <span aria-hidden="true" className="size-5 rounded-full bg-knob shadow-xs ring-1 ring-line transition-transform duration-200 ease-in-out group-data-checked:translate-x-5" />
+      <span aria-hidden="true" className="size-5 rounded-full bg-knob shadow-xs ring-1 ring-ink-faint transition-transform duration-200 ease-in-out group-data-checked:translate-x-5" />
     </HeadlessSwitch>
   );
 }
@@ -450,8 +450,8 @@ export function IconButton({
 
 export const field = {
   label: "mb-3.5 grid gap-1.5 text-ink-soft",
-  input: "box-border h-9 w-full rounded-control border border-line-strong bg-inset px-2.5 text-ink-strong focus:outline focus:outline-accent",
-  textarea: "box-border h-24 w-full resize-y rounded-control border border-line-strong bg-inset px-2.5 py-2 font-mono text-ink-strong focus:outline focus:outline-accent",
+  input: "box-border h-9 w-full rounded-control border border-line-strong bg-inset px-2.5 text-ink-strong focus:outline-2 focus:outline-accent",
+  textarea: "box-border h-24 w-full resize-y rounded-control border border-line-strong bg-inset px-2.5 py-2 font-mono text-ink-strong focus:outline-2 focus:outline-accent",
   hint: "text-[1em] text-ink-muted",
   /** A field's own error, placed under it as a Headless UI `Description` so it is announced with the field. */
   error: "text-[1em] text-danger-ink",

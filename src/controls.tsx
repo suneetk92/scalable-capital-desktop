@@ -75,7 +75,7 @@ export function Select<T extends string | number>({
       <ListboxButton
         aria-label={label}
         className={cx(
-          "flex cursor-pointer items-center justify-between gap-2 rounded-control border border-line-strong bg-inset text-left text-ink-strong data-disabled:cursor-not-allowed data-disabled:opacity-50 data-focus:outline data-focus:outline-accent data-open:border-line-hover",
+          "flex cursor-pointer items-center justify-between gap-2 rounded-control border border-line-strong bg-inset text-left text-ink-strong data-disabled:cursor-not-allowed data-disabled:opacity-50 data-focus:outline-2 data-focus:outline-accent data-open:border-line-hover",
           SELECT_SIZES[size],
           className,
         )}
@@ -194,7 +194,7 @@ export function GroupInput({ prefix, suffix, className, invalid, ...props }: { p
   return (
     <div
       className={cx(
-        "flex h-9 w-full items-center rounded-control border border-line-strong bg-inset focus-within:outline focus-within:outline-accent has-[[data-invalid]]:border-danger-line",
+        "flex h-9 w-full items-center rounded-control border border-line-strong bg-inset focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent has-[[data-invalid]]:border-danger-line",
         className,
       )}
     >
@@ -565,7 +565,7 @@ export function SearchBox({
   return (
     <label
       className={cx(
-        "flex h-[2.2rem] items-center gap-[0.4667rem] rounded-control border border-line-strong bg-inset px-2 text-ink-muted focus-within:outline focus-within:outline-accent [&>svg]:size-[1.2rem] [&>svg]:shrink-0",
+        "flex h-[2.2rem] items-center gap-[0.4667rem] rounded-control border border-line-strong bg-inset px-2 text-ink-muted focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent [&>svg]:size-[1.2rem] [&>svg]:shrink-0",
         className,
       )}
     >

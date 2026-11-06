@@ -234,8 +234,8 @@
     --color-logo-edge: rgb(0 126 100 / 0.35);
     --color-up: #017e5f;
     --color-down: #c9303f;
-    --color-buy: var(--color-up);
-    --color-buy-edge: #086f5b;
+    --color-buy: #12a07c;
+    --color-buy-edge: #0b8f6e;
     --color-sell: var(--color-down);
     --color-on-sell: #ffffff;
     --color-tone-blue: #1d4ed8;

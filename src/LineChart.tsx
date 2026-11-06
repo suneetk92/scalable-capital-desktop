@@ -144,7 +144,7 @@ export function LineChart({ points, label = "Price chart", format = formatCell }
         role="group"
         tabIndex={0}
         aria-label={`${label}. Use the left and right arrow keys to read single values.`}
-        className="relative h-44 w-full overflow-hidden rounded-control bg-inset outline-none focus-visible:outline-2 focus-visible:outline-accent"
+        className="relative h-44 w-full overflow-hidden rounded-control bg-inset focus-visible:outline-2 focus-visible:outline-accent"
         onKeyDown={onKeyDown}
         onBlur={() => handle.current?.clear()}
       >
