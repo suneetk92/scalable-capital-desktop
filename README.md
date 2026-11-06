@@ -533,6 +533,22 @@ cp $T/bundle/nsis/scalable-capital-desktop_1.0.0_x64-setup.exe release/
 `release/` is local build output and is not tracked by git. The app needs the WebView2 runtime
 (preinstalled on Windows 11). On a Windows machine, `npm run tauri build` also produces an `.msi`.
 
+### Linux build
+
+The local Linux build puts a deb and an AppImage for the machine's own architecture in `release/`. It
+needs `patchelf`, `file` and `libfuse2` (`libfuse2t64` on newer Ubuntu) besides `clang` and `lld`;
+Tauri downloads `linuxdeploy` into `~/.cache/tauri` on the first AppImage build. Leave `rpm` out unless
+`rpmbuild` is installed.
+
+```bash
+CI=true npx tauri build --bundles deb,appimage
+B=src-tauri/target/release/bundle
+cp $B/deb/scalable-capital-desktop_1.0.0_amd64.deb $B/appimage/scalable-capital-desktop_1.0.0_amd64.AppImage release/
+```
+
+A local build is not signed, so it has no `.sig` and is not an update. The in-app update of an AppImage
+comes from a release: `release.yml` signs the Linux AppImages and lists them in `latest.json`.
+
 ### CI and tagged releases
 
 | Workflow      | Runs on                         | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |

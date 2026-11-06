@@ -4,9 +4,9 @@ Scalable Capital Desktop is a Tauri 2 desktop app (Rust backend, React 19 + Type
 frontend) that is a client of Scalable Capital's MCP server. Read `README.md` first for the features,
 the sign-in flow and the layout of the code.
 
-## Windows build (only on request)
+## Windows and Linux builds (only on request)
 
-Do not rebuild the Windows app after every change. Rebuild and refresh the exes in `release/` only when
+Do not rebuild the app after every change. Rebuild and refresh the files in `release/` only when
 the user asks for it:
 
 ```bash
@@ -14,6 +14,14 @@ CI=true npx tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --bu
 T=src-tauri/target/x86_64-pc-windows-msvc/release
 cp $T/scalable-capital-desktop.exe release/scalable-capital-desktop-portable.exe
 cp $T/bundle/nsis/scalable-capital-desktop_1.0.0_x64-setup.exe release/
+```
+
+For a Linux build on request (deb and AppImage for this machine's architecture, unsigned):
+
+```bash
+CI=true npx tauri build --bundles deb,appimage
+B=src-tauri/target/release/bundle
+cp $B/deb/scalable-capital-desktop_1.0.0_amd64.deb $B/appimage/scalable-capital-desktop_1.0.0_amd64.AppImage release/
 ```
 
 The `release` profile uses thin LTO and 16 codegen units, so the last step runs in parallel (the exes are
