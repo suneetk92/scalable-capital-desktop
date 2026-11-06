@@ -3378,7 +3378,7 @@ dependencies = [
 
 [[package]]
 name = "scalable-capital-desktop"
-version = "1.0.0"
+version = "2.50.0"
 dependencies = [
  "base64 0.23.1",
  "keyring",

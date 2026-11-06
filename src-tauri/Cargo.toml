@@ -1,6 +1,6 @@
 [package]
 name = "scalable-capital-desktop"
-version = "1.0.0"
+version = "2.50.0"
 description = "Scalable Capital portfolio and watchlist screener"
 authors = ["Suneet Kumar"]
 license = "Apache-2.0"
