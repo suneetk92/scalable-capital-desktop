@@ -63,8 +63,9 @@ Run only the checks that match what you changed, but run all of them if you touc
   token is short-lived but still gives account access. `.junie/mcp/mcp.json` is local and ignored.
 - The Trading gate lives in Rust (`src-tauri/src/mcp/trading.rs`; the savings-plan commands in `savings.rs`
   use it too). Rust never persists it and starts every launch read-only; the only saved choice is the
-  **Start with** setting (Read-only by default), which the UI sends at launch, and Full starts as Restricted
-  while the exchange is closed. Signing out, by the user or by Rust, switches it back to read-only. Do not
+  **Start with** setting (Read-only by default), which the UI sends at launch and at every sign-in, and Full
+  starts as Restricted while the exchange is closed. Signing out, by the user or by Rust, switches it back to
+  read-only until the next sign-in. Do not
   weaken it, and do not add a command that reaches a write tool without going through it.
 - **The updater private key never enters the repository**, logs, docs or test fixtures. It lives only in
   the secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` of the GitHub `release`

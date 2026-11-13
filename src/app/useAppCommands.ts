@@ -147,7 +147,7 @@ export function useAppCommands(data: AppData) {
     chooseAccess(access === "readonly" ? "restricted" : access === "restricted" && marketOpen ? "full" : "readonly");
   }
 
-  // The Settings choice is the only saved one; it applies from the next launch, and Full asks first.
+  // The Settings choice is the only saved one; it applies from the next sign-in or launch, and Full asks first.
   function chooseStartAccess(mode: AccessMode) {
     if (mode === "full" && settings.startAccess !== "full") setConfirmingStartupTrading(true);
     else updateSettings({ startAccess: mode });
@@ -189,7 +189,7 @@ export function useAppCommands(data: AppData) {
       await invokeCommand(invoke, "logout");
       // A reload still under way would put the signed-out account back on screen.
       invalidateLoads();
-      // The backend switched Trading off with the sign-out; the UI follows so the next sign-in starts read-only.
+      // The backend switched Trading off with the sign-out; the UI follows until the next sign-in applies "Start with".
       setAccessSwitch("readonly");
       clearHistories();
       clearToolQueryCache();

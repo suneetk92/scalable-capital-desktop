@@ -62,7 +62,7 @@ export function useAppData() {
   if (view === "transactions" && !transactionsOpened) setTransactionsOpened(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
-  // The access level of this session; it starts read-only (or the "Start with" setting) and no other change touches that setting.
+  // The access level of this session; it starts read-only, each sign-in applies the "Start with" setting, and no other change touches that setting.
   const [accessSwitch, setAccessSwitch] = useState<AccessMode>("readonly");
   // The exchange hours cap Full access: outside them it works as Restricted access, which needs no market hours.
   const [marketOpen, setMarketOpen] = useState(() => exchangeOpen());
@@ -116,10 +116,10 @@ export function useAppData() {
       else void invokeCommand(invoke, "set_access_mode", { mode: "readonly" }).catch(() => undefined);
     });
   }, [access]);
-  // At launch the level is the "Start with" setting. After that only the user changes it; the exchange hours
-  // cap Full to Restricted (see `access`) and lift the cap again at the next opening.
-  const startAccess = useRef(settings.startAccess);
-  useEffect(() => setAccessSwitch(startAccess.current), []);
+  // Every sign-in (also the saved session at launch) starts with the "Start with" setting. After that only the user
+  // changes it; the exchange hours cap Full to Restricted (see `access`) and lift the cap again at the next opening.
+  const startAccessRef = useRef(settings.startAccess);
+  startAccessRef.current = settings.startAccess;
 
   const shortcuts = useShortcuts();
   const shortcutsRef = useRef(shortcuts);
@@ -182,8 +182,10 @@ export function useAppData() {
         if (!loads.current(id)) return;
         // A part that failed this time keeps what the last reload brought, and the status line says so.
         const { dashboard: merged, failures } = keepLastGoodParts(dashboardRef.current, result);
-        // Signed out since the last load (also when Scalable ended the session itself): the next sign-in starts read-only, as after Sign out.
+        // Signed out since the last load (also when Scalable ended the session itself): read-only until the next sign-in, as after Sign out.
         if (!result.authenticated && dashboardRef.current) setAccessSwitch("readonly");
+        // Signed in since the last load: the session starts with the "Start with" setting.
+        if (result.authenticated && !dashboardRef.current) setAccessSwitch(startAccessRef.current);
         setDashboard(result.authenticated ? merged : null);
         failedReloadsRef.current = 0;
         if (result.authenticated) {

@@ -488,7 +488,7 @@ export function SettingsPage({
             </Row>
             <Row
               label="Start with"
-              hint={`The access level every launch starts with. Read-only changes nothing; Restricted manages watchlists, price alerts, portfolio groups and trailing stops at any hour; Full also places orders and changes savings plans, and needs the Full MCP access level in Scalable and the exchange hours (Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened). Outside those hours Full starts as Restricted${marketOpen ? "" : " (the exchange is closed now)"}. The top bar and the command palette change only the current session and never this setting.`}
+              hint={`The access level every launch and sign-in starts with. Read-only changes nothing; Restricted manages watchlists, price alerts, portfolio groups and trailing stops at any hour; Full also places orders and changes savings plans, and needs the Full MCP access level in Scalable and the exchange hours (Monday to Friday, 06:00 to 23:00 Berlin time, with some holidays closed or shortened). Outside those hours Full starts as Restricted${marketOpen ? "" : " (the exchange is closed now)"}. The top bar and the command palette change only the current session and never this setting.`}
             >
               <Select size="compact" value={settings.startAccess} onChange={onChangeStartAccess} options={ACCESS_MODES.map((item) => ({ value: item.mode, label: item.label }))} />
             </Row>

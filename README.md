@@ -306,7 +306,7 @@ command palette and the account menu change the level too:
 | Full       | Everything, including buy and sell orders, savings plans, previews and the watching of trailing stops.            | Only while the exchange is open. |
 
 Full access asks for confirmation first; Restricted and Read-only do not. The level is not saved; **Start with** in
-Settings, Trading is the one saved choice: every launch starts with that level (Read-only by default), and Full starts as
+Settings, Trading is the one saved choice: every launch and every sign-in starts with that level (Read-only by default), and Full starts as
 Restricted while the exchange is closed. Nothing switches the level for you: Full you chose works as Restricted while the exchange is closed and as Full again at the next opening. The top bar changes only the current session.
 Full access shows the **Buy** and **Sell** buttons per row and a
 **New order** button with security search (on Overview, Portfolio, Watchlist, Discover and Transactions; Groups,
@@ -318,7 +318,7 @@ Rust backend also refuses every tool above the current level, including unknown 
 - The level is a backend-enforced **kill switch**, not just a UI preference. The UI tells the backend on every
   change and every reload of the window. Signing out, also when Scalable rejects the sign-in and the app signs you
   out, switches it to read-only (in Rust and in the UI) and drops all
-  pending previews, so the next sign-in starts read-only too, until the next launch. Below Full access, only `ping`
+  pending previews. The next sign-in starts with the **Start with** level again, like a launch. Below Full access, only `ping`
   and tools whose names start with `get_`, `list_`, `search_` or `preview_` may run, plus the watchlist,
   price-alert and portfolio-group tools in Restricted access (`tests/fixtures/tool-policy.json` lists the tools of
   each level); every other tool, including unknown future tools, is denied, and a batch that is refused as a whole

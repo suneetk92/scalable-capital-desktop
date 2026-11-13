@@ -306,7 +306,7 @@ pub fn login_status(state: State<'_, AuthState>) -> Result<LoginStatus, String> 
 }
 
 /// Signing out also switches Trading off and drops any pending preview, so the next sign-in starts
-/// read-only like a fresh launch, even if the webview never sends the switch again.
+/// read-only like a fresh launch until the webview sends the "Start with" level again.
 #[tauri::command]
 pub async fn logout(
     state: State<'_, AuthState>,
