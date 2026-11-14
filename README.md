@@ -521,7 +521,9 @@ Instants are displayed in the machine's local time zone with the short zone name
 This is the local build behind the exes in `release/`. It needs the Windows target for the pinned
 toolchain (`src-tauri/rust-toolchain.toml` lists it, so `rustup show` in `src-tauri/` installs it),
 `cargo install cargo-xwin --locked` and `apt install nsis lld llvm`. On Linux, `src-tauri/.cargo/config.toml`
-links with `clang` and `lld`.
+links with `clang` and `lld`. The Tauri CLI looks up the tray library with `pkg-config` on a Linux host even
+for this Windows build (it panics with "Can't detect any appindicator library" otherwise), so it also needs
+`libayatana-appindicator3-dev`.
 
 ```bash
 CI=true npx tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis
@@ -536,7 +538,9 @@ cp $T/bundle/nsis/scalable-capital-desktop_1.0.0_x64-setup.exe release/
 ### Linux build
 
 The local Linux build puts a deb and an AppImage for the machine's own architecture in `release/`. It
-needs `patchelf`, `file` and `libfuse2` (`libfuse2t64` on newer Ubuntu) besides `clang` and `lld`;
+needs Tauri's Linux libraries (`apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+libxdo-dev build-essential`), `patchelf`, `file` and `libfuse2` (`libfuse2t64` on newer Ubuntu) besides
+`clang` and `lld`;
 Tauri downloads `linuxdeploy` into `~/.cache/tauri` on the first AppImage build. Leave `rpm` out unless
 `rpmbuild` is installed.
 

@@ -26,7 +26,8 @@ cp $B/deb/scalable-capital-desktop_1.0.0_amd64.deb $B/appimage/scalable-capital-
 
 The `release` profile uses thin LTO and 16 codegen units, so the last step runs in parallel (the exes are
 slightly larger and slower than with fat LTO). The library is built as `rlib` only, because the app is
-desktop-only. On Linux, `src-tauri/.cargo/config.toml` links with `clang` and `lld`; install both locally.
+desktop-only. On Linux, `src-tauri/.cargo/config.toml` links with `clang` and `lld`; install both locally. Both builds on Linux, the Windows one too, also need
+`libayatana-appindicator3-dev` (and the Linux build the other Tauri libraries listed in `README.md`).
 Setting `RUSTC_WRAPPER=sccache` also helps after `cargo clean` or when you switch targets.
 
 If the app version changes, the installer file name changes too: update the command, and the three
