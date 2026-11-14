@@ -273,11 +273,13 @@ describe("trailing stop tables", () => {
       "legacy-order": { transaction: { currency: "EUR", securityTrade: { status: "SETTLED", averagePrice: "93.75" }, history: [{ state: "FILLED", timestamp: "2026-10-28T15:15:00Z" }] } },
     };
     const { invoke, refresh } = renderStops([legacy], legacyDetails, 0, true);
+    // An extension may use `invoke` too (for logos), so only the detail queries are counted.
+    const queries = () => vi.mocked(invoke).mock.calls.filter(([command]) => command === "call_tools").length;
 
-    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(queries()).toBe(1));
     expect(JSON.parse(localStorage.getItem("scalable-capital-desktop.trailing-order-states") ?? "{}").legacy.executionChecked).toBeUndefined();
     refresh(1);
-    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(queries()).toBe(2));
     await waitFor(() => expect(JSON.parse(localStorage.getItem("scalable-capital-desktop.trailing-order-states") ?? "{}").legacy.executionChecked).toBe(true));
     expect(cell(screen.getByRole("table"), "Legacy", "Execution price").textContent).toBe(formatMoney(93.75, "EUR"));
   });
