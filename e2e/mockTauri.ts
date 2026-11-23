@@ -29,6 +29,7 @@ export async function mockTauri(page: Page) {
           }
           case "set_access_mode":
           case "set_trailing_interval":
+          case "set_trailing_limit":
             return null;
           case "list_trailing_stops":
             return [];

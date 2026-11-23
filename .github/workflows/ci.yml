@@ -91,7 +91,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false
       - run: npm audit --audit-level=high
       # `npm audit signatures` checks the installed packages, so install them first.
       - run: npm ci

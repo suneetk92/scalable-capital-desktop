@@ -37,7 +37,9 @@ const CHANGED_EVENT: &str = "trailing-stops-changed";
 const DEFAULT_CHECK_SECONDS: u64 = 30;
 const MIN_CHECK_SECONDS: u64 = 15;
 const MAX_CHECK_SECONDS: u64 = 600;
-const MAX_STOPS: usize = 50;
+/// How many stops may be kept until the app passes the setting, and the bounds of that setting.
+const DEFAULT_MAX_STOPS: usize = 50;
+const MAX_STOPS: usize = 500;
 const MAX_NAME: usize = 80;
 
 /// Which way a stop trades: a stop loss sells when the price falls, a buy stop buys when it rises.
@@ -128,6 +130,8 @@ pub struct TrailingState {
     problem: Mutex<Option<String>>,
     /// Seconds between price checks; 0 until the app has passed its setting.
     check_seconds: AtomicU64,
+    /// How many stops may be kept; 0 until the app has passed its setting.
+    max_stops: AtomicU64,
     /// When the last price check finished, in milliseconds since the epoch; 0 before the first.
     last_check_ms: AtomicU64,
     /// Wakes the watcher when it may have work again. It holds one wake-up, so none is lost.
@@ -139,6 +143,13 @@ impl TrailingState {
         match self.check_seconds.load(Ordering::Relaxed) {
             0 => DEFAULT_CHECK_SECONDS,
             seconds => seconds,
+        }
+    }
+
+    fn max_stops(&self) -> usize {
+        match self.max_stops.load(Ordering::Relaxed) {
+            0 => DEFAULT_MAX_STOPS,
+            limit => limit as usize,
         }
     }
 
@@ -223,6 +234,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Syn
         commands::update_trailing_stop,
         commands::remove_trailing_stop,
         commands::set_trailing_interval,
+        commands::set_trailing_limit,
     ]
 }
 
@@ -235,6 +247,7 @@ pub fn handles(command: &str) -> bool {
             | "update_trailing_stop"
             | "remove_trailing_stop"
             | "set_trailing_interval"
+            | "set_trailing_limit"
     )
 }
 

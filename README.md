@@ -151,7 +151,7 @@ and arm64). Only Windows has been tested; the macOS and Linux builds come from C
   Portfolio, Watchlist, Transactions, Price alerts and Savings plans tables, the Overview's By security
   tables and Scalable tools; "All rows" shows every row), the stored transactions, Data diagnostics, the Background
   options (tray, start with Windows), the price alert notices with their check interval and in-app toast, the
-  trailing stop check frequency, the default trading venue, the Trading switch and the update check, with a reset to
+  trailing stop check frequency and limit, the default trading venue, the Trading switch and the update check, with a reset to
   defaults (Rust keeps the Background options, so the reset leaves them). The sidebar can be reordered by drag and
   drop or Alt+Up and Alt+Down.
 - **Session** (Settings, Session): live countdown of the access-token validity, when the refresh

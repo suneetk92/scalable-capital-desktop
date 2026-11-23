@@ -6,7 +6,7 @@ import type { AppExtension, ExtensionContext, ExtensionOrderProps } from "../../
 import { intervalLabel, REFRESH_OPTIONS } from "../../../src/refreshOptions";
 import { btn } from "../../../src/ui";
 import manifest from "../extension.json";
-import { migrateLegacySettings, updateTrailingSettings, useTrailingSettings } from "./settings";
+import { migrateLegacySettings, STOP_LIMITS, updateTrailingSettings, useTrailingSettings } from "./settings";
 import { invokeCommand } from "./src/commands";
 import { useTrailingStops } from "./src/useTrailingStops";
 
@@ -20,12 +20,16 @@ const asData = (context: ExtensionContext) => context.data.extensionData as Trai
 
 function useExtensionData(context: { invoke: Parameters<typeof useTrailingStops>[0] }): TrailingData {
   const trailing = useTrailingStops(context.invoke);
-  const { checkSeconds } = useTrailingSettings();
+  const { checkSeconds, maxStops } = useTrailingSettings();
   // The watcher runs in Rust and uses 30 seconds until it is told the setting.
   useEffect(() => {
     if (!hasTauriRuntime()) return;
     invokeCommand(context.invoke, "set_trailing_interval", { seconds: checkSeconds }).catch(() => {});
   }, [context.invoke, checkSeconds]);
+  useEffect(() => {
+    if (!hasTauriRuntime()) return;
+    invokeCommand(context.invoke, "set_trailing_limit", { limit: maxStops }).catch(() => {});
+  }, [context.invoke, maxStops]);
   return { trailing, checkSeconds };
 }
 
@@ -34,7 +38,7 @@ function TrailingRoute({ context }: { context: ExtensionContext }) {
 }
 
 function TrailingSettings() {
-  const { checkSeconds } = useTrailingSettings();
+  const { checkSeconds, maxStops } = useTrailingSettings();
   return createElement(
     "section",
     { className: "border-t border-line py-4", "aria-label": "Trailing stops" },
@@ -58,6 +62,27 @@ function TrailingSettings() {
         value: checkSeconds,
         onChange: (seconds) => updateTrailingSettings({ checkSeconds: Number(seconds) }),
         options: REFRESH_OPTIONS.map(([value, label]) => ({ value, label })),
+      }),
+    ),
+    createElement(
+      "div",
+      { className: "flex items-center justify-between gap-5 py-3" },
+      createElement(
+        "div",
+        null,
+        createElement("div", { className: "text-ink-body" }, "Trailing stops limit"),
+        createElement(
+          "p",
+          { className: "text-ink-muted" },
+          "How many trailing stops you can keep at once. Lowering it does not remove existing stops; it only blocks new ones until you are under the limit.",
+        ),
+      ),
+      createElement(Select, {
+        size: "compact",
+        label: "Trailing stops limit",
+        value: maxStops,
+        onChange: (limit) => updateTrailingSettings({ maxStops: Number(limit) }),
+        options: STOP_LIMITS.map((value) => ({ value, label: String(value) })),
       }),
     ),
   );

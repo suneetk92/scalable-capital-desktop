@@ -85,6 +85,14 @@ pub fn set_trailing_interval(state: State<'_, TrailingState>, seconds: u64) {
     );
 }
 
+/// Sets how many trailing stops may be kept (the app's setting), within the allowed bounds. Stops above a lowered limit stay; only new ones are refused.
+#[tauri::command]
+pub fn set_trailing_limit(state: State<'_, TrailingState>, limit: u64) {
+    state
+        .max_stops
+        .store(limit.clamp(1, MAX_STOPS as u64), Ordering::Relaxed);
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrailingList {
@@ -180,8 +188,11 @@ fn admit_new_stop(
             "There is already a trailing stop of this kind for this security. Edit or remove it first.".to_owned(),
         );
     }
-    if count >= MAX_STOPS {
-        return Err("Too many trailing stops. Remove some first.".to_owned());
+    let limit = state.max_stops();
+    if count >= limit {
+        return Err(format!(
+            "You have reached the limit of {limit} trailing stops. Remove some or raise the limit in Settings."
+        ));
     }
     Ok(portfolio_id)
 }
@@ -395,6 +406,22 @@ mod tests {
             amount: None,
             trail: Trail::Percent(5.0),
         }
+    }
+
+    /// The limit setting decides when a new stop is refused; lowering it keeps the existing stops.
+    #[test]
+    fn the_stop_limit_follows_the_setting() {
+        let gate = TradingGate::default();
+        gate.set_for_test(true);
+        let state = TrailingState::default();
+        assert_eq!(state.max_stops(), 50);
+        state.max_stops.store(1, Ordering::Relaxed);
+        assert!(admit_new_stop(&gate, &state, &new_stop("US0378331005")).is_ok());
+        let mut other = crate::ext_trailing_stops::sample_stop(Trail::Percent(5.0), 100.0);
+        other.isin = "US5949181045".to_owned();
+        state.mutate(|stops| stops.push(other));
+        let error = admit_new_stop(&gate, &state, &new_stop("US0378331005")).unwrap_err();
+        assert!(error.contains("limit of 1"), "{error}");
     }
 
     /// The add command is refused before any price is fetched while Trading is off, admitted once

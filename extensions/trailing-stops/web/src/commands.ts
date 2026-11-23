@@ -8,6 +8,7 @@ type TrailingCommandMap = {
   update_trailing_stop: { args: { request: object }; result: unknown };
   remove_trailing_stop: { args: { id: string }; result: unknown };
   set_trailing_interval: { args: { seconds: number }; result: void };
+  set_trailing_limit: { args: { limit: number }; result: void };
 };
 
 type Command = keyof TrailingCommandMap;
