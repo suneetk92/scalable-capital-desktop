@@ -70,16 +70,16 @@ function TrailingSettings() {
       createElement(
         "div",
         null,
-        createElement("div", { className: "text-ink-body" }, "Trailing stops limit"),
+        createElement("div", { className: "text-ink-body" }, "Active trailing stops limit"),
         createElement(
           "p",
           { className: "text-ink-muted" },
-          "How many trailing stops you can keep at once. Lowering it does not remove existing stops; it only blocks new ones until you are under the limit.",
+          "How many trailing stops can be watched at once. Stops that are triggered, sold or waiting for you are not counted. Lowering it does not remove existing stops; it only blocks new ones until you are under the limit.",
         ),
       ),
       createElement(Select, {
         size: "compact",
-        label: "Trailing stops limit",
+        label: "Active trailing stops limit",
         value: maxStops,
         onChange: (limit) => updateTrailingSettings({ maxStops: Number(limit) }),
         options: STOP_LIMITS.map((value) => ({ value, label: String(value) })),

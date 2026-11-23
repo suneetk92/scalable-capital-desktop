@@ -164,6 +164,14 @@ fn is_duplicate(
 /// Everything `add_trailing_stop` checks before it asks Scalable for a price: the access level,
 /// the request itself, and that the stop is neither a duplicate nor one too many. Returns the
 /// portfolio id the stop belongs to.
+/// Only stops that are being watched count against the limit; finished ones and ones that need you do not.
+fn active_count(stops: &[TrailingStop]) -> usize {
+    stops
+        .iter()
+        .filter(|stop| stop.status == Status::Active)
+        .count()
+}
+
 fn admit_new_stop(
     gate: &TradingGate,
     state: &TrailingState,
@@ -179,7 +187,7 @@ fn admit_new_stop(
     let portfolio_id = request.portfolio_id.clone().filter(|id| !id.is_empty());
     let (count, exists) = state.mutate(|stops| {
         (
-            stops.len(),
+            active_count(stops),
             is_duplicate(stops, request.side, &request.isin, &portfolio_id),
         )
     });
@@ -191,7 +199,7 @@ fn admit_new_stop(
     let limit = state.max_stops();
     if count >= limit {
         return Err(format!(
-            "You have reached the limit of {limit} trailing stops. Remove some or raise the limit in Settings."
+            "You have reached the limit of {limit} active trailing stops. Remove some or raise the limit in Settings."
         ));
     }
     Ok(portfolio_id)
@@ -320,13 +328,20 @@ pub fn update_trailing_stop(
     if !gate.manage_on() {
         return Err(MANAGE_OFF.to_owned());
     }
+    let limit = state.max_stops();
     let (previous, updated) = state.mutate(|stops| {
+        let active = active_count(stops);
         let stop = stops
             .iter_mut()
             .find(|stop| stop.id == request.id)
             .ok_or("This trailing stop no longer exists.".to_owned())?;
         if !matches!(stop.status, Status::Active | Status::Attention) {
             return Err("Only a stop that is watching or needs you can be changed.".to_owned());
+        }
+        if stop.status == Status::Attention && active >= limit {
+            return Err(format!(
+                "You have reached the limit of {limit} active trailing stops. Remove some or raise the limit in Settings."
+            ));
         }
         let size = changed_size(&request, stop)?;
         let high = if stop.status == Status::Attention {
@@ -419,9 +434,14 @@ mod tests {
         assert!(admit_new_stop(&gate, &state, &new_stop("US0378331005")).is_ok());
         let mut other = crate::ext_trailing_stops::sample_stop(Trail::Percent(5.0), 100.0);
         other.isin = "US5949181045".to_owned();
+        let mut sold = other.clone();
+        sold.id = "b".to_owned();
+        sold.status = Status::Sold;
+        state.mutate(|stops| stops.push(sold));
+        assert!(admit_new_stop(&gate, &state, &new_stop("US0378331005")).is_ok());
         state.mutate(|stops| stops.push(other));
         let error = admit_new_stop(&gate, &state, &new_stop("US0378331005")).unwrap_err();
-        assert!(error.contains("limit of 1"), "{error}");
+        assert!(error.contains("limit of 1 active"), "{error}");
     }
 
     /// The add command is refused before any price is fetched while Trading is off, admitted once
